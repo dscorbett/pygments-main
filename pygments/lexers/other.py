@@ -35,7 +35,7 @@ __all__ = ['BrainfuckLexer', 'BefungeLexer', 'RedcodeLexer', 'MOOCodeLexer',
            'ECLLexer', 'UrbiscriptLexer', 'OpenEdgeLexer', 'BroLexer',
            'MscgenLexer', 'KconfigLexer', 'VGLLexer', 'SourcePawnLexer',
            'RobotFrameworkLexer', 'PuppetLexer', 'NSISLexer', 'RPMSpecLexer',
-           'CbmBasicV2Lexer', 'AutoItLexer']
+           'CbmBasicV2Lexer', 'AutoItLexer', 'Inform6Lexer']
 
 
 class ECLLexer(RegexLexer):
@@ -3663,5 +3663,607 @@ class AutoItLexer(RegexLexer):
         ],
         'garbage': [
             (r'[^\S\n]', Text),
+        ],
+    }
+
+
+class Inform6Lexer(RegexLexer):
+    """
+    For Inform 6.
+    """ #TODO: link that with ``...``_
+
+    name = 'Inform 6'
+    aliases = ['inform6', 'i6']
+    filenames = ['*.inf', '*.h']
+    mimetypes = []
+
+    flags = re.MULTILINE | re.DOTALL
+
+    _name = r'[a-zA-Z_][a-zA-Z_0-9]*'
+    # TODO: more constants!
+
+    tokens = {
+        'root': [
+            (r'!%.*?\n', Comment.Preproc),
+            (r'', Text, 'main')
+        ],
+        'main': [
+            include('skip'),
+            (r';', Punctuation),
+            (r'#', Punctuation, 'directive after hash'),
+            (r'', Text, 'directive')
+        ],
+        'skip': [
+            (r'\s+', Text),
+            (r'!.*?\n', Comment.Single)
+        ],
+        'default': [
+            include('skip'),
+            (r'(?=[:;\]{}])', Text, '#pop'),
+            (r'', Text, 'expression')
+        ],
+        'label': [
+            include('skip'),
+            (r'(%s)?' % _name, Name.Label, '#pop')
+        ],
+        'dictionary word': [
+            (r'[~^]+', String.Escape),
+            (r'[^~^/\\@\']+', String.Single),
+            (r'//p*\'', String.Single, '#pop'),
+            (r'(//)([^\']+)(\')', bygroups(String.Single, Error, String.Single),
+             '#pop'),
+            (r'/', String.Single),
+            (r'@\{[0-9a-fA-F]{1,4}\}', String.Escape),
+            (r'@([:\'`^][aeiouAEIOU]|:y|ss|>>|<<|\'[yY]|o[aA]|/[oO]|~[anoANO]|'
+             r'[ao]e|[AO]E|c[cC]|[tT]h|[eE]t|LL|!!|\?\?)', String.Escape),
+            (r'@', Error),
+            (r'\'', String.Single, '#pop')
+        ],
+        'string': [
+            (r'[~^]+', String.Escape),
+            (r'[^~^\\@"]+', String.Double),
+            (r'\\\s*\n\s*', String.Escape),
+            (r'\\', Error),
+            (r'@(\\\s*\n\s*)*@((\\\s*\n\s*)*[0-9])*', String.Escape),
+            (r'@((\\\s*\n\s*)*[0-9]){2}', String.Escape),
+            (r'@(\\\s*\n\s*)*\{((\\\s*\n\s*)*[0-9a-fA-F]){1,4}(\\\s*\n\s*)*\}',
+             String.Escape),
+            (r'@(\\\s*\n\s*)*([:\'`^](\\\s*\n\s*)*[aeiouAEIOU]|:(\\\s*\n\s*)*y|'
+             r's(\\\s*\n\s*)*s|>(\\\s*\n\s*)*>|<(\\\s*\n\s*)*<|'
+             r'\'(\\\s*\n\s*)*[yY]|o(\\\s*\n\s*)*[aA]|/(\\\s*\n\s*)*[oO]|'
+             r'~(\\\s*\n\s*)*[anoANO]|[ao](\\\s*\n\s*)*e|[AO](\\\s*\n\s*)*E|'
+             r'c(\\\s*\n\s*)*[cC]|[tT](\\\s*\n\s*)*h|[eE](\\\s*\n\s*)*t|'
+             r'L(\\\s*\n\s*)*L|!(\\\s*\n\s*)*!|\?(\\\s*\n\s*)*\?)',
+             String.Escape),
+            (r'@', Error),
+            (r'"', String.Double, '#pop')
+        ],
+        'plain string': [
+            (r'[~^]+', String.Escape),
+            (r'[^~^\\"~^]+', String.Double),
+            (r'\\\s*\n', String.Escape),
+            (r'\\', Error),
+            (r'"', String.Double, '#pop')
+        ],
+        'filename?': [
+            include('skip'),
+            (r'"', String.Double, 'filename string'),
+            (r'', Text, '#pop')
+        ],
+        'filename string': [
+            (r'[^\\"]+', String.Double),
+            (r'\\\s*\n\s*', String.Escape),
+            (r'\\', Error),
+            (r'"', String.Double, '#pop')
+        ],
+        'value': [
+            include('skip'),
+            (r'\'[^@]\'', String.Char, '#pop'),
+            (r'(\')(@\{[0-9a-fA-F]{1,4}\})(\')',
+             bygroups(String.Char, String.Escape, String.Char), '#pop'),
+            (r'(\')(@(?:[:\'`^][aeiouAEIOU]|:y|ss|>>|<<|LL|\'[yY]|o[aA]|/[oO]|'
+             r'~[anoANO]|[ao]e|[AO]E|c[cC]|[tT]h|[eE]t))(\')',
+             bygroups(String.Char, String.Escape, String.Char), '#pop'),
+            (r'\'', String.Single, ('#pop', 'dictionary word')),
+            (r'"', String.Double, ('#pop', 'string')),
+            (r'\$[+-][0-9]+(\.[0-9]*)?([eE][+-]?[0-9]+)?\b', Number.Float,
+             '#pop'),
+            (r'\$[+-]\.[0-9]+([eE][+-]?[0-9]+)?\b', Number.Float, '#pop'),
+            (r'\$[0-9a-fA-F]+\b', Number.Hex, '#pop'),
+            (r'\$\$[01]+\b', Number, '#pop'),
+            (r'\$', Error, '#pop'),
+            (r'[0-9]+\b', Number.Integer, '#pop'),
+            (r'(##|#[ar]\$)(%s)' % _name, bygroups(Operator, Name), '#pop'),
+            (r'(#g\$)(%s)' % _name,
+             bygroups(Operator, Name.Variable.Global), '#pop'),
+            (r'(#[nw]\$)([a-zA-Z_0-9]+)', bygroups(Operator, String), '#pop'),
+            (r'##|#[agnrw]\$', Error, '#pop'),
+            (r'#', Name.Builtin, ('#pop', 'value after hash')),
+            (r'\.|\?~|\?', Name.Label, ('#pop', 'label')),
+            (r'(child|children|elder|eldest|glk|indirect|metaclass|parent|'
+             r'random|sibling|younger|youngest)\b', Name.Builtin, '#pop'),
+            (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
+             r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
+             r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
+             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|nothing|'
+             r'NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|self|'
+             r'sender|STRICT_MODE|sw__var|sys__glob[012]|sys_statusline_flag|'
+             r'TARGET_GLULX|TARGET_ZCODE|temp_global[234]?|true|USE_MODULES|'
+             r'WORDSIZE)\b', Name.Builtin, '#pop'),
+            (r'(?i)(Box__Routine|CA__Pr|CDefArt|CInDefArt|Cl__Ms|'
+             r'Copy__Primitive|CP__Tab|DA__Pr|DB__Pr|DefArt|Dynam__String|'
+             r'EnglishNumber|Glk__Wrap|IA__Pr|IB__Pr|InDefArt|Main__|'
+             r'Meta__class|OB__Move|OB__Remove|OC__Cl|OP__Pr|Print__Addr|'
+             r'Print__PName|PrintShortName|RA__Pr|RA__Sc|RL__Pr|R_Process|'
+             r'RT__ChG|RT__ChGt|RT__ChLDB|RT__ChLDW|RT__ChPR|RT__ChPrintA|'
+             r'RT__ChPrintC|RT__ChPrintO|RT__ChPrintS|RT__ChPS|RT__ChR|'
+             r'RT__ChSTB|RT__ChSTW|RT__ChT|RT__Err|RT__TrPS|RV__Pr|'
+             r'Symb__Tab|Unsigned__Compare|WV__Pr|Z__Region)\b', Name.Builtin,
+             '#pop'),
+            (_name, Name, '#pop'),
+            (r'[a-zA-Z_0-9]+', Error, '#pop'),
+            (r'.', Error, '#pop')
+        ],
+        'value after hash': [
+            include('skip'),
+            include('system constant'),
+            (r'[a-zA-Z_0-9]*', Error, '#pop')
+        ],
+        'system constant': [
+            (r'(action_names_array|actions_table|actual_largest_object|'
+             r'adjectives_table|array__end|array_flags_array|array_names_array|'
+             r'array_names_offset|arrays_array|array__start|'
+             r'attribute_names_array|classes_table|class_objects_array|'
+             r'code_offset|constant_names_array|constants_array|cpv__end|'
+             r'cpv__start|dictionary_table|dict_par1|dict_par2|dict_par3|'
+             r'dynam_string_table|fake_action_names_array|global_flags_array|'
+             r'global_names_array|globals_array|grammar_table|'
+             r'highest_action_number|highest_array_number|'
+             r'highest_attribute_number|highest_class_number|'
+             r'highest_constant_number|highest_fake_action_number|'
+             r'highest_global_number|highest_object_number|'
+             r'highest_property_number|highest_routine_number|'
+             r'identifiers_table|ipv__end|ipv__start|largest_object|'
+             r'lowest_action_number|lowest_array_number|'
+             r'lowest_attribute_number|lowest_class_number|'
+             r'lowest_constant_number|lowest_fake_action_number|'
+             r'lowest_global_number|lowest_object_number|'
+             r'lowest_property_number|lowest_routine_number|oddeven_packing|'
+             r'preactions_table|property_names_array|readable_memory_offset|'
+             r'routine_flags_array|routine_names_array|routines_array|'
+             r'static_memory_offset|strings_offset|version_number)\b',
+             Name.Builtin, '#pop')
+        ],
+
+        # Directive
+        'directive': [
+            include('skip'),
+            (r';', Punctuation, '#pop'),
+            (r'\[', Punctuation,
+             ('default', 'routine', 'default', 'routine name?')),
+            (r'(?i)(abbreviate|end|endif|dictionary|ifdef|iffalse|ifndef|ifnot|'
+             r'iftrue|ifv3|ifv5|release|switches|system_file|version)\b',
+             Keyword, 'default'),
+            (r'(?i)(array|global)\b', Keyword,
+             ('array', 'directive keyword?', 'global')),
+            (r'(?i)attribute\b', Keyword,
+             ('default', 'directive keyword?', 'global')),
+            (r'(?i)class\b', Keyword, ('object', 'class names')),
+            (r'(?i)(constant|default)\b', Keyword,
+             ('default', 'expression after value', 'constant')),
+            (r'(?i)(extend|verb)\b', Keyword,  'grammar'),
+            (r'(?i)fake_action\b', Keyword, ('default', 'global')),
+            (r'(?i)import\b', Keyword, 'manifest'),
+            (r'(?i)(include|link)\b', Keyword, ('default', 'filename?')),
+            (r'(?i)(lowstring|undef)\b', Keyword, ('default', 'constant')),
+            (r'(?i)message\b', Keyword,
+             ('default', 'message', 'directive keyword?')),
+            (r'(?i)(nearby|object)\b', Keyword, 'object'),
+            (r'(?i)property\b', Keyword,
+             ('default', 'global', 'property keyword*')),
+            (r'(?i)replace\b', Keyword,
+             ('default', 'routine name?', 'routine name?')),
+            (r'(?i)serial\b', Keyword, ('default', 'serial?')),
+            (r'(?i)statusline\b', Keyword, ('default', 'directive keyword?')),
+            (r'(?i)stub\b', Keyword, ('default', 'routine name?')),
+            (r'(?i)trace\b', Keyword,
+             ('default', 'trace keyword?', 'trace keyword?')),
+            (r'(?i)zcharacter\b', Keyword,
+             ('default', 'directive keyword?', 'directive keyword?')),
+            (_name, Name.Class, 'object')
+        ],
+        'object': [
+            include('skip'),
+            (r'(?=;)', Text, '#pop'),
+            (r'->|,', Punctuation),
+            (r'class\b', Keyword, 'class names'),
+            (r'(has|private|with)\b', Keyword),
+            (r'', Text, 'object expression')
+        ],
+        'grammar': [
+            include('skip'),
+            (r'=', Punctuation, ('#pop', 'default')),
+            (r'\*', Punctuation, ('#pop', 'grammar line')),
+            (r'', Text, 'directive keyword')
+        ],
+        'grammar line': [
+            include('skip'),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r'[/*]|->', Punctuation),
+            (r'(noun|scope)\b', Keyword, '= routine'),
+            (r'', Text, 'directive keyword')
+        ],
+        '= routine': [
+            include('skip'),
+            (r'=', Punctuation, 'routine name?'),
+            (r'', Text, '#pop')
+        ],
+        'array': [
+            include('skip'),
+            (r'\[', Punctuation, ('#pop', 'array values')),
+            (r'', Text, ('#pop', 'default'))
+        ],
+        'array values': [
+            include('skip'),
+            (r';', Punctuation),
+            (r'(?=\[)', Text, '#pop'),
+            (r'\]', Punctuation, '#pop'),
+            (r'', Text, 'expression')
+        ],
+        'class names': [
+            include('skip'),
+            (r'(?=[,;]|(class|has|private|with)\b)', Text, '#pop'),
+            (_name, Name.Class),
+            (r'', Text, 'value')
+        ],
+        'constant': [
+            include('skip'),
+            (_name, Name.Constant, '#pop'),
+            (r'', Text, ('#pop', 'value'))
+        ],
+        'global': [
+            include('skip'),
+            (_name, Name.Variable.Global, '#pop'),
+            (r'', Text, ('#pop', 'value'))
+        ],
+        'date': [
+            (r'"', String.Double, '#pop'),
+            (r'[0-9]+', String.Double),
+            (r'\\\s*\n\s*', String.Escape),
+            (r'\\', String.Escape),
+            (r'[^"\\0-9]+', Error)
+        ],
+        '_directive keyword': [
+            include('skip'),
+            (r'(additive|alias|buffer|class|creature|data|error|fatalerror|'
+             r'first|has|held|initial|initstr|last|long|meta|multi|multiexcept|'
+             r'multiheld|multiinside|noun|number|only|private|replace|reverse|'
+             r'scope|score|special|string|table|terminating|time|topic|warning|'
+             r'with)\b', Keyword, '#pop'),
+            (r'--?>|[+=]', Punctuation, '#pop')
+        ],
+        'directive keyword': [
+            include('_directive keyword'),
+            (r'', Text, ('#pop', 'value'))
+        ],
+        'directive keyword?': [
+            include('_directive keyword'),
+            (r'', Text, '#pop')
+        ],
+        'property keyword*': [
+            include('skip'),
+            (r'(additive|long)\b', Keyword),
+            (r'', Text, '#pop')
+        ],
+        'manifest': [
+            include('skip'),
+            (r',', Punctuation),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r'(?i)(abbreviate|array|attribute|class|constant|default|'
+             r'dictionary|end|endif|extend|fake_action|global|ifdef|iffalse|'
+             r'ifndef|ifnot|iftrue|ifv3|ifv5|import|include|link|lowstring|'
+             r'message|nearby|object|property|release|replace|serial|'
+             r'statusline|stub|switches|system_file|trace|undef|verb|version|'
+             r'zcharacter)\b', Keyword),
+            (r'', Text, 'expression')
+        ],
+        'message': [
+            include('skip'),
+            (r'"', String.Double, 'plain string'),
+            (r'', Text, '#pop')
+        ],
+        'serial?': [
+            include('skip'),
+            (r'"', String.Double, 'date'),
+            (r'', Text, '#pop')
+        ],
+        'trace keyword?': [
+            include('skip'),
+            (r'(assembly|dictionary|expressions|lines|linker|objects|off|on|'
+             r'symbols|tokens|verbs)\b', Keyword, '#pop'),
+            (r'', Text, '#pop')
+        ],
+
+        # Routine
+        'routine name?': [
+            include('skip'),
+            (r'(%s)?' % _name, Name.Function, '#pop')
+        ],
+        'routine': [
+            include('skip'),
+            (r'\]', Punctuation, '#pop'),
+            (r'', Text, 'statement')
+        ],
+
+        # Statement
+        'statement': [
+            include('skip'),
+            (r'[;:]', Punctuation, '#pop'),
+            (r'(box|break|continue|default|give|inversion|new_line|quit|remove|'
+             r'return|rfalse|rtrue|spaces|string|until)\b', Keyword, 'default'),
+            (r'(do|else)\b', Keyword, '#pop'),
+            (r'font\b', Keyword, ('default', 'miscellaneous keyword?')),
+            (r'for\b', Keyword,
+             ('default', ':', 'for expression', ':', 'for expression', '(')),
+            (r'(if|switch|while)\b', Keyword, ('#pop', 'expression')),
+            (r'jump\b', Keyword, ('default', 'label')),
+            (r'move\b', Keyword,
+             ('default', 'miscellaneous keyword?', 'expression')),
+            (r'objectloop\b', Keyword,
+             ('default', 'miscellaneous keyword?', 'expression', '(')),
+            (r'print(_ret)?\b', Keyword, ('#pop', 'print list')),
+            (r'style\b', Keyword, ('default', 'miscellaneous keyword?')),
+            (r'"', String.Double, ('#pop', 'print list', 'string')),
+            (r'\.', Name.Label, 'label'),
+            (r'@', Keyword, 'opcode'),
+            (r'#(?![agrnw]\$|#)', Punctuation, 'after hash'),
+            (r'<<?', Punctuation, 'action'),
+            (r'\{', Punctuation, '#push'),
+            (r'\}', Punctuation, '#pop'),
+            (r'', Text, ('#pop', 'expression'))
+        ],
+        'after hash': [
+            include('skip'),
+            include('system constant'),
+            include('directive')
+        ],
+        'directive after hash': [
+            include('skip'),
+            include('directive')
+        ],
+        '(': [
+            include('skip'),
+            (r'\(?', Punctuation, '#pop')
+        ],
+        ':': [
+            include('skip'),
+            (r'[:;]*', Punctuation, '#pop')
+        ],
+        'miscellaneous keyword?': [
+            include('skip'),
+            (r'(a|A|an|address|char|name|number|object|property|string|the|The)'
+             r'\b', Name.Builtin, '#pop'),
+            (r'(bold|fixed|from|near|off|on|reverse|roman|to|underline)\b',
+             Keyword, '#pop'),
+            (r'', Text, '#pop')
+        ],
+        'print list': [
+            include('skip'),
+            (r';', Punctuation, '#pop'),
+            (r',', Punctuation),
+            (r'"', String.Double, 'string'),
+            (r'\(', Punctuation, 'print form'),
+            (r'', Text, ('print expression', 'print expression after value'))
+        ],
+        'print form': [
+            include('skip'),
+            (r'(a|A|an|address|char|name|number|object|property|string|the|The)'
+             r'\b', Name.Builtin),
+            (r'(bold|fixed|from|near|off|on|reverse|roman|to|underline)\b',
+             Keyword), # TODO: include sth instead of repeating these 2
+            (r'\)', Punctuation, '#pop'),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r'', Text,
+             ('print expression', 'print expression after value', 'expression'))
+        ],
+
+        # Assembly
+        'opcode': [
+            include('skip'),
+            (r'"', String.Double, ('operands', 'plain string')),
+            (r'(accelfunc|accelparam|acos|add|aload|aloadb|aloadbit|aloads|and|'
+             r'aread|art_shift|asin|astore|astoreb|astorebit|astores|atan|'
+             r'atan2|binarysearch|bitand|bitnot|bitor|bitxor|buffer_mode|call|'
+             r'call_1n|call_1s|call_2n|call_2s|callf|callfi|callfii|callfiii|'
+             r'call_vn|call_vn2|call_vs|call_vs2|catch|ceil|check_arg_count|'
+             r'check_unicode|clear_attr|copy|copyb|copys|copy_table|cos|'
+             r'debugtrap|dec|dec_chk|div|draw_picture|encode_text|erase_line|'
+             r'erase_picture|erase_window|exp|fadd|fdiv|floor|fmod|fmul|fsub|'
+             r'ftonumn|ftonumz|gestalt|get_child|get_cursor|getiosys|'
+             r'getmemsize|get_next_prop|get_parent|get_prop|get_prop_addr|'
+             r'get_prop_len|get_sibling|getstringtbl|get_wind_prop|glk|inc|'
+             r'inc_chk|input_stream|insert_obj|je|jeq|jfeq|jfge|jfgt|jfle|jflt|'
+             r'jfne|jg|jge|jgeu|jgt|jgtu|jin|jisinf|jisnan|jl|jle|jleu|jlt|'
+             r'jltu|jne|jnz|jump|jumpabs|jz|linearsearch|linkedsearch|load|'
+             r'loadb|loadw|log|log_shift|make_menu|malloc|mcopy|mfree|mod|'
+             r'mouse_window|move_window|mul|mzero|neg|new_line|nop|not|numtof|'
+             r'or|output_stream|picture_data|picture_table|piracy|pop|'
+             r'pop_stack|pow|print|print_addr|print_char|print_form|print_num|'
+             r'print_obj|print_paddr|print_ret|print_table|print_unicode|'
+             r'protect|pull|push|push_stack|put_prop|put_wind_prop|quit|'
+             r'random|read_char|read_mouse|remove_obj|restart|restore|'
+             r'restoreundo|restore_undo|ret|ret_popped|return|rfalse|rtrue|'
+             r'save|saveundo|save_undo|scan_table|scroll_window|set_attr|'
+             r'set_colour|set_cursor|set_font|setiosys|set_margins|setmemsize|'
+             r'setrandom|setstringtbl|set_text_style|set_window|sexb|sexs|'
+             r'shiftl|show_status|sin|sound_effect|split_window|sqrt|sread|'
+             r'sshiftr|stkcopy|stkcount|stkpeek|stkroll|stkswap|store|storeb|'
+             r'storew|streamchar|streamnum|streamstr|streamunichar|sub|'
+             r'tailcall|tan|test|test_attr|throw|tokenise|ushiftr|verify|'
+             r'window_size|window_style)\b', Keyword, 'operands')
+        ],
+        'operands': [
+            include('skip'),
+            (r'\[', Punctuation, 'indirect address'),
+            (r'(?=[:;\]])', Text, '#pop:2'),
+            (r'sp\b', Name.Builtin),
+            (r'\?~?', Name.Label, 'label'),
+            (r'->|[\[\]]', Punctuation),
+            (r'', Text, 'assembly expression')
+        ],
+        'indirect address': [
+            include('skip'),
+            (r'\]', Punctuation, '#pop'),
+            (r'(?=[:;])', Text, '#pop:3'),
+            (r'sp\b', Name.Builtin),
+            (r'', Text, 'value')
+        ],
+
+        # Expression
+        'expression': [
+            include('skip'),
+            (r'(?=[()])', Text, ('#pop', 'expression after value')),
+            (r'(?=[\'"$0-9#a-zA-Z_])', Text,
+             ('#pop', 'expression after value', 'value')),
+            (r'\+\+|--?(?!>)|~~?', Operator),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r',', Punctuation),
+            include('value')
+        ],
+        'expression after value': [
+            include('skip'),
+            (r'\(', Punctuation, 'expression'),
+            (r'\)', Punctuation, '#pop'),
+            (r':(?!:)', Punctuation, '#pop'),
+            (r'-?->|\.\.?[&#]?|::|,', Punctuation, ('#pop', 'expression')),
+            (r'\+\+|--', Operator),
+            (r'-|\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)', Operator,
+             ('#pop', 'expression')),
+            (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+             ('#pop', 'expression')),
+            (r'', Text, '#pop')
+        ],
+        'assembly expression': [
+            include('skip'),
+            (r'(?=[()])', Text, ('#pop', 'assembly expression after value')),
+            (r'(?=[\'"$0-9#a-zA-Z_])', Text,
+             ('#pop', 'assembly expression after value', 'value')),
+            (r'\+\+|--?(?!>)|~~?', Operator),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r',', Punctuation),
+            include('value')
+        ],
+        'assembly expression after value': [
+            include('skip'),
+            (r'\(', Punctuation, 'expression'),
+            (r'\)', Punctuation, '#pop'),
+            (r':(?!:)', Punctuation, '#pop'),
+            (r'-->|\.\.?[&#]?|::|,', Punctuation,
+             ('#pop', 'assembly expression')),
+            (r'\+\+|--', Operator),
+            (r'-(?!>)|\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)',
+             Operator, ('#pop', 'assembly expression')),
+            (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+             ('#pop', 'assembly expression')),
+            (r'', Text, '#pop')
+        ],
+        'print expression': [
+            include('skip'),
+            (r'(?=[()])', Text, ('#pop', 'print expression after value')),
+            (r'(?=[\'"$0-9#a-zA-Z_])', Text,
+             ('#pop', 'print expression after value', 'value')),
+            (r'\+\+|--?(?!>)|~~?', Operator),
+            (r'(?=[,:;\]])', Text, '#pop'),
+            include('value')
+        ],
+        'print expression after value': [
+            include('skip'),
+            (r'\(', Punctuation, 'expression'),
+            (r'\)', Punctuation, '#pop'),
+            (r':(?!:)', Punctuation, '#pop'),
+            (r'-?->|\.\.?[&#]?|::', Punctuation, ('#pop', 'print expression')),
+            (r'\+\+|--', Operator),
+            (r'-|\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)', Operator,
+             ('#pop', 'print expression')),
+            (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+             ('#pop', 'print expression')),
+            (r'', Text, '#pop')
+        ],
+        'object expression': [
+            include('skip'),
+            (r'\[', Punctuation, 'routine'),
+            (r'(?=[()])', Text, ('#pop', 'object expression after value')),
+            (r'(?=[\'"$0-9#a-zA-Z_])', Text,
+             ('#pop', 'object expression after value', 'value')),
+            (r'\+\+|--(?!>)|~~|~', Operator),
+            (r'(?=[,:;\]])', Text, '#pop'),
+            include('value')
+        ],
+        'object expression after value': [
+            include('skip'),
+            (r'\(', Punctuation, 'expression'),
+            (r'\)', Punctuation, '#pop'),
+            (r':(?!:)', Punctuation, '#pop'),
+            (r'-?->|\.\.?[&#]?|::', Punctuation, ('#pop', 'object expression')),
+            (r'\+\+|--?(?!>)|~~?', Operator),
+            (r'-|\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)', Operator,
+             ('#pop', 'object expression')),
+            (r'(hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+             ('#pop', 'object expression')),
+            (r'', Text, '#pop')
+        ],
+        'action': [
+            include('skip'),
+            (r'>>?', Punctuation, '#pop'),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r'', Text, 'action expression')
+        ],
+        'action expression': [
+            include('skip'),
+            (r'(?=[()<>])', Text, ('#pop', 'action expression after value')),
+            (r'(?=[\'"$0-9#a-zA-Z_])', Text,
+             ('#pop', 'action expression after value', 'value')),
+            (r'\+\+|--?(?!>)|~~?', Operator),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r',', Punctuation),
+            include('value')
+        ],
+        'action expression after value': [
+            include('skip'),
+            (r'\(', Punctuation, 'expression'),
+            (r'\)', Punctuation, '#pop'),
+            (r'<', Punctuation, 'action expression'),
+            (r'>', Punctuation, '#pop'),
+            (r':(?!:)', Punctuation, '#pop'),
+            (r'-?->|\.\.?[&#]?|::|,', Punctuation,
+             ('#pop', 'action expression')),
+            (r'\+\+|--', Operator),
+            (r'-|\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=', Operator,
+             ('#pop', 'action expression')),
+            (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+             ('#pop', 'action expression')),
+            (r'', Text, '#pop')
+        ],
+        'for expression': [
+            include('skip'),
+            (r'(?=[()])', Text, ('#pop', 'for expression after value')),
+            (r'(?=[\'"$0-9#a-zA-Z_])', Text,
+             ('#pop', 'for expression after value', 'value')),
+            (r'\+\+|--?(?!>)|~~?', Operator),
+            (r'(?=[:;\]])', Text, '#pop'),
+            (r',', Punctuation),
+            include('value')
+        ],
+        'for expression after value': [
+            include('skip'),
+            (r'\(', Punctuation, 'expression'),
+            (r'\)', Punctuation, '#pop'),
+            (r'-?->|\.\.?[&#]?|,', Punctuation, ('#pop', 'for expression')),
+            (r'\+\+|--', Operator),
+            (r'-|\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)', Operator,
+             ('#pop', 'for expression')),
+            (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+             ('#pop', 'for expression')),
+            (r'', Text, '#pop')
         ],
     }
