@@ -29,7 +29,7 @@ __all__ = ['CLexer', 'CppLexer', 'DLexer', 'DelphiLexer', 'ECLexer', 'DylanLexer
            'FelixLexer', 'AdaLexer', 'Modula2Lexer', 'BlitzMaxLexer',
            'NimrodLexer', 'FantomLexer', 'RustLexer', 'CudaLexer', 'MonkeyLexer',
            'DylanLidLexer', 'DylanConsoleLexer', 'CobolLexer',
-           'CobolFreeformatLexer', 'LogosLexer']
+           'CobolFreeformatLexer', 'LogosLexer', 'Inform6Lexer', 'Inform7Lexer']
 
 
 class CFamilyLexer(RegexLexer):
@@ -3494,3 +3494,760 @@ class LogosLexer(ObjectiveCppLexer):
         if LogosLexer._logos_keywords.search(text):
             return 1.0
         return 0
+
+
+class Inform6Lexer(RegexLexer):
+    """
+    For `Inform 6 <http://inform-fiction.org/>`_ source code.
+    """
+
+    name = 'Inform 6'
+    aliases = ['inform6', 'i6']
+    filenames = ['*.inf', '*.h']
+
+    flags = re.MULTILINE | re.DOTALL | re.UNICODE
+
+    _name = r'[a-zA-Z_][a-zA-Z_0-9]*'
+    _statement_terminator_lookahead = r'(?=[:;\]{}])' # DONE: [{ # DONE: [\[
+
+    # Inform 7 maps these four character classes to their ASCII equivalents.
+    # To support Inform 6 inclusions within Inform 7, Inform6Lexer maps them
+    # too, but true Inform 6 does not accept them.
+    _dash = ur'\-\u2010-\u2014'
+    _dquote = ur'"\u201c\u201d'
+    _squote = ur'\'\u2018\u2019'
+    _newline = ur'\n\u0085\u2028\u2029'
+
+    # Inform 6 expressions are parsed slightly differently in different
+    # contexts. Each context gets two mutually recursive states (_*-expression
+    # and *-expression2) defined here. The small variations are prepended to
+    # these defaults.
+    def gen_expression_rules():
+        states = {}
+        for context in ['default',
+                        'action', # within angle brackets
+                        'assembly', # after an opcode
+                        'loop', # for or objectloop
+                        'object', # Object or similar directive
+                        'print' # print or print_ret
+                        ]:
+            states['_' + context + '-expression'] = [
+                include('_whitespace'),
+                (r'(?=[()])', Text, ('#pop', context + '-expression2')),
+                (r'(?=\{)', Text, ('#pop', context + '-expression2')),
+                (ur'(?=[\'\u2018\u2019"\u201c\u201d$0-9#a-zA-Z_])', Text,
+                 ('#pop', context + '-expression2', 'value')),
+                (ur'\+\+|[-\u2010-\u2014][-\u2010-\u2014]?(?!>)|~~?', Operator),
+                (r'(?=[:;\]])', Text, '#pop'), # DONE: [\[
+                (r',', Punctuation),
+                include('value')
+            ]
+            states[context + '-expression2'] = [
+                include('_whitespace'),
+                (r'\(', Punctuation, '_default-expression'),
+                (r'\)', Punctuation, '#pop'),
+                (r':(?!:)', Punctuation, '#pop'),
+                (ur'[-\u2010-\u2014]{1,2}>|\.\.?[&#]?|::|,', Punctuation,
+                 ('#pop', '_' + context + '-expression')),
+                (ur'\+\+|[-\u2010-\u2014]{2}', Operator),
+                (ur'\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)|'
+                 ur'[-\u2010-\u2014]', Operator,
+                 ('#pop', '_' + context + '-expression')),
+                (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
+                 ('#pop', '_' + context + '-expression')),
+                (r'', Text, '#pop')
+            ]
+        return states
+
+    # TODO: %s needs ur''?
+    tokens = { # TODO: return DONE comments below
+        'root': [
+            (r'(!%%[^%s]*[%s])*' % (_newline, _newline), Comment.Preproc,
+             'main')
+        ],
+        'main': [
+            include('_whitespace'),
+            (r'#', Punctuation, 'directive-after-hash'),
+            (r'', Text, 'directive')
+        ],
+        '_whitespace': [
+            (r'\s+', Text),
+            (r'![^%s]*$' % _newline, Comment.Single)
+        ],
+        'default': [
+            include('_whitespace'),
+            (_statement_terminator_lookahead, Text, '#pop'),
+            (r'', Text, '_default-expression')
+        ],
+        'loop': [
+            include('_whitespace'),
+            (r'\)', Punctuation, '#pop'),
+            (_statement_terminator_lookahead, Text, '#pop'),
+            (r'', Text, '_loop-expression')
+        ],
+        'value': [
+            include('_whitespace'),
+            # strings
+            (r'[%s][^@][%s]' % (_squote, _squote), String.Char, '#pop'),
+            (r'([%s])(@\{[0-9a-fA-F]{1,4}})([%s])' % (_squote, _squote),
+             bygroups(String.Char, String.Escape, String.Char), '#pop'),
+            (r'([%s])(@(?:[:%s`^][aeiouAEIOU]|:y|ss|>>|<<|LL|[%s][yY]|o[aA]|'
+             r'/[oO]|~[anoANO]|[ao]e|[AO]E|c[cC]|[tT]h|[eE]t))([%s])' %
+             (_squote, _squote, _squote, _squote),
+             bygroups(String.Char, String.Escape, String.Char), '#pop'),
+            (r'[%s]' % _squote, String.Single, ('#pop', 'dictionaryword')),
+            (r'[%s]' % _dquote, String.Double, ('#pop', 'string')),
+            # numbers
+            (r'\$[+%s][0-9]+(\.[0-9]*)?([eE][+%s]?[0-9]+)?\b' % (_dash, _dash),
+             Number.Float, '#pop'),
+            (r'\$[+%s]\.[0-9]+([eE][+%s]?[0-9]+)?\b' % (_dash, _dash),
+             Number.Float, '#pop'),
+            (r'\$[0-9a-fA-F]+\b', Number.Hex, '#pop'),
+            (r'\$\$[01]+\b', Number, '#pop'), # TODO: Number.Bin?
+            (r'\$', Error, '#pop'),
+            (r'[0-9]+\b', Number.Integer, '#pop'),
+            # values that follow hashes
+            (r'(##|#a\$)(%s)' % _name, bygroups(Operator, Name), '#pop'),
+            (r'(#g\$)(%s)' % _name,
+             bygroups(Operator, Name.Variable.Global), '#pop'),
+            (r'(#[nw]\$)([^\s][a-zA-Z_0-9]*)', bygroups(Operator, String),
+             '#pop'), # TODO: [^
+            (r'(#r\$)(%s)' % _name, bygroups(Operator, Name.Function), '#pop'),
+            (r'##|#[agnrw]\$', Error, '#pop'),
+            (r'#', Name.Builtin, ('#pop', 'value-after-hash')),
+            # system functions
+            (r'(child|children|elder|eldest|glk|indirect|metaclass|parent|'
+             r'random|sibling|younger|youngest)\b', Name.Builtin, '#pop'),
+            # the symbols table
+            (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
+             r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
+             r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
+             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|nothing|'
+             r'NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|self|'
+             r'sender|STRICT_MODE|sw__var|sys__glob[012]|sys_statusline_flag|'
+             r'TARGET_GLULX|TARGET_ZCODE|temp_global[234]?|true|USE_MODULES|'
+             r'WORDSIZE)\b', Name.Builtin, '#pop'),
+            # veneer routines
+            (r'(?i)(Box__Routine|CA__Pr|CDefArt|CInDefArt|Cl__Ms|'
+             r'Copy__Primitive|CP__Tab|DA__Pr|DB__Pr|DefArt|Dynam__String|'
+             r'EnglishNumber|Glk__Wrap|IA__Pr|IB__Pr|InDefArt|Main__|'
+             r'Meta__class|OB__Move|OB__Remove|OC__Cl|OP__Pr|Print__Addr|'
+             r'Print__PName|PrintShortName|RA__Pr|RA__Sc|RL__Pr|R_Process|'
+             r'RT__ChG|RT__ChGt|RT__ChLDB|RT__ChLDW|RT__ChPR|RT__ChPrintA|'
+             r'RT__ChPrintC|RT__ChPrintO|RT__ChPrintS|RT__ChPS|RT__ChR|'
+             r'RT__ChSTB|RT__ChSTW|RT__ChT|RT__Err|RT__TrPS|RV__Pr|'
+             r'Symb__Tab|Unsigned__Compare|WV__Pr|Z__Region)\b', Name.Builtin,
+             '#pop'),
+            # other names
+            (_name, Name, '#pop'),
+            (r'[a-zA-Z_0-9]+', Error, '#pop'),
+            (r'.', Error, '#pop')
+        ],
+        'dictionaryword': [
+            (r'[~^]+', String.Escape),
+            (r'[^~^\\@({\[\]%s]+' % _squote, String.Single), # DONE: [^
+            (r'[({\[\]]', String.Single),
+            (r'@\{[0-9a-fA-F]{1,4}}', String.Escape),
+            (r'@([:%s`^][aeiouAEIOU]|:y|ss|>>|<<|[%s][yY]|o[aA]|/[oO]|'
+             r'~[anoANO]|[ao]e|[AO]E|c[cC]|[tT]h|[eE]t|LL|!!|\?\?)' %
+             (_squote, _squote), String.Escape),
+            (r'@', Error),
+            (r'[%s]' % _squote, String.Single, '#pop')
+        ],
+        'string': [
+            (r'[~^]+', String.Escape),
+            (r'[^~^\\@({\[\]%s]+' % _dquote, String.Double), # DONE: [^
+            (r'[({\[\]]', String.Double),
+            (r'\\\s*[%s]\s*' % _newline, String.Escape),
+            (r'\\', Error),
+            (r'@(\\\s*[%s]\s*)*@((\\\s*[%s]\s*)*[0-9])*' % (_newline, _newline),
+             String.Interpol),
+            (r'@((\\\s*[%s]\s*)*[0-9]){2}' % _newline, String.Escape),
+            (r'@(\\\s*[%s]\s*)*\{((\\\s*[%s]\s*)*[0-9a-fA-F]){1,4}'
+             r'(\\\s*[%s]\s*)*}' % (_newline, _newline, _newline),
+             String.Escape),
+            (r'@(\\\s*[%s]\s*)*([:%s`^](\\\s*[%s]\s*)*[aeiouAEIOU]|'
+             r':(\\\s*[%s]\s*)*y|s(\\\s*[%s]\s*)*s|>(\\\s*[%s]\s*)*>|'
+             r'<(\\\s*[%s]\s*)*<|[%s](\\\s*[%s]\s*)*[yY]|o(\\\s*[%s]\s*)*[aA]|'
+             r'/(\\\s*[%s]\s*)*[oO]|~(\\\s*[%s]\s*)*[anoANO]|'
+             r'[ao](\\\s*[%s]\s*)*e|[AO](\\\s*[%s]\s*)*E|c(\\\s*[%s]\s*)*[cC]|'
+             r'[tT](\\\s*[%s]\s*)*h|[eE](\\\s*[%s]\s*)*t|L(\\\s*[%s]\s*)*L|'
+             r'!(\\\s*[%s]\s*)*!|\?(\\\s*[%s]\s*)*\?)' %
+             (_newline, _squote, _newline, _newline, _newline, _newline,
+              _newline, _squote, _newline, _newline, _newline, _newline,
+              _newline, _newline, _newline, _newline, _newline, _newline,
+              _newline, _newline),
+             String.Escape),
+            (r'@', Error),
+            (r'[%s]' % _dquote, String.Double, '#pop')
+        ],
+        'plain-string': [
+            (r'[~^]+', String.Escape),
+            (r'[^~^\\({\[\]%s]+' % _dquote, String.Double), # DONE: [^
+            (r'[({\[\]]', String.Double),
+            (r'\\\s*[%s]' % _newline, String.Escape),
+            (r'\\', Error),
+            (r'[%s({]' %  _dquote, String.Double, '#pop')
+        ],
+        'label?': [
+            include('_whitespace'),
+            (r'(%s)?' % _name, Name.Label, '#pop')
+        ],
+        'constant': [
+            include('_whitespace'),
+            (_name, Name.Constant, '#pop'),
+            (r'', Text, ('#pop', 'value'))
+        ],
+        'global?': [
+            include('_whitespace'),
+            (r'(%s)?' % _name, Name.Variable.Global, '#pop')
+        ],
+
+        # after a hash
+        'after-hash': [
+            include('_whitespace'),
+            include('_system_constant'),
+            include('directive')
+        ],
+        'directive-after-hash': [
+            include('_whitespace'),
+            include('directive')
+        ],
+        'value-after-hash': [
+            include('_whitespace'),
+            include('_system_constant'),
+            (r'[a-zA-Z_0-9]*', Error, '#pop')
+        ],
+        '_system_constant': [
+            (r'(action_names_array|actions_table|actual_largest_object|'
+             r'adjectives_table|array__end|array_flags_array|array_names_array|'
+             r'array_names_offset|arrays_array|array__start|'
+             r'attribute_names_array|classes_table|class_objects_array|'
+             r'code_offset|constant_names_array|constants_array|cpv__end|'
+             r'cpv__start|dictionary_table|dict_par1|dict_par2|dict_par3|'
+             r'dynam_string_table|fake_action_names_array|global_flags_array|'
+             r'global_names_array|globals_array|grammar_table|'
+             r'highest_action_number|highest_array_number|'
+             r'highest_attribute_number|highest_class_number|'
+             r'highest_constant_number|highest_fake_action_number|'
+             r'highest_global_number|highest_object_number|'
+             r'highest_property_number|highest_routine_number|'
+             r'identifiers_table|ipv__end|ipv__start|largest_object|'
+             r'lowest_action_number|lowest_array_number|'
+             r'lowest_attribute_number|lowest_class_number|'
+             r'lowest_constant_number|lowest_fake_action_number|'
+             r'lowest_global_number|lowest_object_number|'
+             r'lowest_property_number|lowest_routine_number|oddeven_packing|'
+             r'preactions_table|property_names_array|readable_memory_offset|'
+             r'routine_flags_array|routine_names_array|routines_array|'
+             r'static_memory_offset|strings_offset|version_number)\b',
+             Name.Builtin, '#pop')
+        ],
+
+        # directives
+        'directive': [
+            include('_whitespace'),
+            (r';', Punctuation, '#pop'),
+            (r'\[', Punctuation,
+             ('default', 'routine', 'default', 'routinename?')),
+            (r'(?i)(abbreviate|endif|dictionary|ifdef|iffalse|ifndef|ifnot|'
+             r'iftrue|ifv3|ifv5|release|switches|system_file|version)\b',
+             Keyword, 'default'),
+            (r'(?i)(array|global)\b', Keyword,
+             ('array', 'directive_keyword?', 'global?')),
+            (r'(?i)attribute\b', Keyword,
+             ('default', 'directive_keyword?', 'global?')),
+            (r'(?i)class\b', Keyword, ('objbody', 'classnames')),
+            (r'(?i)(constant|default)\b', Keyword,
+             ('default', 'default-expression2', 'constant')),
+            (r'(?i)(end\b)(.+)', bygroups(Keyword, Text)),
+            (r'(?i)(extend|verb)\b', Keyword,  'grammar'),
+            (r'(?i)fake_action\b', Keyword, ('default', 'global?')),
+            (r'(?i)import\b', Keyword, 'manifest'),
+            (r'(?i)(include|link)\b', Keyword, ('default', 'include')),
+            (r'(?i)(lowstring|undef)\b', Keyword, ('default', 'constant')),
+            (r'(?i)message\b', Keyword,
+             ('default', 'message', 'directive_keyword?')),
+            (r'(?i)(nearby|object)\b', Keyword, ('objbody', 'objhead')),
+            (r'(?i)property\b', Keyword,
+             ('default', 'global?', 'property_keyword*')),
+            (r'(?i)replace\b', Keyword,
+             ('default', 'routinename?', 'routinename?')),
+            (r'(?i)serial\b', Keyword, ('default', 'serial?')),
+            (r'(?i)statusline\b', Keyword, ('default', 'directive_keyword?')),
+            (r'(?i)stub\b', Keyword, ('default', 'routinename?')),
+            (r'(?i)trace\b', Keyword,
+             ('default', 'trace_keyword?', 'trace_keyword?')),
+            (r'(?i)zcharacter\b', Keyword,
+             ('default', 'directive_keyword?', 'directive_keyword?')),
+            (_name, Name.Class, ('objbody', 'objhead'))
+        ],
+        # [, Replace, Stub
+        'routinename?': [
+            include('_whitespace'),
+            (r'(%s)?' % _name, Name.Function, '#pop')
+        ],
+        # Array
+        'array': [
+            include('_whitespace'),
+            (r'\[', Punctuation, ('#pop', 'arrayvals')),
+            (r'', Text, ('#pop', 'default'))
+        ],
+        'arrayvals': [
+            include('_whitespace'),
+            (r';', Punctuation),
+            (r'(?=\[)', Text, '#pop'), # DONE: [\[
+            (r'\]', Punctuation, '#pop'),
+            (r'', Text, '_default-expression')
+        ],
+        # Class, Object, Nearby
+        'objhead': [
+            (r'(class|has|private|with)\b', Keyword, '#pop'),
+            include('global?')
+        ],
+        'objbody': [
+            include('_whitespace'),
+            (r';', Punctuation, '#pop:2'),
+            (r'[%s]>|,' % _dash, Punctuation),
+            (r'class\b', Keyword, 'classnames'),
+            (r'(has|private|with)\b', Keyword),
+            (r'', Text, '_object-expression')
+        ],
+        'classnames': [
+            include('_whitespace'),
+            (r'(?=[,;]|(class|has|private|with)\b)', Text, '#pop'),
+            (_name, Name.Class),
+            (r'', Text, 'value')
+        ],
+        # Extend, Verb
+        'grammar': [
+            include('_whitespace'),
+            (r'=', Punctuation, ('#pop', 'default')),
+            (r'\*', Punctuation, ('#pop', 'grammar-line')),
+            (r'', Text, 'directive_keyword')
+        ],
+        'grammar-line': [
+            include('_whitespace'),
+            (r'(?=[:;])', Text, '#pop'),
+            (r'[/*]|[%s]>' % _dash, Punctuation),
+            (r'(noun|scope)\b', Keyword, '=routine'),
+            (r'', Text, 'directive_keyword')
+        ],
+        '=routine': [
+            include('_whitespace'),
+            (r'=', Punctuation, 'routinename?'),
+            (r'', Text, '#pop')
+        ],
+        # Include
+        'include': [
+            include('_whitespace'),
+            (r'[%s]' % _dquote, String.Double, 'filename'),
+            (r'', Text, '#pop')
+        ],
+        'filename': [
+            (r'[^\\({\[\]%s]+' % _dquote, String.Double), # DONE: [^
+            (r'[({\[\]]', String.Double),
+            (r'\\\s*[%s]\s*' % _newline, String.Escape),
+            (r'\\', Error),
+            (r'[%s]' % _dquote, String.Double, '#pop')
+        ],
+        # Message
+        'message': [
+            include('_whitespace'),
+            (r'[%s]' % _dquote, String.Double, 'plain-string'),
+            (r'', Text, '#pop')
+        ],
+        # Serial
+        'serial?': [
+            include('_whitespace'),
+            (r'[%s]' % _dquote, String.Double, 'date'),
+            (r'', Text, '#pop')
+        ],
+        'date': [
+            (r'[%s]' % _dquote, String.Double, '#pop'),
+            (r'[0-9]+', String.Double),
+            (r'\\\s*[%s]\s*' % _newline, String.Escape),
+            (r'\\', String.Escape),
+            (r'[^%s\\0-9({\[\]]+' % _dquote, Error), # DONE: [^
+            (r'[({\[\]]', Error)
+        ],
+
+        # keywords used in directives
+        '_directive_keyword': [
+            include('_whitespace'),
+            (r'(additive|alias|buffer|class|creature|data|error|fatalerror|'
+             r'first|has|held|initial|initstr|last|long|meta|multi|multiexcept|'
+             r'multiheld|multiinside|noun|number|only|private|replace|reverse|'
+             r'scope|score|special|string|table|terminating|time|topic|warning|'
+             r'with)\b', Keyword, '#pop'),
+            (r'[%s][%s]?>|[+=]' % (_dash, _dash), Punctuation, '#pop')
+        ],
+        'directive_keyword': [
+            include('_directive_keyword'),
+            (r'', Text, ('#pop', 'value'))
+        ],
+        'directive_keyword?': [
+            include('_directive_keyword'),
+            (r'', Text, '#pop')
+        ],
+        'property_keyword*': [
+            include('_whitespace'),
+            (r'(additive|long)\b', Keyword),
+            (r'', Text, '#pop')
+        ],
+        'manifest': [
+            include('_whitespace'),
+            (r',', Punctuation),
+            (_statement_terminator_lookahead, Text, '#pop'),
+            (r'(?i)(abbreviate|array|attribute|class|constant|default|'
+             r'dictionary|end|endif|extend|fake_action|global|ifdef|iffalse|'
+             r'ifndef|ifnot|iftrue|ifv3|ifv5|import|include|link|lowstring|'
+             r'message|nearby|object|property|release|replace|serial|'
+             r'statusline|stub|switches|system_file|trace|undef|verb|version|'
+             r'zcharacter)\b', Keyword),
+            (r'', Text, '_default-expression')
+        ],
+        'trace_keyword?': [
+            include('_whitespace'),
+            (r'(assembly|dictionary|expressions|lines|linker|objects|off|on|'
+             r'symbols|tokens|verbs)\b', Keyword, '#pop'),
+            (r'', Text, '#pop')
+        ],
+
+        # statements
+        'routine': [
+            include('_whitespace'),
+            (r'\]', Punctuation, '#pop'),
+            (r'[;:{}]', Punctuation), # DONE: [{
+            (r'(box|break|continue|default|give|inversion|new_line|quit|remove|'
+             r'return|rfalse|rtrue|spaces|string|until)\b', Keyword, 'default'),
+            (r'(do|else)\b', Keyword),
+            (r'font\b', Keyword, ('default', 'miscellaneous_keyword?')),
+            (r'for\b', Keyword, 'loop'),
+            (r'(if|switch|while)\b', Keyword, '_default-expression'),
+            (r'jump\b', Keyword, ('default', 'label?')),
+            (r'move\b', Keyword,
+             ('default', 'miscellaneous_keyword?', '_default-expression')),
+            (r'objectloop\b', Keyword,
+             ('loop', 'miscellaneous_keyword?', '_loop-expression', '(')),
+            (r'print(_ret)?\b', Keyword, 'printlist'),
+            (r'style\b', Keyword, ('default', 'miscellaneous_keyword?')),
+            (r'[%s]' % _dquote, String.Double, ('printlist', 'string')),
+            (r'\.', Name.Label, 'label?'),
+            (r'@', Keyword, 'opcode'),
+            (r'#(?![agrnw]\$|#)', Punctuation, 'after-hash'),
+            (r'<<?', Punctuation, 'action'),
+            (r'', Text, '_default-expression')
+        ],
+        '(': [
+            include('_whitespace'),
+            (r'\(?', Punctuation, '#pop')
+        ],
+        'action': [
+            include('_whitespace'),
+            (_statement_terminator_lookahead, Text, '#pop'),
+            (r'', Text, '_action-expression')
+        ],
+        'miscellaneous_keyword?': [
+            include('_whitespace'),
+            (r'(a|A|an|address|char|name|number|object|property|string|the|The)'
+             r'\b', Keyword.Pseudo, '#pop'),
+            (r'(bold|fixed|from|in|near|off|on|reverse|roman|to|underline)\b',
+             Keyword, '#pop'),
+            (r'', Text, '#pop')
+        ],
+        'printlist': [
+            include('_whitespace'),
+            (_statement_terminator_lookahead, Text, '#pop'),
+            (r',', Punctuation),
+            (r'[%s]' % _dquote, String.Double, 'string'),
+            (r'\(', Punctuation, 'form'),
+            (r'', Text, ('_print-expression', 'print-expression2'))
+        ],
+        'form': [
+            include('_whitespace'),
+            (_statement_terminator_lookahead, Text, '#pop'),
+            (r'', Text,
+             ('_print-expression', 'print-expression2', '_default-expression',
+              'miscellaneous_keyword?'))
+        ],
+
+        # assembly
+        'opcode': [
+            include('_whitespace'),
+            (r'[%s]' % _dquote, String.Double, ('operands', 'plain-string')),
+            (r'(accelfunc|accelparam|acos|add|aload|aloadb|aloadbit|aloads|and|'
+             r'aread|art_shift|asin|astore|astoreb|astorebit|astores|atan|'
+             r'atan2|binarysearch|bitand|bitnot|bitor|bitxor|buffer_mode|call|'
+             r'call_1n|call_1s|call_2n|call_2s|callf|callfi|callfii|callfiii|'
+             r'call_vn|call_vn2|call_vs|call_vs2|catch|ceil|check_arg_count|'
+             r'check_unicode|clear_attr|copy|copyb|copys|copy_table|cos|'
+             r'debugtrap|dec|dec_chk|div|draw_picture|encode_text|erase_line|'
+             r'erase_picture|erase_window|exp|fadd|fdiv|floor|fmod|fmul|fsub|'
+             r'ftonumn|ftonumz|gestalt|get_child|get_cursor|getiosys|'
+             r'getmemsize|get_next_prop|get_parent|get_prop|get_prop_addr|'
+             r'get_prop_len|get_sibling|getstringtbl|get_wind_prop|glk|inc|'
+             r'inc_chk|input_stream|insert_obj|je|jeq|jfeq|jfge|jfgt|jfle|jflt|'
+             r'jfne|jg|jge|jgeu|jgt|jgtu|jin|jisinf|jisnan|jl|jle|jleu|jlt|'
+             r'jltu|jne|jnz|jump|jumpabs|jz|linearsearch|linkedsearch|load|'
+             r'loadb|loadw|log|log_shift|make_menu|malloc|mcopy|mfree|mod|'
+             r'mouse_window|move_window|mul|mzero|neg|new_line|nop|not|numtof|'
+             r'or|output_stream|picture_data|picture_table|piracy|pop|'
+             r'pop_stack|pow|print|print_addr|print_char|print_form|print_num|'
+             r'print_obj|print_paddr|print_ret|print_table|print_unicode|'
+             r'protect|pull|push|push_stack|put_prop|put_wind_prop|quit|'
+             r'random|read_char|read_mouse|remove_obj|restart|restore|'
+             r'restoreundo|restore_undo|ret|ret_popped|return|rfalse|rtrue|'
+             r'save|saveundo|save_undo|scan_table|scroll_window|set_attr|'
+             r'set_colour|set_cursor|set_font|setiosys|set_margins|setmemsize|'
+             r'setrandom|setstringtbl|set_text_style|set_window|sexb|sexs|'
+             r'shiftl|show_status|sin|sound_effect|split_window|sqrt|sread|'
+             r'sshiftr|stkcopy|stkcount|stkpeek|stkroll|stkswap|store|storeb|'
+             r'storew|streamchar|streamnum|streamstr|streamunichar|sub|'
+             r'tailcall|tan|test|test_attr|throw|tokenise|ushiftr|verify|'
+             r'window_size|window_style)\b', Keyword, 'operands')
+        ],
+        'operands': [
+            include('_whitespace'),
+            (_statement_terminator_lookahead, Text, '#pop:2'),
+            (r'[%s]>' % _dash, Punctuation),
+            (r'', Text, '_assembly-expression')
+        ],
+        'indirect': [
+            include('_whitespace'),
+            (r'\]', Punctuation, '#pop'),
+            (_statement_terminator_lookahead, Text, '#pop:3'),
+            (r'sp\b', Keyword.Pseudo),
+            (r'', Text, 'value')
+        ],
+
+        # expressions
+        'action-expression2': [
+            (r'>>?', Punctuation, '#pop')
+        ],
+        '_assembly-expression': [
+            (r'sp\b', Keyword.Pseudo, '#pop'),
+            (r'\?~?', Name.Label, ('#pop', 'label?'))
+        ],
+        'assembly-expression2': [
+            (r'\[', Punctuation, 'indirect')
+        ],
+        'loop-expression2': [
+            (r'(?=\))', Text, '#pop')
+        ],
+        '_object-expression': [
+            (r'\[', Punctuation, 'routine')
+        ],
+        'object-expression2': [
+            (r'has\b', Keyword, '#pop')
+        ],
+        '_print-expression': [
+            (r',', Punctuation, '#pop')
+        ],
+        'print-expression2': [
+            (r',', Punctuation, '#pop')
+        ]
+    }
+    for token, rule in gen_expression_rules().items():
+        if token in tokens:
+            tokens[token] += rule
+        else:
+            tokens[token] = rule
+
+
+class Inform7Lexer(RegexLexer):
+    """
+    For `Inform 7 <http://inform7.com/>`_ source code.
+    """
+
+    name = 'Inform 7'
+    aliases = ['inform7', 'i7']
+    filenames = ['*.ni', '*.i7x']
+
+    flags = re.MULTILINE | re.DOTALL | re.UNICODE
+
+    _dash = ur'-\u2010-\u2014'
+    _dquote = ur'"\u201c\u201d'
+    _newline = ur'\n\u0085\u2028\u2029'
+    _start = ur'^|(?<=%s)' % _newline
+
+    # Inform 7 can include snippets of Inform 6, so all of Inform6Lexer's
+    # states are copied here. Inform7Lexer's own states begin with '+' to avoid
+    # name conflicts.
+    tokens = {}
+    for token in Inform6Lexer.tokens:
+        tokens[token] = list(Inform6Lexer.tokens[token])
+        if not token.startswith('_'):
+            tokens[token].insert(0, include('+i6t'))
+            tokens[token].append(include('+i6t-final'))
+    tokens.update({
+        'root': [
+            (r'(\|?\s)+', Text),
+            (ur'[%s]' % _dquote, Generic.Heading,
+             ('+main', '+bibliographic', '+bibliographic-string')),
+            (r'', Text, ('+main', '+heading?'))
+        ],
+        '+bibliographic-string': [
+            (ur'[^%s]+' % _dquote, Generic.Heading),
+            (ur'[%s]' % _dquote, Generic.Heading, '#pop')
+        ],
+        '+bibliographic': [
+            (ur'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
+            (ur'[%s]' % _dquote, Generic.Heading, '+bibliographic-string'),
+            (ur'[.;:]|(?<=[\s;:.%s])(?=\|)|[%s]{2}' % (_dquote, _newline), Text,
+             '#pop'),
+            (ur'[|%s]' % _newline, Generic.Heading)
+        ],
+        '+main': [
+            (ur'[^%s:\[(|%s]+' % (_dquote, _newline), Text),
+            (ur'[%s]' % _dquote, String.Double, '+text'),
+            (r':', Text, '+inline'),
+            (r'\[', Comment.Multiline, '+comment'),
+            (ur'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+             bygroups(Punctuation.Include, using(this, state='main'),
+                      Punctuation.Include)),
+            (ur'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2}' % (_start, _dquote, _newline),
+             Text, '+heading?'),
+            (ur'[(|%s]' % _newline, Text)
+        ],
+        '+inline': [
+            (r'\s+', Text),
+            (r'\[', Comment.Multiline, '+comment'),
+            (ur'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+             bygroups(Punctuation.Inline, using(this, state='routine'),
+                      Punctuation.Inline),
+             '#pop'),
+            (r'', Text, '#pop')
+        ],
+        '+comment': [
+            (r'[^\[\]]+', Comment.Multiline),
+            (r'\[', Comment.Multiline, '#push'),
+            (r'\]', Comment.Multiline, '#pop')
+        ],
+        '+text': [
+            (ur'[^\[%s]+' % _dquote, String.Double),
+            (r'\[', String.Interpol, '+substitution'),
+            (ur'[%s]' % _dquote, String.Double, '#pop')
+        ],
+        '+substitution': [
+            (ur'[^\]%s]+' % _dquote, String.Interpol),
+            (r'\]', String.Interpol, '#pop'),
+            (ur'[%s]' % _dquote, String.Double, '#pop:2')
+        ],
+        '+heading?': [
+            (r'(\|?\s)+', Text),
+            (r'\[', Comment.Multiline, '+comment'),
+            (ur'[%s]{4}\s' % _dash, Text, '+documentation-heading'),
+            (ur'[%s]{1,3}' % _dash, Text),
+            (ur'(?i)(volume|book|part|chapter|section)\b[^%s]*[%s]' %
+             (_newline, _newline), Generic.Heading, '#pop'),
+            (r'', Text, '#pop')
+        ],
+        '+documentation-heading': [
+            (r'\s+', Text),
+            (r'\[', Comment.Multiline, '+comment'),
+            (r'(?i)documentation\s', Text, '+documentation-heading2'),
+            (r'', Text, '#pop')
+        ],
+        '+documentation-heading2': [
+            (r'\s+', Text),
+            (r'\[', Comment.Multiline, '+comment'),
+            (ur'[%s]{4}[%s]{2}' % (_dash, _newline), Text, '+documentation'),
+            (r'', Text, '#pop:2')
+        ],
+        '+documentation': [
+            (ur'(?i)(%s)\s+(example|chapter|section)\s+:[^%s]+' %
+             (_start, _newline), Generic.Heading),
+            (ur'((%s)\t.*?[%s])+' % (_start, _newline),
+             using(this, state='+main')),
+            (ur'[^\[%s]+[%s]' % (_newline, _newline), Text),
+            (r'\[', Comment.Multiline, '+comment'),
+        ],
+        '+i6t': [
+            (r'(%s)@c( [^\n]*)?$' % _start, Comment.Preproc),
+            (r'(%s)@[%s]+[^\n]*$' % (_start, _dash), Comment.Preproc),
+            (r'(%s)@Purpose:[^\n]*$' % _start, Comment.Preproc),
+            (r'(%s)@p[ \n]' % _start, Comment.Preproc, '+p'),
+            (r'(%s)@[^ \n]*[^%sa-zA-Z_0-9: \n][^\n]*$' % (_start, _dash),
+             Error),
+            (r'(\{)((?:[^%s\s}][^}]*)?)(\})' % _dash,
+             bygroups(Punctuation.Brace, using(this, state='routine'),
+                      Punctuation.Brace)),
+            (r'(\{)([%s]lines)(:)' % _dash,
+             bygroups(Punctuation, Keyword, Punctuation),
+             ('+lines', '+command')),
+            (r'(\{)([%s][^:}]*)(:?)' % _dash,
+             bygroups(Punctuation, Keyword, Punctuation), '+command'),
+            (r'(\(\+)(.*?)(\+\)|$)',
+             bygroups(Punctuation, using(this, state='+main'), Punctuation))
+        ],
+        '+p': [
+            (r'(%s)@c( [^\n]*)?$' % _start, Comment.Preproc, '#pop'),
+            (r'(%s)@([%s]+|p[ \n]|Purpose:)' % (_start, _dash), Comment.Preproc),
+            (r'(%s)@[%sa-zA-Z_0-9:]*[ \n]' % (_start, _dash), Keyword),
+            (r'(%s)@[^\n]+$' % _start, Error),
+            (r'([^@]|(?<!%s)@)+' % _start, Comment.Preproc)
+        ],
+        '+command': [
+            (r'}', Punctuation, '#pop'),
+            (r'![^}]+', Comment.Single),
+            (r'[^}]+', Text)
+        ],
+        '+lines': [
+            (r'(%s)@c( [^\n]*)?$' % _start, Comment.Preproc),
+            (r'(%s)@[%s]+[^\n]*$' % (_start, _dash), Comment.Preproc),
+            (r'(%s)@(p[ \n]|Purpose:)' % _start, Comment.Preproc, '+p'),
+            (r'(%s)@[%sa-zA-Z_0-9:]*[ \n]' % (_start, _dash), Text), # TODO: what is this anyway?
+            (r'![^\n]*$', Comment.Single),
+            (r'(\{)([%s]endlines)(})' % _dash,
+             bygroups(Punctuation, Keyword, Punctuation), '#pop'),
+            (r'[^\n]*\s+', Text)
+        ],
+        '+i6t-final': [
+            (r'[@({]', Error.Final) # TODO: expand and remove .Final
+        ]
+    })
+
+    # Braces in an inline I6 phrase definition expand to I7 arguments, so
+    # rewrite all contents of braces (in inline definitions only) to Text or
+    # Comment.Multiline.
+    def get_tokens_unprocessed(self, text, **kwargs):
+        basic_i6_inclusion = False
+        inline_i6_inclusion = False
+        i6_expansion = False
+        comment_level = 0
+        for index, token, value in \
+            RegexLexer.get_tokens_unprocessed(self, text, **kwargs):
+            if i6_expansion:
+                if token is Punctuation.Brace:
+                    token = Punctuation
+                    i6_expansion = False
+                elif value == '[':
+                    token = Comment.Multiline
+                    comment_level += 1
+                elif value == ']':
+                    token = Comment.Multiline
+                    comment_level -= 1
+                elif comment_level == 0:
+                    token = Text
+                else:
+                    token = Comment.Multiline
+            elif inline_i6_inclusion:
+                if token is Punctuation.Inline:
+                    token = Punctuation
+                    inline_i6_inclusion = False
+                elif token is Punctuation.Brace:
+                    token = Punctuation
+                    i6_expansion = True
+            elif token is Punctuation.Inline:
+                token = Punctuation
+                inline_i6_inclusion = True
+            elif token is Punctuation.Include:
+                token = Punctuation
+                basic_i6_inclusion = not basic_i6_inclusion
+            elif basic_i6_inclusion and token is Punctuation.Brace:
+                token = Punctuation
+            yield index, token, value
+
+
+# TODO: Inform6TemplateLexer?
