@@ -14,7 +14,7 @@ from string import Template
 
 from pygments.lexer import Lexer, RegexLexer, include, bygroups, using, \
      this, combined, inherit, do_insertions
-from pygments.util import get_bool_opt, get_list_opt
+from pygments.util import get_bool_opt, get_int_opt, get_list_opt
 from pygments.token import Text, Comment, Operator, Keyword, Name, String, \
      Number, Punctuation, Error, Literal, Generic
 from pygments.scanner import Scanner
@@ -3503,7 +3503,7 @@ class Inform6Lexer(RegexLexer):
 
     name = 'Inform 6'
     aliases = ['inform6', 'i6']
-    filenames = ['*.inf', '*.h']
+    filenames = ['*.inf', '*.h'] # TODO: what language is a *.h file?
 
     flags = re.MULTILINE | re.DOTALL | re.UNICODE
 
@@ -3559,8 +3559,7 @@ class Inform6Lexer(RegexLexer):
             ]
         return states
 
-    # TODO: %s needs ur''?
-    tokens = { # TODO: return DONE comments below
+    tokens = { # TODO: remove DONE comments above and below
         'root': [
             (r'(!%%[^%s]*[%s])*' % (_newline, _newline), Comment.Preproc,
              'main')
@@ -3606,7 +3605,7 @@ class Inform6Lexer(RegexLexer):
             (r'\$\$[01]+\b', Number, '#pop'), # TODO: Number.Bin?
             (r'\$', Error, '#pop'),
             (r'[0-9]+\b', Number.Integer, '#pop'),
-            # values that follow hashes
+            # values prefixed by hashes
             (r'(##|#a\$)(%s)' % _name, bygroups(Operator, Name), '#pop'),
             (r'(#g\$)(%s)' % _name,
              bygroups(Operator, Name.Variable.Global), '#pop'),
@@ -3625,8 +3624,8 @@ class Inform6Lexer(RegexLexer):
              r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|nothing|'
              r'NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|self|'
              r'sender|STRICT_MODE|sw__var|sys__glob[012]|sys_statusline_flag|'
-             r'TARGET_GLULX|TARGET_ZCODE|temp_global[234]?|true|USE_MODULES|'
-             r'WORDSIZE)\b', Name.Builtin, '#pop'),
+             r'TARGET_GLULX|TARGET_ZCODE|temp_global|temp__global[234]|true|'
+             r'USE_MODULES|WORDSIZE)\b', Name.Builtin, '#pop'),
             # veneer routines
             (r'(?i)(Box__Routine|CA__Pr|CDefArt|CInDefArt|Cl__Ms|'
              r'Copy__Primitive|CP__Tab|DA__Pr|DB__Pr|DefArt|Dynam__String|'
@@ -3638,9 +3637,9 @@ class Inform6Lexer(RegexLexer):
              r'RT__ChSTB|RT__ChSTW|RT__ChT|RT__Err|RT__TrPS|RV__Pr|'
              r'Symb__Tab|Unsigned__Compare|WV__Pr|Z__Region)\b', Name.Builtin,
              '#pop'),
-            # other names
+            # other values
             (_name, Name, '#pop'),
-            (r'[a-zA-Z_0-9]+', Error, '#pop'),
+            (r'[a-zA-Z_0-9]+', Error, '#pop'), # TODO: combine this and next line, maybe using r'\b'?
             (r'.', Error, '#pop')
         ],
         'dictionaryword': [
@@ -3760,7 +3759,7 @@ class Inform6Lexer(RegexLexer):
             (r'(?i)class\b', Keyword, ('objbody', 'classnames')),
             (r'(?i)(constant|default)\b', Keyword,
              ('default', 'default-expression2', 'constant')),
-            (r'(?i)(end\b)(.+)', bygroups(Keyword, Text)),
+            (r'(?i)(end\b)(.+)', bygroups(Keyword, Text)), # TODO: .+ -> .*
             (r'(?i)(extend|verb)\b', Keyword,  'grammar'),
             (r'(?i)fake_action\b', Keyword, ('default', 'global?')),
             (r'(?i)import\b', Keyword, 'manifest'),
@@ -3904,7 +3903,7 @@ class Inform6Lexer(RegexLexer):
              r'ifndef|ifnot|iftrue|ifv3|ifv5|import|include|link|lowstring|'
              r'message|nearby|object|property|release|replace|serial|'
              r'statusline|stub|switches|system_file|trace|undef|verb|version|'
-             r'zcharacter)\b', Keyword),
+             r'zcharacter)\b', Keyword), # TODO: what is this for?
             (r'', Text, '_default-expression')
         ],
         'trace_keyword?': [
@@ -4070,6 +4069,21 @@ class Inform7Lexer(RegexLexer):
     _dquote = ur'"\u201c\u201d'
     _newline = ur'\n\u0085\u2028\u2029'
     _start = ur'^|(?<=%s)' % _newline
+    # TODO: _space?
+
+    def which_state(): # TODO: better name; 'dispatch_braces'? qqc ainsi
+        def callback(lexer, match, ctx=None): # TODO: just define this directly; don't need a wrapper
+            try:
+                state = '+main' if lexer.options['inform'] == 7 else 'xxx'
+            except KeyError:
+                state='root'
+            s = match.start()
+            for i, t, v in lexer.get_tokens_unprocessed(match.group(),
+                                                        stack=(state,)):
+                yield i + s, t, v
+            if ctx: # TODO: is ctx ever not None? it might only be for ExtendedRegexLexers
+                ctx.pos = match.end()
+        return callback
 
     # Inform 7 can include snippets of Inform 6, so all of Inform6Lexer's
     # states are copied here. Inform7Lexer's own states begin with '+' to avoid
@@ -4079,44 +4093,44 @@ class Inform7Lexer(RegexLexer):
         tokens[token] = list(Inform6Lexer.tokens[token])
         if not token.startswith('_'):
             tokens[token].insert(0, include('+i6t'))
-            tokens[token].append(include('+i6t-final'))
+            tokens[token].append(include('+i6t-final')) 
     tokens.update({
+        'xxx': [(r'.+', Generic.XXX)], # TODO: remove this (for testing only)
         'root': [
             (r'(\|?\s)+', Text),
-            (ur'[%s]' % _dquote, Generic.Heading,
+            (r'[%s]' % _dquote, Generic.Heading,
              ('+main', '+bibliographic', '+bibliographic-string')),
             (r'', Text, ('+main', '+heading?'))
         ],
         '+bibliographic-string': [
-            (ur'[^%s]+' % _dquote, Generic.Heading),
-            (ur'[%s]' % _dquote, Generic.Heading, '#pop')
+            (r'[^%s]+' % _dquote, Generic.Heading),
+            (r'[%s]' % _dquote, Generic.Heading, '#pop')
         ],
         '+bibliographic': [
-            (ur'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
-            (ur'[%s]' % _dquote, Generic.Heading, '+bibliographic-string'),
-            (ur'[.;:]|(?<=[\s;:.%s])(?=\|)|[%s]{2}' % (_dquote, _newline), Text,
+            (r'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
+            (r'[%s]' % _dquote, Generic.Heading, '+bibliographic-string'),
+            (r'[.;:]|(?<=[\s;:.%s])(?=\|)|[%s]{2}' % (_dquote, _newline), Text,
              '#pop'),
-            (ur'[|%s]' % _newline, Generic.Heading)
+            (r'[|%s]' % _newline, Generic.Heading)
         ],
         '+main': [
-            (ur'[^%s:\[(|%s]+' % (_dquote, _newline), Text),
-            (ur'[%s]' % _dquote, String.Double, '+text'),
+            (r'[^%s:\[(|%s]+' % (_dquote, _newline), Text),
+            (r'[%s]' % _dquote, String.Double, '+text'),
             (r':', Text, '+inline'),
             (r'\[', Comment.Multiline, '+comment'),
-            (ur'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation.Include, using(this, state='main'),
-                      Punctuation.Include)),
-            (ur'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2}' % (_start, _dquote, _newline),
+            (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+             bygroups(Punctuation, using(this, state='main', inform=6),
+                      Punctuation)),
+            (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2}' % (_start, _dquote, _newline),
              Text, '+heading?'),
-            (ur'[(|%s]' % _newline, Text)
+            (r'[(|%s]' % _newline, Text)
         ],
         '+inline': [
             (r'\s+', Text),
             (r'\[', Comment.Multiline, '+comment'),
-            (ur'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation.Inline, using(this, state='routine'),
-                      Punctuation.Inline),
-             '#pop'),
+            (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+             bygroups(Punctuation, using(this, state='routine', inform=7),
+                      Punctuation), '#pop'),
             (r'', Text, '#pop')
         ],
         '+comment': [
@@ -4125,21 +4139,21 @@ class Inform7Lexer(RegexLexer):
             (r'\]', Comment.Multiline, '#pop')
         ],
         '+text': [
-            (ur'[^\[%s]+' % _dquote, String.Double),
+            (r'[^\[%s]+' % _dquote, String.Double),
             (r'\[', String.Interpol, '+substitution'),
-            (ur'[%s]' % _dquote, String.Double, '#pop')
+            (r'[%s]' % _dquote, String.Double, '#pop')
         ],
         '+substitution': [
-            (ur'[^\]%s]+' % _dquote, String.Interpol),
+            (r'[^\]%s]+' % _dquote, String.Interpol),
             (r'\]', String.Interpol, '#pop'),
-            (ur'[%s]' % _dquote, String.Double, '#pop:2')
+            (r'[%s]' % _dquote, String.Double, '#pop:2')
         ],
         '+heading?': [
             (r'(\|?\s)+', Text),
             (r'\[', Comment.Multiline, '+comment'),
-            (ur'[%s]{4}\s' % _dash, Text, '+documentation-heading'),
-            (ur'[%s]{1,3}' % _dash, Text),
-            (ur'(?i)(volume|book|part|chapter|section)\b[^%s]*[%s]' %
+            (r'[%s]{4}\s' % _dash, Text, '+documentation-heading'),
+            (r'[%s]{1,3}' % _dash, Text),
+            (r'(?i)(volume|book|part|chapter|section)\b[^%s]*[%s]' %
              (_newline, _newline), Generic.Heading, '#pop'),
             (r'', Text, '#pop')
         ],
@@ -4156,11 +4170,11 @@ class Inform7Lexer(RegexLexer):
             (r'', Text, '#pop:2')
         ],
         '+documentation': [
-            (ur'(?i)(%s)\s+(example|chapter|section)\s+:[^%s]+' %
+            (r'(?i)(%s)\s+(example|chapter|section)\s+:[^%s]+' %
              (_start, _newline), Generic.Heading),
-            (ur'((%s)\t.*?[%s])+' % (_start, _newline),
+            (r'((%s)\t.*?[%s])+' % (_start, _newline),
              using(this, state='+main')),
-            (ur'[^\[%s]+[%s]' % (_newline, _newline), Text),
+            (r'[^\[%s]+[%s]' % (_newline, _newline), Text),
             (r'\[', Comment.Multiline, '+comment'),
         ],
         '+i6t': [
@@ -4170,14 +4184,12 @@ class Inform7Lexer(RegexLexer):
             (r'(%s)@p[ \n]' % _start, Comment.Preproc, '+p'),
             (r'(%s)@[^ \n]*[^%sa-zA-Z_0-9: \n][^\n]*$' % (_start, _dash),
              Error),
-            (r'(\{)((?:[^%s\s}][^}]*)?)(\})' % _dash,
-             bygroups(Punctuation.Brace, using(this, state='routine'),
-                      Punctuation.Brace)),
             (r'(\{)([%s]lines)(:)' % _dash,
              bygroups(Punctuation, Keyword, Punctuation),
              ('+lines', '+command')),
             (r'(\{)([%s][^:}]*)(:?)' % _dash,
              bygroups(Punctuation, Keyword, Punctuation), '+command'),
+            (r'\{(\S[^}]*)?\}', which_state()),
             (r'(\(\+)(.*?)(\+\)|$)',
              bygroups(Punctuation, using(this, state='+main'), Punctuation))
         ],
@@ -4208,45 +4220,19 @@ class Inform7Lexer(RegexLexer):
         ]
     })
 
+    def __init__(self, **options):
+        # TODO: don't use get_int_opt: it is dumb to use ints
+        self.foo = get_int_opt(options, 'foo', 0)
+#        print "foo =", self.foo
+        RegexLexer.__init__(self, **options)
+
     # Braces in an inline I6 phrase definition expand to I7 arguments, so
     # rewrite all contents of braces (in inline definitions only) to Text or
     # Comment.Multiline.
+    # TODO: or not? this does nothing at the moment
     def get_tokens_unprocessed(self, text, **kwargs):
-        basic_i6_inclusion = False
-        inline_i6_inclusion = False
-        i6_expansion = False
-        comment_level = 0
         for index, token, value in \
             RegexLexer.get_tokens_unprocessed(self, text, **kwargs):
-            if i6_expansion:
-                if token is Punctuation.Brace:
-                    token = Punctuation
-                    i6_expansion = False
-                elif value == '[':
-                    token = Comment.Multiline
-                    comment_level += 1
-                elif value == ']':
-                    token = Comment.Multiline
-                    comment_level -= 1
-                elif comment_level == 0:
-                    token = Text
-                else:
-                    token = Comment.Multiline
-            elif inline_i6_inclusion:
-                if token is Punctuation.Inline:
-                    token = Punctuation
-                    inline_i6_inclusion = False
-                elif token is Punctuation.Brace:
-                    token = Punctuation
-                    i6_expansion = True
-            elif token is Punctuation.Inline:
-                token = Punctuation
-                inline_i6_inclusion = True
-            elif token is Punctuation.Include:
-                token = Punctuation
-                basic_i6_inclusion = not basic_i6_inclusion
-            elif basic_i6_inclusion and token is Punctuation.Brace:
-                token = Punctuation
             yield index, token, value
 
 
