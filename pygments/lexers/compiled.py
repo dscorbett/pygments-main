@@ -3507,9 +3507,6 @@ class InformLexer(RegexLexer):
 
     flags = re.MULTILINE | re.DOTALL | re.UNICODE
 
-    _name = r'[a-zA-Z_][a-zA-Z_0-9]*'
-    _statement_terminator_lookahead = r'(?=[:;\]{}])'
-
     # Inform 7 maps these four character classes to their ASCII
     # equivalents. To support Inform 6 inclusions within Inform 7,
     # InformLexer maps them too, but true Inform 6 does not accept them.
@@ -3517,6 +3514,10 @@ class InformLexer(RegexLexer):
     _dquote = ur'"\u201c\u201d'
     _squote = ur"'\u2018\u2019"
     _newline = ur'\n\u0085\u2028\u2029'
+
+    _name = r'[a-zA-Z_][a-zA-Z_0-9]*'
+    _statement_terminator_lookahead = r'(?=[:;\]{}])'
+    _whitespace = r'(\s|![^%s]*$)' % _newline
 
     # Inform expressions are parsed slightly differently in different
     # contexts. Each context gets two mutually recursive states defined
@@ -3527,9 +3528,8 @@ class InformLexer(RegexLexer):
         for context in ['default',
                         'action', # within angle brackets
                         'assembly', # after an opcode
-                        'loop', # for or objectloop
+                        'list', # comma-separated list
                         'object', # Object or similar directive
-                        'list' # print, print_ret, or Import
                         ]:
             states['_' + context + '-expression'] = [
                 include('_whitespace'),
@@ -3537,7 +3537,8 @@ class InformLexer(RegexLexer):
                 (r'(?=\{)', Text, ('#pop', context + '-expression2')),
                 (ur'(?=[\'\u2018\u2019"\u201c\u201d$0-9#a-zA-Z_])', Text,
                  ('#pop', context + '-expression2', 'value')),
-                (ur'\+\+|[-\u2010-\u2014][-\u2010-\u2014]?(?!>)|~~?', Operator),
+                (ur'\+\+|[-\u2010-\u2014][-\u2010-\u2014]?(?!>)|~~?',
+                 Operator),
                 (r'(?=[:;\]])', Text, '#pop'),
                 (r',', Punctuation),
                 include('value')
@@ -3555,6 +3556,7 @@ class InformLexer(RegexLexer):
                  ('#pop', '_' + context + '-expression')),
                 (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
                  ('#pop', '_' + context + '-expression')),
+                (r'to\b', Keyword, ('#pop', '_' + context + '-expression')),
                 (r'', Text, '#pop')
             ]
         return states
@@ -3577,12 +3579,6 @@ class InformLexer(RegexLexer):
             include('_whitespace'),
             (_statement_terminator_lookahead, Text, '#pop'),
             (r'', Text, '_default-expression')
-        ],
-        'loop': [
-            include('_whitespace'),
-            (r'\)', Punctuation, '#pop'),
-            (_statement_terminator_lookahead, Text, '#pop'),
-            (r'', Text, '_loop-expression')
         ],
         'value': [
             include('_whitespace'),
@@ -3620,11 +3616,12 @@ class InformLexer(RegexLexer):
             (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
              r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
              r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
-             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|nothing|'
-             r'NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|self|'
-             r'sender|STRICT_MODE|sw__var|sys__glob[012]|sys_statusline_flag|'
-             r'TARGET_GLULX|TARGET_ZCODE|temp_global|temp__global[234]|true|'
-             r'USE_MODULES|WORDSIZE)\b', Name.Builtin, '#pop'),
+             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|'
+             r'nothing|NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|'
+             r'self|sender|STRICT_MODE|sw__var|sys__glob[012]|'
+             r'sys_statusline_flag|TARGET_GLULX|TARGET_ZCODE|temp_global|'
+             r'temp__global[234]|true|USE_MODULES|WORDSIZE)\b', Name.Builtin,
+             '#pop'),
             # veneer routines
             (r'(?i)(Box__Routine|CA__Pr|CDefArt|CInDefArt|Cl__Ms|'
              r'Copy__Primitive|CP__Tab|DA__Pr|DB__Pr|DefArt|Dynam__String|'
@@ -3657,8 +3654,8 @@ class InformLexer(RegexLexer):
             (r'[({\[\]]', String.Double),
             (r'\\\s*[%s]\s*' % _newline, String.Escape),
             (r'\\', Error),
-            (r'@(\\\s*[%s]\s*)*@((\\\s*[%s]\s*)*[0-9])*' % (_newline, _newline),
-             String.Interpol),
+            (r'@(\\\s*[%s]\s*)*@((\\\s*[%s]\s*)*[0-9])*' %
+             (_newline, _newline), String.Interpol),
             (r'@((\\\s*[%s]\s*)*[0-9]){2}' % _newline, String.Escape),
             (r'@(\\\s*[%s]\s*)*\{((\\\s*[%s]\s*)*[0-9a-fA-F]){1,4}'
              r'(\\\s*[%s]\s*)*}' % (_newline, _newline, _newline),
@@ -3720,8 +3717,8 @@ class InformLexer(RegexLexer):
         ],
         '_system-constant': [
             (r'(action_names_array|actions_table|actual_largest_object|'
-             r'adjectives_table|array__end|array_flags_array|array_names_array|'
-             r'array_names_offset|arrays_array|array__start|'
+             r'adjectives_table|array__end|array_flags_array|'
+             r'array_names_array|array_names_offset|arrays_array|array__start|'
              r'attribute_names_array|classes_table|class_objects_array|'
              r'code_offset|constant_names_array|constants_array|cpv__end|'
              r'cpv__start|dictionary_table|dict_par1|dict_par2|dict_par3|'
@@ -3749,7 +3746,7 @@ class InformLexer(RegexLexer):
             include('_whitespace'),
             (r';', Punctuation, '#pop'),
             (r'\[', Punctuation,
-             ('default', 'routine', 'default', 'routine-name?')),
+             ('default', 'statements', 'locals', 'routine-name?')),
             (r'(?i)(abbreviate|endif|dictionary|ifdef|iffalse|ifndef|ifnot|'
              r'iftrue|ifv3|ifv5|release|switches|system_file|version)\b',
              Keyword, 'default'),
@@ -3768,7 +3765,8 @@ class InformLexer(RegexLexer):
             (r'(?i)(lowstring|undef)\b', Keyword, ('default', 'constant')),
             (r'(?i)message\b', Keyword,
              ('default', 'message', 'directive-keyword?')),
-            (r'(?i)(nearby|object)\b', Keyword, ('object-body', 'object-head')),
+            (r'(?i)(nearby|object)\b', Keyword,
+             ('object-body', 'object-head')),
             (r'(?i)property\b', Keyword,
              ('default', 'global?', 'property-keyword*')),
             (r'(?i)replace\b', Keyword,
@@ -3786,6 +3784,13 @@ class InformLexer(RegexLexer):
         'routine-name?': [
             include('_whitespace'),
             (r'(%s)?' % _name, Name.Function, '#pop')
+        ],
+        'locals': [
+            include('_whitespace'),
+            (r';', Punctuation, '#pop'),
+            (r'\*', Punctuation),
+            (_name, Name.Variable),
+            (r'.', Error)
         ],
         # Array
         'array': [
@@ -3876,10 +3881,10 @@ class InformLexer(RegexLexer):
         '_directive-keyword': [
             include('_whitespace'),
             (r'(additive|alias|buffer|class|creature|data|error|fatalerror|'
-             r'first|has|held|initial|initstr|last|long|meta|multi|multiexcept|'
-             r'multiheld|multiinside|noun|number|only|private|replace|reverse|'
-             r'scope|score|special|string|table|terminating|time|topic|warning|'
-             r'with)\b', Keyword, '#pop'),
+             r'first|has|held|initial|initstr|last|long|meta|multi|'
+             r'multiexcept|multiheld|multiinside|noun|number|only|private|'
+             r'replace|reverse|scope|score|special|string|table|terminating|'
+             r'time|topic|warning|with)\b', Keyword, '#pop'),
             (r'[%s][%s]?>|[+=]' % (_dash, _dash), Punctuation, '#pop')
         ],
         'directive-keyword': [
@@ -3910,21 +3915,22 @@ class InformLexer(RegexLexer):
         ],
 
         # statements
-        'routine': [
+        'statements': [
             include('_whitespace'),
             (r'\]', Punctuation, '#pop'),
             (r'[;:{}]', Punctuation),
-            (r'(box|break|continue|default|give|inversion|new_line|quit|remove|'
-             r'return|rfalse|rtrue|spaces|string|until)\b', Keyword, 'default'),
+            (r'(box|break|continue|default|give|inversion|move|'
+             r'new_line|quit|read|remove|return|rfalse|rtrue|spaces|string|'
+             r'until)\b', Keyword, 'default'),
             (r'(do|else)\b', Keyword),
             (r'font\b', Keyword, ('default', 'miscellaneous-keyword?')),
-            (r'for\b', Keyword, 'loop'),
-            (r'(if|switch|while)\b', Keyword, '_default-expression'),
+            (r'for\b', Keyword, ('_default-expression', '_default-expression',
+                                 '_default-expression', '(?')),
+            (r'(if|switch|while)', Keyword, ('_default-expression', '(?')),
             (r'jump\b', Keyword, ('default', 'label?')),
-            (r'move\b', Keyword,
-             ('default', 'miscellaneous-keyword?', '_default-expression')),
             (r'objectloop\b', Keyword,
-             ('loop', 'miscellaneous-keyword?', '_loop-expression', '(')),
+             ('_default-expression', 'default-expression2',
+              'miscellaneous-keyword?', 'variable?', '(?')),
             (r'print(_ret)?\b', Keyword, 'print-list'),
             (r'style\b', Keyword, ('default', 'miscellaneous-keyword?')),
             (r'[%s]' % _dquote, String.Double, ('print-list', 'string')),
@@ -3934,44 +3940,46 @@ class InformLexer(RegexLexer):
             (r'<<?', Punctuation, 'action'),
             (r'', Text, '_default-expression')
         ],
-        '(': [
+        '(?': [
             include('_whitespace'),
             (r'\(?', Punctuation, '#pop')
         ],
+        'variable?': [ # TODO: put this with global?
+            include('_whitespace'),
+            (r'(%s)?' % _name, Name.Variable, '#pop')
+        ],
         'action': [
             include('_whitespace'),
-            (_statement_terminator_lookahead, Text, '#pop'),
+            (_statement_terminator_lookahead, Text, '#pop'), # TODO: needed?
             (r'', Text, '_action-expression')
         ],
         'miscellaneous-keyword?': [
             include('_whitespace'),
-            (r'((bold|fixed|from|in|near|off|on|reverse|roman|to|underline)\b)'
-             r'?',
-             Keyword, '#pop')
+            (r'(a|A|an|address|char|name|number|object|property|string|the|'
+             r'The)\b', Keyword.Pseudo, '#pop'),
+            (r'(bold|fixed|from|in|near|off|on|reverse|roman|to|underline)\b',
+             Keyword, '#pop'),
+            (r'', Text, '#pop')
         ],
         'print-list': [
             include('_whitespace'),
             (_statement_terminator_lookahead, Text, '#pop'),
-            (r',', Punctuation),
+            (r',', Punctuation), # TODO: remove this?
             (r'[%s]' % _dquote, String.Double, 'string'),
-            (r'\(', Punctuation, 'form'),
-            (r'', Text, ('_list-expression', 'list-expression2'))
+            (r'', Text, ('_list-expression', 'list-expression2', 'form'))
         ],
         'form': [
             include('_whitespace'),
-            (r'(a|A|an|address|char|name|number|object|property|string|the|The)'
-             r'\b', Keyword.Pseudo),
-            (_name, Name.Function),
-            (r'\)', Punctuation, '#pop'),
-            (r'.', Error)
+            (r'\(', Punctuation, ('#pop', 'miscellaneous-keyword?')),
+            (r'', Text, '#pop')
         ],
 
         # assembly
         'opcode': [
             include('_whitespace'),
             (r'[%s]' % _dquote, String.Double, ('operands', 'plain-string')),
-            (r'(accelfunc|accelparam|acos|add|aload|aloadb|aloadbit|aloads|and|'
-             r'aread|art_shift|asin|astore|astoreb|astorebit|astores|atan|'
+            (r'(accelfunc|accelparam|acos|add|aload|aloadb|aloadbit|aloads|'
+             r'and|aread|art_shift|asin|astore|astoreb|astorebit|astores|atan|'
              r'atan2|binarysearch|bitand|bitnot|bitor|bitxor|buffer_mode|call|'
              r'call_1n|call_1s|call_2n|call_2s|callf|callfi|callfii|callfiii|'
              r'call_vn|call_vn2|call_vs|call_vs2|catch|ceil|check_arg_count|'
@@ -3981,12 +3989,12 @@ class InformLexer(RegexLexer):
              r'ftonumn|ftonumz|gestalt|get_child|get_cursor|getiosys|'
              r'getmemsize|get_next_prop|get_parent|get_prop|get_prop_addr|'
              r'get_prop_len|get_sibling|getstringtbl|get_wind_prop|glk|inc|'
-             r'inc_chk|input_stream|insert_obj|je|jeq|jfeq|jfge|jfgt|jfle|jflt|'
-             r'jfne|jg|jge|jgeu|jgt|jgtu|jin|jisinf|jisnan|jl|jle|jleu|jlt|'
-             r'jltu|jne|jnz|jump|jumpabs|jz|linearsearch|linkedsearch|load|'
-             r'loadb|loadw|log|log_shift|make_menu|malloc|mcopy|mfree|mod|'
-             r'mouse_window|move_window|mul|mzero|neg|new_line|nop|not|numtof|'
-             r'or|output_stream|picture_data|picture_table|piracy|pop|'
+             r'inc_chk|input_stream|insert_obj|je|jeq|jfeq|jfge|jfgt|jfle|'
+             r'jflt|jfne|jg|jge|jgeu|jgt|jgtu|jin|jisinf|jisnan|jl|jle|jleu|'
+             r'jlt|jltu|jne|jnz|jump|jumpabs|jz|linearsearch|linkedsearch|'
+             r'load|loadb|loadw|log|log_shift|make_menu|malloc|mcopy|mfree|'
+             r'mod|mouse_window|move_window|mul|mzero|neg|new_line|nop|not|'
+             r'numtof|or|output_stream|picture_data|picture_table|piracy|pop|'
              r'pop_stack|pow|print|print_addr|print_char|print_form|print_num|'
              r'print_obj|print_paddr|print_ret|print_table|print_unicode|'
              r'protect|pull|push|push_stack|put_prop|put_wind_prop|quit|'
@@ -4026,20 +4034,19 @@ class InformLexer(RegexLexer):
         'assembly-expression2': [
             (r'\[', Punctuation, 'indirect')
         ],
-        'loop-expression2': [
-            (r'(?=\))', Text, '#pop')
-        ],
-        '_object-expression': [
-            (r'\[', Punctuation, 'routine')
-        ],
-        'object-expression2': [
-            (r'has\b', Keyword, '#pop')
-        ],
         '_list-expression': [
             (r',', Punctuation, '#pop')
         ],
         'list-expression2': [
             (r',', Punctuation, '#pop')
+        ],
+        '_object-expression': [
+            (r',', Punctuation, '#pop'),
+            (r'\[', Punctuation, ('statements', 'locals'))
+        ],
+        'object-expression2': [
+            (r',', Punctuation, '#pop'),
+            (r'has\b', Keyword, '#pop')
         ]
     }
     for token, rule in gen_expression_rules().items():
@@ -4047,6 +4054,32 @@ class InformLexer(RegexLexer):
             tokens[token] += rule
         else:
             tokens[token] = rule
+
+    def get_tokens_unprocessed(self, text):
+        # 'in' may be either a keyword or an operator.
+        # keyword: objectloop(a in b)
+        # operator: objectloop(a in b ...)
+        objectloop_buffer = []
+        objectloop_token_count = -1
+        for index, token, value in RegexLexer.get_tokens_unprocessed(self,
+                                                                     text):
+            if token is Keyword and value == 'in':
+                objectloop_buffer = [[index, token, value]]
+                objectloop_token_count = 2
+            elif objectloop_token_count > 0:
+                if token not in Comment and token not in Text:
+                    objectloop_token_count -= 1
+                objectloop_buffer.append((index, token, value))
+            else:
+                if objectloop_token_count == 0:
+                    if objectloop_buffer[-1][2] != ')':
+                        objectloop_buffer[0][1] = Operator.Word
+                    while objectloop_buffer:
+                        yield objectloop_buffer.pop(0)
+                    objectloop_token_count = -1
+                yield index, token, value
+        while objectloop_buffer:
+            yield objectloop_buffer.pop(0)
 
 
 class Inform7Lexer(RegexLexer):
@@ -4065,16 +4098,38 @@ class Inform7Lexer(RegexLexer):
     _newline = ur'\n\u0085\u2028\u2029'
     _start = ur'^|(?<=%s)' % _newline
 
+    def old_braces_callback(token):
+        def callback(lexer, match, ctx=None):
+            if lexer.options.get('inline', True):
+                ctx.stack = ['root', '+main']
+            else:
+                ctx.stack[-1] = '+i6t-' + ctx.stack[-1]
+            s = match.start()
+            for i, t, v in lexer.get_tokens_unprocessed(context=ctx):
+                yield i + s, t, v
+            ctx.pos = match.end()
+        return callback
+
+    def xrl_braces_callback(token):
+        def callback(lexer, match, ctx=None):
+            if lexer.options.get('inline', True):
+                x = bygroups(Punctuation, using(this, state='+main'),
+                             Punctuation)(lexer, match, ctx=ctx)
+                return x
+            else:
+                stack = ctx.stack
+                stack[-1] = '+i6t-' + ctx.stack[-1]
+                x = using(this, state=stack)(lexer, match, ctx=ctx)
+                return x
+        return callback
+
     def braces_callback(token):
         def callback(lexer, match):
-            try:
-                state = '+main' if lexer.options['inline'] else '+i6t-' + token
-            except KeyError:
-                state='root'
-            s = match.start()
-            for i, t, v in lexer.get_tokens_unprocessed(match.group(),
-                                                        stack=(state,)):
-                yield i + s, t, v
+            if lexer.options.get('inline', True):
+                return bygroups(Punctuation, using(this, state='+main'),
+                                Punctuation)(lexer, match)
+            else:
+                return ('#pop', '+i6t-' + token)
         return callback
 
     # Inform 7 can include snippets of Inform 6, so all of InformLexer's
@@ -4085,8 +4140,9 @@ class Inform7Lexer(RegexLexer):
         tokens[token] = list(InformLexer.tokens[token])
         if not token.startswith('_'):
             tokens[token].insert(0, include('+i6t'))
-            tokens['+i6t-' + token] = list(tokens[token])
-            tokens[token].insert(1, (r'\{(\S[^}]*)?\}', braces_callback(token)))
+            #tokens['+i6t-' + token] = list(tokens[token])
+            #tokens[token].insert(1, (r'(\{)(\S[^}]*)?(\})',
+            #                         braces_callback(token)))
     tokens.update({
         'root': [
             (r'(\|?\s)+', Text),
@@ -4121,8 +4177,8 @@ class Inform7Lexer(RegexLexer):
             (r'\s+', Text),
             (r'\[', Comment.Multiline, '+comment'),
             (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation, using(this, state='routine', inline=True),
-                      Punctuation), '#pop'),
+             bygroups(Punctuation, using(this, state='statements',
+                                         inline=True), Punctuation), '#pop'),
             (r'', Text, '#pop')
         ],
         '+comment': [
@@ -4208,3 +4264,15 @@ class Inform7Lexer(RegexLexer):
             (r'[^\n]*\s+', Text)
         ]
     })
+
+    def __init__(self, **options):
+        if get_bool_opt(options, 'inline', False):
+            for token in self.tokens:
+                if token != 'root' and not token.startswith(('_', '+')):
+                    self.tokens[token].insert(1,
+                                              (r'(\{)(\S[^}]*)?(\})',
+                                               bygroups(Punctuation,
+                                                        using(this,
+                                                              state='+main'),
+                                                        Punctuation)))
+        RegexLexer.__init__(self, **options)
