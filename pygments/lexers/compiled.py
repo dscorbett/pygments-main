@@ -29,7 +29,7 @@ __all__ = ['CLexer', 'CppLexer', 'DLexer', 'DelphiLexer', 'ECLexer', 'DylanLexer
            'FelixLexer', 'AdaLexer', 'Modula2Lexer', 'BlitzMaxLexer',
            'NimrodLexer', 'FantomLexer', 'RustLexer', 'CudaLexer', 'MonkeyLexer',
            'DylanLidLexer', 'DylanConsoleLexer', 'CobolLexer',
-           'CobolFreeformatLexer', 'LogosLexer', 'InformLexer', 'Inform7Lexer']
+           'CobolFreeformatLexer', 'LogosLexer', 'Inform6Lexer', 'Inform7Lexer']
 
 
 class CFamilyLexer(RegexLexer):
@@ -3496,7 +3496,7 @@ class LogosLexer(ObjectiveCppLexer):
         return 0
 
 
-class InformLexer(RegexLexer):
+class Inform6Lexer(RegexLexer):
     """
     For `Inform <http://inform-fiction.org/>`_ source code.
     """
@@ -3509,7 +3509,7 @@ class InformLexer(RegexLexer):
 
     # Inform 7 maps these four character classes to their ASCII
     # equivalents. To support Inform 6 inclusions within Inform 7,
-    # InformLexer maps them too, but true Inform 6 does not accept them.
+    # Inform6Lexer maps them too, but true Inform 6 does not accept them.
     _dash = ur'\-\u2010-\u2014'
     _dquote = ur'"\u201c\u201d'
     _squote = ur"'\u2018\u2019"
@@ -3696,6 +3696,10 @@ class InformLexer(RegexLexer):
             include('_whitespace'),
             (r'(%s)?' % _name, Name.Variable.Global, '#pop')
         ],
+        'variable?': [
+            include('_whitespace'),
+            (r'(%s)?' % _name, Name.Variable, '#pop')
+        ],
 
         # after a hash
         'obsolete-dictionary-word': [
@@ -3754,7 +3758,8 @@ class InformLexer(RegexLexer):
              ('array', 'directive-keyword?', 'global?')),
             (r'(?i)attribute\b', Keyword,
              ('default', 'directive-keyword?', 'global?')),
-            (r'(?i)class\b', Keyword, ('object-body', 'class-segment')),
+            (r'(?i)class\b', Keyword,
+             ('object-body', 'duplicates', 'class-name')),
             (r'(?i)(constant|default)\b', Keyword,
              ('default', 'default-expression2', 'constant')),
             (r'(?i)(end\b)(.*)', bygroups(Keyword, Text)),
@@ -3766,7 +3771,7 @@ class InformLexer(RegexLexer):
             (r'(?i)message\b', Keyword,
              ('default', 'message', 'directive-keyword?')),
             (r'(?i)(nearby|object)\b', Keyword,
-             ('object-body', 'object-head')),
+             ('object-body', '_object-head')),
             (r'(?i)property\b', Keyword,
              ('default', 'global?', 'property-keyword*')),
             (r'(?i)replace\b', Keyword,
@@ -3778,7 +3783,7 @@ class InformLexer(RegexLexer):
              ('default', 'trace-keyword?', 'trace-keyword?')),
             (r'(?i)zcharacter\b', Keyword,
              ('default', 'directive-keyword?', 'directive-keyword?')),
-            (_name, Name.Class, ('object-body', 'object-head'))
+            (_name, Name.Class, ('object-body', '_object-head'))
         ],
         # [, Replace, Stub
         'routine-name?': [
@@ -3806,7 +3811,17 @@ class InformLexer(RegexLexer):
             (r'', Text, '_default-expression')
         ],
         # Class, Object, Nearby
-        'object-head': [
+        'class-name': [
+            include('_whitespace'),
+            (r'(?=[,;]|(class|has|private|with)\b)', Text, '#pop'),
+            (_name, Name.Class, '#pop')
+        ],
+        'duplicates': [
+            include('_whitespace'),
+            (r'(?=\()', Text, ('#pop', '_default-expression')),
+            (r'', Text, '#pop')
+        ],
+        '_object-head': [
             (r'(class|has|private|with)\b', Keyword, '#pop'),
             include('global?')
         ],
@@ -3944,13 +3959,9 @@ class InformLexer(RegexLexer):
             include('_whitespace'),
             (r'\(?', Punctuation, '#pop')
         ],
-        'variable?': [ # TODO: put this with global?
-            include('_whitespace'),
-            (r'(%s)?' % _name, Name.Variable, '#pop')
-        ],
         'action': [
             include('_whitespace'),
-            (_statement_terminator_lookahead, Text, '#pop'), # TODO: needed?
+            (_statement_terminator_lookahead, Text, '#pop'),
             (r'', Text, '_action-expression')
         ],
         'miscellaneous-keyword?': [
@@ -3964,7 +3975,6 @@ class InformLexer(RegexLexer):
         'print-list': [
             include('_whitespace'),
             (_statement_terminator_lookahead, Text, '#pop'),
-            (r',', Punctuation), # TODO: remove this?
             (r'[%s]' % _dquote, String.Double, 'string'),
             (r'', Text, ('_list-expression', 'list-expression2', 'form'))
         ],
@@ -4098,51 +4108,14 @@ class Inform7Lexer(RegexLexer):
     _newline = ur'\n\u0085\u2028\u2029'
     _start = ur'^|(?<=%s)' % _newline
 
-    def old_braces_callback(token):
-        def callback(lexer, match, ctx=None):
-            if lexer.options.get('inline', True):
-                ctx.stack = ['root', '+main']
-            else:
-                ctx.stack[-1] = '+i6t-' + ctx.stack[-1]
-            s = match.start()
-            for i, t, v in lexer.get_tokens_unprocessed(context=ctx):
-                yield i + s, t, v
-            ctx.pos = match.end()
-        return callback
-
-    def xrl_braces_callback(token):
-        def callback(lexer, match, ctx=None):
-            if lexer.options.get('inline', True):
-                x = bygroups(Punctuation, using(this, state='+main'),
-                             Punctuation)(lexer, match, ctx=ctx)
-                return x
-            else:
-                stack = ctx.stack
-                stack[-1] = '+i6t-' + ctx.stack[-1]
-                x = using(this, state=stack)(lexer, match, ctx=ctx)
-                return x
-        return callback
-
-    def braces_callback(token):
-        def callback(lexer, match):
-            if lexer.options.get('inline', True):
-                return bygroups(Punctuation, using(this, state='+main'),
-                                Punctuation)(lexer, match)
-            else:
-                return ('#pop', '+i6t-' + token)
-        return callback
-
-    # Inform 7 can include snippets of Inform 6, so all of InformLexer's
+    # Inform 7 can include snippets of Inform 6, so all of Inform6Lexer's
     # states are copied here. Inform7Lexer's own states begin with '+'
     # to avoid name conflicts.
     tokens = {}
-    for token in InformLexer.tokens:
-        tokens[token] = list(InformLexer.tokens[token])
+    for token in Inform6Lexer.tokens:
+        tokens[token] = list(Inform6Lexer.tokens[token])
         if not token.startswith('_'):
             tokens[token].insert(0, include('+i6t'))
-            #tokens['+i6t-' + token] = list(tokens[token])
-            #tokens[token].insert(1, (r'(\{)(\S[^}]*)?(\})',
-            #                         braces_callback(token)))
     tokens.update({
         'root': [
             (r'(\|?\s)+', Text),
