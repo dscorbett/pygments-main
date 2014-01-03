@@ -3975,7 +3975,6 @@ class Inform6Lexer(RegexLexer):
         'print-list': [
             include('_whitespace'),
             (_statement_terminator_lookahead, Text, '#pop'),
-            (r'[%s]' % _dquote, String.Double, 'string'),
             (r'', Text, ('_list-expression', 'list-expression2', 'form'))
         ],
         'form': [
