@@ -4231,7 +4231,8 @@ class Inform6TemplateLexer(Inform7Lexer):
     aliases = ['i6t']
     filenames = ['*.i6t']
 
-    flags = Inform7Lexer.flags
-
-    tokens = Inform7Lexer.tokens
-    tokens['root'] = [(r'.*?$', Comment.Preproc, ('directive', '+p'))]
+    tokens = {
+        'root': [
+            (r'.*?$', Comment.Preproc, ('directive', '+p'))
+        ]
+    }
