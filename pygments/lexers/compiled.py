@@ -3523,7 +3523,8 @@ class Inform6Lexer(RegexLexer):
     # contexts. Two mutually recursive states (_*-expression and
     # *-expression2) are defined for each context. The small variations
     # are prepended to these defaults.
-    def gen_expression_rules():
+    def gen_expression_rules(dash=_dash, dquote=_dquote, squote=_squote,
+                             newline=_newline):
         states = {}
         for context in ['default',
                         'assembly', # after an opcode
@@ -3533,10 +3534,9 @@ class Inform6Lexer(RegexLexer):
             states['_' + context + '-expression'] = [
                 include('_whitespace'),
                 (r'(?=[(){])', Text, ('#pop', context + '-expression2')),
-                (ur'(?=[\'\u2018\u2019"\u201c\u201d$0-9#a-zA-Z_])', Text,
+                (r'(?=[%s%s$0-9#a-zA-Z_])' % (dquote, squote), Text,
                  ('#pop', context + '-expression2', 'value')),
-                (ur'\+\+|[-\u2010-\u2014]{1,2}(?!>)|~~?',
-                 Operator),
+                (r'\+\+|[%s]{1,2}(?!>)|~~?' % dash, Operator),
                 (r'(?=[:;\]])', Text, '#pop'),
                 (r'[,<>]', Punctuation),
                 include('value')
@@ -3544,14 +3544,13 @@ class Inform6Lexer(RegexLexer):
             states[context + '-expression2'] = [
                 include('_whitespace'),
                 (r'\(', Punctuation, '_default-expression'),
-                (ur'\)|:(?!:)|>(?=(\s*(![^\n\u0085\u2028\u2029]*)$)*[>;])',
-                 Punctuation, '#pop'),
-                (ur'[-\u2010-\u2014]{1,2}>|\.\.?[&#]?|::|,', Punctuation,
+                (r'\)|:(?!:)|>(?=(\s*(![^%s]*)$)*[>;])' % newline, Punctuation,
+                 '#pop'),
+                (r'[%s]{1,2}>|\.\.?[&#]?|::|,' % dash, Punctuation,
                  ('#pop', '_' + context + '-expression')),
-                (ur'\+\+|[-\u2010-\u2014]{2}', Operator),
-                (ur'\+|\*|/|%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)|'
-                 ur'[-\u2010-\u2014]', Operator,
-                 ('#pop', '_' + context + '-expression')),
+                (r'\+\+|[%s]{2}' % dash, Operator),
+                (r'\+|\*|/|%%|\|\||\||&&|&|~=|==|=|>=|<=|>(?!>)|<(?!<)|[%s]' %
+                 dash, Operator, ('#pop', '_' + context + '-expression')),
                 (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
                  ('#pop', '_' + context + '-expression')),
                 (r'to\b', Keyword, ('#pop', '_' + context + '-expression')),
