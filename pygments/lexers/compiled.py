@@ -3732,8 +3732,7 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r';', Punctuation, '#pop'),
             (r'\*', Punctuation),
-            (_name, Name.Variable),
-            (r'.', Error)
+            (_name, Name.Variable)
         ],
         # Array
         'array': [
@@ -3756,7 +3755,7 @@ class Inform6Lexer(RegexLexer):
         ],
         'duplicates': [
             include('_whitespace'),
-            (r'(?=\()', Text, ('#pop', '_default-expression')),
+            (r'(?=\()', Text, ('#pop', '_object-expression')),
             (r'', Text, '#pop')
         ],
         '_object-head': [
