@@ -3536,7 +3536,7 @@ class Inform6Lexer(RegexLexer):
                 (r'(?=[(){])', Text, ('#pop', context + '-expression2')),
                 (ur'(?=[\'\u2018\u2019"\u201c\u201d$0-9#a-zA-Z_])', Text,
                  ('#pop', context + '-expression2', 'value')),
-                (ur'\+\+|[-\u2010-\u2014][-\u2010-\u2014]?(?!>)|~~?',
+                (ur'\+\+|[-\u2010-\u2014]{1,2}(?!>)|~~?',
                  Operator),
                 (r'(?=[:;\]])', Text, '#pop'),
                 (r',', Punctuation),
@@ -3595,7 +3595,6 @@ class Inform6Lexer(RegexLexer):
              bygroups(Operator, Name.Variable.Global), '#pop'),
             (r'#[nw]\$', Operator, ('#pop', 'obsolete-dictionary-word')),
             (r'(#r\$)(%s)' % _name, bygroups(Operator, Name.Function), '#pop'),
-            (r'##|#[agr]\$', Error, '#pop'),
             (r'#', Name.Builtin, ('#pop', 'system-constant')),
             # system functions
             (r'(child|children|elder|eldest|glk|indirect|metaclass|parent|'
@@ -3917,13 +3916,6 @@ class Inform6Lexer(RegexLexer):
             (r'[%s]>' % _dash, Punctuation),
             (r'', Text, '_assembly-expression')
         ],
-        'indirect': [
-            include('_whitespace'),
-            (r'\]', Punctuation, '#pop'),
-            (_statement_terminator_lookahead, Text, '#pop:3'),
-            (r'sp\b', Keyword.Pseudo),
-            (r'', Text, 'value')
-        ],
 
         # expressions
         'action-expression2': [
@@ -3931,10 +3923,9 @@ class Inform6Lexer(RegexLexer):
         ],
         '_assembly-expression': [
             (r'sp\b', Keyword.Pseudo, '#pop'),
-            (r'\?~?', Name.Label, ('#pop', 'label?'))
-        ],
-        'assembly-expression2': [
-            (r'\[', Punctuation, 'indirect')
+            (r'\?~?', Name.Label, ('#pop', 'label?')),
+            (r'\[', Punctuation, '_assembly-expression'),
+            (r'\]', Punctuation, '#pop')
         ],
         '_list-expression': [
             (r',', Punctuation, '#pop')
