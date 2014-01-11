@@ -3544,7 +3544,7 @@ class Inform6Lexer(RegexLexer):
             states[context + '-expression2'] = [
                 include('_whitespace'),
                 (r'\(', Punctuation, '_default-expression'),
-                (r'\)|:(?!:)|>(?=(\s*(![^%s]*)$)*[>;])' % newline, Punctuation,
+                (r'\)|:(?!:)|>(?=(\s+|(![^%s]*))*[>;])' % newline, Punctuation,
                  '#pop'),
                 (r'[%s]{1,2}>|\.\.?[&#]?|::|,' % dash, Punctuation,
                  ('#pop', '_' + context + '-expression')),
@@ -3565,7 +3565,7 @@ class Inform6Lexer(RegexLexer):
         ],
         '_whitespace': [
             (r'\s+', Text),
-            (r'![^%s]*$' % _newline, Comment.Single)
+            (r'![^%s]*' % _newline, Comment.Single)
         ],
         'default': [
             include('_whitespace'),
@@ -3979,9 +3979,9 @@ class Inform7Lexer(RegexLexer):
 
     flags = re.MULTILINE | re.DOTALL | re.UNICODE
 
-    _dash = ur'-\u2010-\u2014'
-    _dquote = ur'"\u201c\u201d'
-    _newline = ur'\n\u0085\u2028\u2029'
+    _dash = Inform6Lexer._dash
+    _dquote = Inform6Lexer._dquote
+    _newline = Inform6Lexer._newline
     _start = ur'^|(?<=%s)' % _newline
 
     # Inform 7 can include snippets of Inform 6 template language, so
@@ -4007,8 +4007,9 @@ class Inform7Lexer(RegexLexer):
         '+titling': [
             (r'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
             (r'[%s]' % _dquote, Generic.Heading, '+titling-string'),
-            (r'[.;:]|(?<=[\s%s])\||[%s]{2}' % (_dquote, _newline), Text,
-             '#pop'),
+            (r'[%s]{2}|(?<=[\s%s])\|[\s%s]' % (_newline, _dquote, _dquote),
+             Text, ('#pop', '+heading?')),
+            (r'[.;:]|(?<=[\s%s])\|' % _dquote, Text, '#pop'),
             (r'[|%s]' % _newline, Generic.Heading)
         ],
         '+main': [
@@ -4019,7 +4020,7 @@ class Inform7Lexer(RegexLexer):
             (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
              bygroups(Punctuation, using(this, state='directive',
                                          inline=False), Punctuation)),
-            (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2}' % (_start, _dquote, _newline),
+            (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2,}' % (_start, _dquote, _newline),
              Text, '+heading?'),
             (r'[(|%s]' % _newline, Text)
         ],
@@ -4051,8 +4052,8 @@ class Inform7Lexer(RegexLexer):
             (r'\[', Comment.Multiline, '+comment'),
             (r'[%s]{4}\s+' % _dash, Text, '+documentation-heading'),
             (r'[%s]{1,3}' % _dash, Text),
-            (r'(?i)(volume|book|part|chapter|section)\b[^%s]*[%s]' %
-             (_newline, _newline), Generic.Heading, '#pop'),
+            (r'(?i)(volume|book|part|chapter|section)\b[^%s]*' % _newline,
+             Generic.Heading, '#pop'),
             (r'', Text, '#pop')
         ],
         '+documentation-heading': [
@@ -4076,12 +4077,10 @@ class Inform7Lexer(RegexLexer):
             (r'\[', Comment.Multiline, '+comment'),
         ],
         '+i6t': [
-            (r'(%s)@c( [^\n]*)?$' % _start, Comment.Preproc),
-            (r'(%s)@[%s]+[^\n]*$' % (_start, _dash), Comment.Preproc),
-            (r'(%s)@Purpose:[^\n]*$' % _start, Comment.Preproc),
+            (r'(%s)@c( [^%s]*)?' % (_start, _newline), Comment.Preproc),
+            (r'(%s)@[%s]+[^%s]*' % (_start, _dash, _newline), Comment.Preproc),
+            (r'(%s)@Purpose:[^%s]*' % (_start, _newline), Comment.Preproc),
             (r'(%s)@p[ \n]' % _start, Comment.Preproc, '+p'),
-            (r'(%s)@[^ \n]*[^%sa-zA-Z_0-9: \n][^\n]*$' % (_start, _dash),
-             Error),
             (r'(\{[%s])(![^}]*)(\})' % _dash,
              bygroups(Punctuation, Comment.Single, Punctuation)),
             (r'(\{[%s])(lines)(:)' % _dash,
@@ -4089,15 +4088,15 @@ class Inform7Lexer(RegexLexer):
              ('+lines', '+command')),
             (r'(\{[%s])([^:}]*)(:?)' % _dash,
              bygroups(Punctuation, Keyword, Punctuation), '+command'),
-            (r'(\(\+)(.*?)(\+\)|$)',
+            (r'(\(\+)(.*?)(\+\)|\Z)',
              bygroups(Punctuation, using(this, state='+main'), Punctuation))
         ],
         '+p': [
-            (r'(%s)@c( [^\n]*)?$' % _start, Comment.Preproc, '#pop'),
-            (r'(%s)@([%s]+|p[ \n]|Purpose:)' % (_start, _dash),
+            (r'(%s)@c( [^%s]*)?' % (_start, _newline), Comment.Preproc, '#pop'),
+            (r'(%s)@([%s]+|p[ %s]|Purpose:)' % (_start, _dash, _newline),
              Comment.Preproc),
             (r'(%s)@[%sa-zA-Z_0-9:]*[ \n]' % (_start, _dash), Keyword),
-            (r'(%s)@[^\n]+$' % _start, Error),
+            (r'(%s)@[^%s]*' % (_start, _newline), Error),
             (r'([^@]|(?<!%s)@)+' % _start, Comment.Preproc)
         ],
         '+command': [
@@ -4105,10 +4104,11 @@ class Inform7Lexer(RegexLexer):
             (r'[^}]+', Text)
         ],
         '+lines': [
-            (r'(%s)@c( [^\n]*)?$' % _start, Comment.Preproc),
-            (r'(%s)@[%s]+[^\n]*$' % (_start, _dash), Comment.Preproc),
-            (r'(%s)@(p[ \n]|Purpose:)' % _start, Comment.Preproc, '+p'),
-            (r'![^\n]*$', Comment.Single),
+            (r'(%s)@c( [^%s]*)?' % (_start, _newline), Comment.Preproc),
+            (r'(%s)@[%s]+[^%s]*' % (_start, _dash, _newline), Comment.Preproc),
+            (r'(%s)@(p[ %s]|Purpose:)' % (_start, _newline), Comment.Preproc,
+             '+p'),
+            (r'![^%s]*' % _newline, Comment.Single),
             (r'(\{)([%s]endlines)(})' % _dash,
              bygroups(Punctuation, Keyword, Punctuation), '#pop'),
             (r'[^\n]*\s+', Text)
@@ -4139,6 +4139,7 @@ class Inform6TemplateLexer(Inform7Lexer):
 
     tokens = {
         'root': [
-            (r'.*?$', Comment.Preproc, ('directive', '+p'))
+            (r'[^%s]*' % Inform6Lexer._newline, Comment.Preproc,
+             ('directive', '+p'))
         ]
     }
