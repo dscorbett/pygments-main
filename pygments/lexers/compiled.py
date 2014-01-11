@@ -3526,7 +3526,6 @@ class Inform6Lexer(RegexLexer):
     def gen_expression_rules():
         states = {}
         for context in ['default',
-                        'action', # within angle brackets
                         'assembly', # after an opcode
                         'list', # comma-separated list
                         'object', # Object or similar directive
@@ -3539,13 +3538,14 @@ class Inform6Lexer(RegexLexer):
                 (ur'\+\+|[-\u2010-\u2014]{1,2}(?!>)|~~?',
                  Operator),
                 (r'(?=[:;\]])', Text, '#pop'),
-                (r',', Punctuation),
+                (r'[,<>]', Punctuation),
                 include('value')
             ]
             states[context + '-expression2'] = [
                 include('_whitespace'),
                 (r'\(', Punctuation, '_default-expression'),
-                (r'\)|:(?!:)', Punctuation, '#pop'),
+                (ur'\)|:(?!:)|>(?=(\s*(![^\n\u0085\u2028\u2029]*)$)*[>;])',
+                 Punctuation, '#pop'),
                 (ur'[-\u2010-\u2014]{1,2}>|\.\.?[&#]?|::|,', Punctuation,
                  ('#pop', '_' + context + '-expression')),
                 (ur'\+\+|[-\u2010-\u2014]{2}', Operator),
@@ -3873,17 +3873,12 @@ class Inform6Lexer(RegexLexer):
             (r'\.', Name.Label, 'label?'),
             (r'@', Keyword, 'opcode'),
             (r'#(?![agrnw]\$|#)', Punctuation, 'directive'),
-            (r'<<?', Punctuation, 'action'),
+            (r'<', Punctuation, 'default'),
             (r'', Text, '_default-expression')
         ],
         '(?': [
             include('_whitespace'),
             (r'\(?', Punctuation, '#pop')
-        ],
-        'action': [
-            include('_whitespace'),
-            (_statement_terminator_lookahead, Text, '#pop'),
-            (r'', Text, '_action-expression')
         ],
         'miscellaneous-keyword?': [
             include('_whitespace'),
@@ -3918,9 +3913,6 @@ class Inform6Lexer(RegexLexer):
         ],
 
         # expressions
-        'action-expression2': [
-            (r'>>?', Punctuation, '#pop')
-        ],
         '_assembly-expression': [
             (r'sp\b', Keyword.Pseudo, '#pop'),
             (r'\?~?', Name.Label, ('#pop', 'label?')),
