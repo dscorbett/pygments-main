@@ -3941,8 +3941,10 @@ class Inform6Lexer(RegexLexer):
 
     def get_tokens_unprocessed(self, text):
         # 'in' is either a keyword or an operator.
-        # keyword: objectloop(a in b)
-        # operator: objectloop(a in b ...)
+        # If the token after the token after 'in' is ')', 'in' is a keyword.
+        #   objectloop(a in b)
+        # Otherwise, it is an operator.
+        #   objectloop(a in b ...)
         objectloop_queue = []
         objectloop_token_count = -1
         for index, token, value in RegexLexer.get_tokens_unprocessed(self,
