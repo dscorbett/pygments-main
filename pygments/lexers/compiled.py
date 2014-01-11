@@ -3579,9 +3579,7 @@ class Inform6Lexer(RegexLexer):
             (r'[%s][^@][%s]' % (_squote, _squote), String.Char, '#pop'),
             (r'([%s])(@\{[0-9a-fA-F]{1,4}})([%s])' % (_squote, _squote),
              bygroups(String.Char, String.Escape, String.Char), '#pop'),
-            (r'([%s])(@(?:[:%s`^][aeiouAEIOU]|:y|ss|>>|<<|[%s][yY]|o[aA]|'
-             r'/[oO]|~[anoANO]|[ao]e|[AO]E|c[cC]|[tT]h|[eE]t|LL|!!|\?\?))'
-             r'([%s])' % (_squote, _squote, _squote, _squote),
+            (r'([%s])(@..)([%s])' % (_squote, _squote),
              bygroups(String.Char, String.Escape, String.Char), '#pop'),
             (r'[%s]' % _squote, String.Single, ('#pop', 'dictionary-word')),
             (r'[%s]' % _dquote, String.Double, ('#pop', 'string')),
@@ -3598,7 +3596,7 @@ class Inform6Lexer(RegexLexer):
             (r'#[nw]\$', Operator, ('#pop', 'obsolete-dictionary-word')),
             (r'(#r\$)(%s)' % _name, bygroups(Operator, Name.Function), '#pop'),
             (r'##|#[agr]\$', Error, '#pop'),
-            (r'#', Name.Builtin, ('#pop', 'value-after-hash')),
+            (r'#', Name.Builtin, ('#pop', 'system-constant')),
             # system functions
             (r'(child|children|elder|eldest|glk|indirect|metaclass|parent|'
              r'random|sibling|younger|youngest)\b', Name.Builtin, '#pop'),
@@ -3631,11 +3629,8 @@ class Inform6Lexer(RegexLexer):
             (r'[~^]+', String.Escape),
             (r'[^~^\\@({\[\]%s]+' % _squote, String.Single),
             (r'[({\[\]]', String.Single),
-            (r'@\{[0-9a-fA-F]{1,4}}', String.Escape),
-            (r'@([:%s`^][aeiouAEIOU]|:y|ss|>>|<<|[%s][yY]|o[aA]|/[oO]|'
-             r'~[anoANO]|[ao]e|[AO]E|c[cC]|[tT]h|[eE]t|LL|!!|\?\?)' %
-             (_squote, _squote), String.Escape),
-            (r'@', Error),
+            (r'@\{[0-9a-fA-F]{,4}\}', String.Escape),
+            (r'@..', String.Escape),
             (r'[%s]' % _squote, String.Single, '#pop')
         ],
         'string': [
@@ -3646,23 +3641,11 @@ class Inform6Lexer(RegexLexer):
             (r'\\', Error),
             (r'@(\\\s*[%s]\s*)*@((\\\s*[%s]\s*)*[0-9])*' %
              (_newline, _newline), String.Escape),
-            (r'@((\\\s*[%s]\s*)*[0-9]){2}' % _newline, String.Escape),
-            (r'@(\\\s*[%s]\s*)*\{((\\\s*[%s]\s*)*[0-9a-fA-F]){1,4}'
-             r'(\\\s*[%s]\s*)*}' % (_newline, _newline, _newline),
+            (r'@(\\\s*[%s]\s*)*\{((\\\s*[%s]\s*)*[0-9a-fA-F]){,4}'
+             r'(\\\s*[%s]\s*)*\}' % (_newline, _newline, _newline),
              String.Escape),
-            (r'@(\\\s*[%s]\s*)*([:%s`^](\\\s*[%s]\s*)*[aeiouAEIOU]|'
-             r':(\\\s*[%s]\s*)*y|s(\\\s*[%s]\s*)*s|>(\\\s*[%s]\s*)*>|'
-             r'<(\\\s*[%s]\s*)*<|[%s](\\\s*[%s]\s*)*[yY]|o(\\\s*[%s]\s*)*[aA]|'
-             r'/(\\\s*[%s]\s*)*[oO]|~(\\\s*[%s]\s*)*[anoANO]|'
-             r'[ao](\\\s*[%s]\s*)*e|[AO](\\\s*[%s]\s*)*E|c(\\\s*[%s]\s*)*[cC]|'
-             r'[tT](\\\s*[%s]\s*)*h|[eE](\\\s*[%s]\s*)*t|L(\\\s*[%s]\s*)*L|'
-             r'!(\\\s*[%s]\s*)*!|\?(\\\s*[%s]\s*)*\?)' %
-             (_newline, _squote, _newline, _newline, _newline, _newline,
-              _newline, _squote, _newline, _newline, _newline, _newline,
-              _newline, _newline, _newline, _newline, _newline, _newline,
-              _newline, _newline),
+            (r'@(\\\s*[%s]\s*)*.(\\\s*[%s]\s*)*.' % (_newline, _newline),
              String.Escape),
-            (r'@', Error),
             (r'[%s]' % _dquote, String.Double, '#pop')
         ],
         'plain-string': [
@@ -3691,44 +3674,13 @@ class Inform6Lexer(RegexLexer):
             (r'(%s)?' % _name, Name.Variable, '#pop')
         ],
 
-        # after a hash
+        # values after a hash
         'obsolete-dictionary-word': [
-            (r'([^\s][a-zA-Z_0-9]*)', String, '#pop')
+            (r'([^\s][a-zA-Z_0-9]*)', String.Other, '#pop')
         ],
-        'after-hash': [
+        'system-constant': [
             include('_whitespace'),
-            include('_system-constant'),
-            include('directive')
-        ],
-        'value-after-hash': [
-            include('_whitespace'),
-            include('_system-constant'),
-            (r'[a-zA-Z_0-9]*', Error, '#pop')
-        ],
-        '_system-constant': [
-            (r'(action_names_array|actions_table|actual_largest_object|'
-             r'adjectives_table|array__end|array_flags_array|'
-             r'array_names_array|array_names_offset|arrays_array|array__start|'
-             r'attribute_names_array|classes_table|class_objects_array|'
-             r'code_offset|constant_names_array|constants_array|cpv__end|'
-             r'cpv__start|dictionary_table|dict_par1|dict_par2|dict_par3|'
-             r'dynam_string_table|fake_action_names_array|global_flags_array|'
-             r'global_names_array|globals_array|grammar_table|'
-             r'highest_action_number|highest_array_number|'
-             r'highest_attribute_number|highest_class_number|'
-             r'highest_constant_number|highest_fake_action_number|'
-             r'highest_global_number|highest_object_number|'
-             r'highest_property_number|highest_routine_number|'
-             r'identifiers_table|ipv__end|ipv__start|largest_object|'
-             r'lowest_action_number|lowest_array_number|'
-             r'lowest_attribute_number|lowest_class_number|'
-             r'lowest_constant_number|lowest_fake_action_number|'
-             r'lowest_global_number|lowest_object_number|'
-             r'lowest_property_number|lowest_routine_number|oddeven_packing|'
-             r'preactions_table|property_names_array|readable_memory_offset|'
-             r'routine_flags_array|routine_names_array|routines_array|'
-             r'static_memory_offset|strings_offset|version_number)\b',
-             Name.Builtin, '#pop')
+            (_name, Name.Builtin, '#pop')
         ],
 
         # directives
@@ -3906,9 +3858,9 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r'\]', Punctuation, '#pop'),
             (r'[;:{}]', Punctuation),
-            (r'(box|break|continue|default|give|inversion|move|'
-             r'new_line|quit|read|remove|return|rfalse|rtrue|spaces|string|'
-             r'until)\b', Keyword, 'default'),
+            (r'(box|break|continue|default|give|inversion|move|new_line|quit|'
+             r'read|remove|return|rfalse|rtrue|spaces|string|until)\b',
+             Keyword, 'default'),
             (r'(do|else)\b', Keyword),
             (r'(font|style)\b', Keyword,
              ('default', 'miscellaneous-keyword?')),
@@ -3922,7 +3874,7 @@ class Inform6Lexer(RegexLexer):
             (r'print(_ret)?\b|(?=[%s])' % _dquote, Keyword, 'print-list'),
             (r'\.', Name.Label, 'label?'),
             (r'@', Keyword, 'opcode'),
-            (r'#(?![agrnw]\$|#)', Punctuation, 'after-hash'),
+            (r'#(?![agrnw]\$|#)', Punctuation, 'directive'),
             (r'<<?', Punctuation, 'action'),
             (r'', Text, '_default-expression')
         ],
@@ -3958,36 +3910,7 @@ class Inform6Lexer(RegexLexer):
         'opcode': [
             include('_whitespace'),
             (r'[%s]' % _dquote, String.Double, ('operands', 'plain-string')),
-            (r'(accelfunc|accelparam|acos|add|aload|aloadb|aloadbit|aloads|'
-             r'and|aread|art_shift|asin|astore|astoreb|astorebit|astores|atan|'
-             r'atan2|binarysearch|bitand|bitnot|bitor|bitxor|buffer_mode|call|'
-             r'call_1n|call_1s|call_2n|call_2s|callf|callfi|callfii|callfiii|'
-             r'call_vn|call_vn2|call_vs|call_vs2|catch|ceil|check_arg_count|'
-             r'check_unicode|clear_attr|copy|copyb|copys|copy_table|cos|'
-             r'debugtrap|dec|dec_chk|div|draw_picture|encode_text|erase_line|'
-             r'erase_picture|erase_window|exp|fadd|fdiv|floor|fmod|fmul|fsub|'
-             r'ftonumn|ftonumz|gestalt|get_child|get_cursor|getiosys|'
-             r'getmemsize|get_next_prop|get_parent|get_prop|get_prop_addr|'
-             r'get_prop_len|get_sibling|getstringtbl|get_wind_prop|glk|inc|'
-             r'inc_chk|input_stream|insert_obj|je|jeq|jfeq|jfge|jfgt|jfle|'
-             r'jflt|jfne|jg|jge|jgeu|jgt|jgtu|jin|jisinf|jisnan|jl|jle|jleu|'
-             r'jlt|jltu|jne|jnz|jump|jumpabs|jz|linearsearch|linkedsearch|'
-             r'load|loadb|loadw|log|log_shift|make_menu|malloc|mcopy|mfree|'
-             r'mod|mouse_window|move_window|mul|mzero|neg|new_line|nop|not|'
-             r'numtof|or|output_stream|picture_data|picture_table|piracy|pop|'
-             r'pop_stack|pow|print|print_addr|print_char|print_form|print_num|'
-             r'print_obj|print_paddr|print_ret|print_table|print_unicode|'
-             r'protect|pull|push|push_stack|put_prop|put_wind_prop|quit|'
-             r'random|read_char|read_mouse|remove_obj|restart|restore|'
-             r'restoreundo|restore_undo|ret|ret_popped|return|rfalse|rtrue|'
-             r'save|saveundo|save_undo|scan_table|scroll_window|set_attr|'
-             r'set_colour|set_cursor|set_font|setiosys|set_margins|setmemsize|'
-             r'setrandom|setstringtbl|set_text_style|set_window|sexb|sexs|'
-             r'shiftl|show_status|sin|sound_effect|split_window|sqrt|sread|'
-             r'sshiftr|stkcopy|stkcount|stkpeek|stkroll|stkswap|store|storeb|'
-             r'storew|streamchar|streamnum|streamstr|streamunichar|sub|'
-             r'tailcall|tan|test|test_attr|throw|tokenise|ushiftr|verify|'
-             r'window_size|window_style)\b', Keyword, 'operands')
+            (_name, Keyword, 'operands')
         ],
         'operands': [
             include('_whitespace'),
