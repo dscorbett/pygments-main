@@ -3599,16 +3599,8 @@ class Inform6Lexer(RegexLexer):
             # System functions
             (r'(child|children|elder|eldest|glk|indirect|metaclass|parent|'
              r'random|sibling|younger|youngest)\b', Name.Builtin, '#pop'),
-            # Built-in symbols
-            (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
-             r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
-             r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
-             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|'
-             r'nothing|NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|'
-             r'self|sender|STRICT_MODE|sw__var|sys__glob[012]|'
-             r'sys_statusline_flag|TARGET_GLULX|TARGET_ZCODE|temp_global|'
-             r'temp__global[234]|true|USE_MODULES|WORDSIZE)\b', Name.Builtin,
-             '#pop'),
+            # Metaclasses
+            (r'(?i)(Class|Object|Routine|String)\b', Name.Builtin, '#pop'),
             # Veneer routines
             (r'(?i)(Box__Routine|CA__Pr|CDefArt|CInDefArt|Cl__Ms|'
              r'Copy__Primitive|CP__Tab|DA__Pr|DB__Pr|DefArt|Dynam__String|'
@@ -3620,6 +3612,16 @@ class Inform6Lexer(RegexLexer):
              r'RT__ChSTB|RT__ChSTW|RT__ChT|RT__Err|RT__TrPS|RV__Pr|'
              r'Symb__Tab|Unsigned__Compare|WV__Pr|Z__Region)\b', Name.Builtin,
              '#pop'),
+            # Other built-in symbols
+            (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
+             r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
+             r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
+             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|'
+             r'nothing|NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|'
+             r'self|sender|STRICT_MODE|sw__var|sys__glob0|sys__glob1|'
+             r'sys__glob2|sys_statusline_flag|TARGET_GLULX|TARGET_ZCODE|'
+             r'temp__global2|temp__global3|temp__global4|temp_global|true|'
+             r'USE_MODULES|WORDSIZE)\b', Name.Builtin, '#pop'),
             # Other values
             (_name, Name, '#pop'),
             (r'.+?\b', Error, '#pop')
