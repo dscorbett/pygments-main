@@ -3636,8 +3636,7 @@ class Inform6Lexer(RegexLexer):
             (r'[~^]+', String.Escape),
             (r'[^~^\\@({\[\]%s]+' % _dquote, String.Double),
             (r'[({\[\]]', String.Double),
-            (r'\\\s*[%s]\s*' % _newline, String.Escape),
-            (r'\\', Error),
+            (r'\\', String.Escape),
             (r'@(\\\s*[%s]\s*)*@((\\\s*[%s]\s*)*[0-9])*' %
              (_newline, _newline), String.Escape),
             (r'@(\\\s*[%s]\s*)*\{((\\\s*[%s]\s*)*[0-9a-fA-F]){,4}'
@@ -3648,12 +3647,10 @@ class Inform6Lexer(RegexLexer):
             (r'[%s]' % _dquote, String.Double, '#pop')
         ],
         'plain-string': [
-            (r'[~^]+', String.Escape),
             (r'[^~^\\({\[\]%s]+' % _dquote, String.Double),
-            (r'[({\[\]]', String.Double),
-            (r'\\\s*[%s]' % _newline, String.Escape),
-            (r'\\', Error),
-            (r'[%s({]' %  _dquote, String.Double, '#pop')
+            (r'[~^({\[\]]', String.Double),
+            (r'\\', String.Escape),
+            (r'[%s]' % _dquote, String.Double, '#pop')
         ],
         'label?': [
             include('_whitespace'),
@@ -3706,8 +3703,7 @@ class Inform6Lexer(RegexLexer):
             (r'(?i)import\b', Keyword, 'manifest'),
             (r'(?i)(include|link)\b', Keyword, ('default', 'include')),
             (r'(?i)(lowstring|undef)\b', Keyword, ('default', 'constant')),
-            (r'(?i)message\b', Keyword,
-             ('default', 'message', 'directive-keyword?')),
+            (r'(?i)message\b', Keyword, ('default', 'diagnostic')),
             (r'(?i)(nearby|object)\b', Keyword,
              ('object-body', '_object-head')),
             (r'(?i)property\b', Keyword,
@@ -3797,21 +3793,22 @@ class Inform6Lexer(RegexLexer):
         # Include
         'include': [
             include('_whitespace'),
-            (r'[%s]' % _dquote, String.Double, 'filename'),
-            (r'', Text, '#pop')
-        ],
-        'filename': [
-            (r'[^\\({\[\]%s]+' % _dquote, String.Double),
-            (r'[({\[\]]', String.Double),
-            (r'\\\s*[%s]\s*' % _newline, String.Escape),
-            (r'\\', Error),
-            (r'[%s]' % _dquote, String.Double, '#pop')
-        ],
-        # Message
-        'message': [
-            include('_whitespace'),
             (r'[%s]' % _dquote, String.Double, 'plain-string'),
             (r'', Text, '#pop')
+        ],
+        # Message
+        'diagnostic': [
+            include('_whitespace'),
+            (r'[%s]' % _dquote, String.Double, ('#pop', 'message-string')),
+            (r'', Text, ('#pop', 'before-plain-string', 'directive-keyword?'))
+        ],
+        'before-plain-string': [
+            include('_whitespace'),
+            (r'[%s]' % _dquote, String.Double, 'plain-string')
+        ],
+        'message-string': [
+            (r'[~^]+', String.Escape),
+            include('plain-string')
         ],
 
         # Keywords used in directives
