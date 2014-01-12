@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
     pygments.lexers.compiled
     ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3503,7 +3504,7 @@ class Inform6Lexer(RegexLexer):
     """
 
     name = 'Inform 6'
-    aliases = ['inform', 'inform6', 'i6']
+    aliases = ['inform6', 'i6']
     filenames = ['*.inf', '*.h']
 
     flags = re.MULTILINE | re.DOTALL | re.UNICODE
@@ -3527,9 +3528,9 @@ class Inform6Lexer(RegexLexer):
                              newline=_newline):
         states = {}
         for context in ['default',
-                        'assembly', # after an opcode
-                        'list', # comma-separated list
-                        'object', # Object or similar directive
+                        'assembly',  # After an opcode
+                        'list',  # Comma-separated list
+                        'object',  # Object or similar directive
                         ]:
             states['_' + context + '-expression'] = [
                 include('_whitespace'),
@@ -3574,7 +3575,7 @@ class Inform6Lexer(RegexLexer):
         ],
         'value': [
             include('_whitespace'),
-            # strings
+            # Strings
             (r'[%s][^@][%s]' % (_squote, _squote), String.Char, '#pop'),
             (r'([%s])(@\{[0-9a-fA-F]{1,4}})([%s])' % (_squote, _squote),
              bygroups(String.Char, String.Escape, String.Char), '#pop'),
@@ -3582,23 +3583,23 @@ class Inform6Lexer(RegexLexer):
              bygroups(String.Char, String.Escape, String.Char), '#pop'),
             (r'[%s]' % _squote, String.Single, ('#pop', 'dictionary-word')),
             (r'[%s]' % _dquote, String.Double, ('#pop', 'string')),
-            # numbers
+            # Numbers
             (r'\$[+%s][0-9]*\.?[0-9]*([eE][+%s]?[0-9]+)?' % (_dash, _dash),
              Number.Float, '#pop'),
             (r'\$[0-9a-fA-F]+', Number.Hex, '#pop'),
             (r'\$\$[01]+', Number, '#pop'),
             (r'[0-9]+', Number.Integer, '#pop'),
-            # values prefixed by hashes
+            # Values prefixed by hashes
             (r'(##|#a\$)(%s)' % _name, bygroups(Operator, Name), '#pop'),
             (r'(#g\$)(%s)' % _name,
              bygroups(Operator, Name.Variable.Global), '#pop'),
             (r'#[nw]\$', Operator, ('#pop', 'obsolete-dictionary-word')),
             (r'(#r\$)(%s)' % _name, bygroups(Operator, Name.Function), '#pop'),
             (r'#', Name.Builtin, ('#pop', 'system-constant')),
-            # system functions
+            # System functions
             (r'(child|children|elder|eldest|glk|indirect|metaclass|parent|'
              r'random|sibling|younger|youngest)\b', Name.Builtin, '#pop'),
-            # the symbols table
+            # Built-in symbols
             (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
              r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
              r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
@@ -3608,7 +3609,7 @@ class Inform6Lexer(RegexLexer):
              r'sys_statusline_flag|TARGET_GLULX|TARGET_ZCODE|temp_global|'
              r'temp__global[234]|true|USE_MODULES|WORDSIZE)\b', Name.Builtin,
              '#pop'),
-            # veneer routines
+            # Veneer routines
             (r'(?i)(Box__Routine|CA__Pr|CDefArt|CInDefArt|Cl__Ms|'
              r'Copy__Primitive|CP__Tab|DA__Pr|DB__Pr|DefArt|Dynam__String|'
              r'EnglishNumber|Glk__Wrap|IA__Pr|IB__Pr|InDefArt|Main__|'
@@ -3619,7 +3620,7 @@ class Inform6Lexer(RegexLexer):
              r'RT__ChSTB|RT__ChSTW|RT__ChT|RT__Err|RT__TrPS|RV__Pr|'
              r'Symb__Tab|Unsigned__Compare|WV__Pr|Z__Region)\b', Name.Builtin,
              '#pop'),
-            # other values
+            # Other values
             (_name, Name, '#pop'),
             (r'.+?\b', Error, '#pop')
         ],
@@ -3672,7 +3673,7 @@ class Inform6Lexer(RegexLexer):
             (r'(%s)?' % _name, Name.Variable, '#pop')
         ],
 
-        # values after a hash
+        # Values after a hash
         'obsolete-dictionary-word': [
             (r'([^\s][a-zA-Z_0-9]*)', String.Other, '#pop')
         ],
@@ -3681,7 +3682,7 @@ class Inform6Lexer(RegexLexer):
             (_name, Name.Builtin, '#pop')
         ],
 
-        # directives
+        # Directives
         'directive': [
             include('_whitespace'),
             (r'#', Punctuation),
@@ -3757,15 +3758,15 @@ class Inform6Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
         '_object-head': [
-            (r'(class|has|private|with)\b', Keyword, '#pop'),
+            (r'(class|has|private|with)\b', Keyword.Declaration, '#pop'),
             include('global?')
         ],
         'object-body': [
             include('_whitespace'),
             (r';', Punctuation, '#pop:2'),
             (r'[%s]>|,' % _dash, Punctuation),
-            (r'class\b', Keyword, 'class-segment'),
-            (r'(has|private|with)\b', Keyword),
+            (r'class\b', Keyword.Declaration, 'class-segment'),
+            (r'(has|private|with)\b', Keyword.Declaration),
             (r'', Text, '_object-expression')
         ],
         'class-segment': [
@@ -3813,7 +3814,7 @@ class Inform6Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
 
-        # keywords used in directives
+        # Keywords used in directives
         '_directive-keyword': [
             include('_whitespace'),
             (r'(additive|alias|buffer|class|creature|data|error|fatalerror|'
@@ -3850,7 +3851,7 @@ class Inform6Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
 
-        # statements
+        # Statements
         'statements': [
             include('_whitespace'),
             (r'\]', Punctuation, '#pop'),
@@ -3898,7 +3899,7 @@ class Inform6Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
 
-        # assembly
+        # Assembly
         'opcode': [
             include('_whitespace'),
             (r'[%s]' % _dquote, String.Double, ('operands', 'plain-string')),
@@ -3911,7 +3912,7 @@ class Inform6Lexer(RegexLexer):
             (r'', Text, '_assembly-expression')
         ],
 
-        # expressions
+        # Expressions
         '_assembly-expression': [
             (r'sp\b', Keyword.Pseudo, '#pop'),
             (r'\?~?', Name.Label, ('#pop', 'label?')),
@@ -3930,7 +3931,7 @@ class Inform6Lexer(RegexLexer):
         ],
         'object-expression2': [
             (r',', Punctuation, '#pop'),
-            (r'has\b', Keyword, '#pop')
+            (r'has\b', Keyword.Declaration, '#pop')
         ]
     }
     for token, rules in gen_expression_rules().items():
@@ -3982,7 +3983,7 @@ class Inform7Lexer(RegexLexer):
     _dash = Inform6Lexer._dash
     _dquote = Inform6Lexer._dquote
     _newline = Inform6Lexer._newline
-    _start = ur'^|(?<=%s)' % _newline
+    _start = r'\A|(?<=[%s])' % _newline
 
     # Inform 7 can include snippets of Inform 6 template language, so
     # all of Inform6Lexer's states are copied here, with modifications
@@ -4078,9 +4079,10 @@ class Inform7Lexer(RegexLexer):
         ],
         '+i6t': [
             (r'(%s)@c( [^%s]*)?' % (_start, _newline), Comment.Preproc),
+            (r'(%s)@c( [^%s]*)?' % (_start, _newline), Comment.Preproc),
             (r'(%s)@[%s]+[^%s]*' % (_start, _dash, _newline), Comment.Preproc),
             (r'(%s)@Purpose:[^%s]*' % (_start, _newline), Comment.Preproc),
-            (r'(%s)@p[ \n]' % _start, Comment.Preproc, '+p'),
+            (r'(%s)@p[ %s]' % (_start, _newline), Comment.Preproc, '+p'),
             (r'(\{[%s])(![^}]*)(\})' % _dash,
              bygroups(Punctuation, Comment.Single, Punctuation)),
             (r'(\{[%s])(lines)(:)' % _dash,
@@ -4092,12 +4094,14 @@ class Inform7Lexer(RegexLexer):
              bygroups(Punctuation, using(this, state='+main'), Punctuation))
         ],
         '+p': [
+            (r'([^@]|(?<!%s)@)+' % _start, Comment.Preproc),
             (r'(%s)@c( [^%s]*)?' % (_start, _newline), Comment.Preproc, '#pop'),
             (r'(%s)@([%s]+|p[ %s]|Purpose:)' % (_start, _dash, _newline),
              Comment.Preproc),
-            (r'(%s)@[%sa-zA-Z_0-9:]*[ \n]' % (_start, _dash), Keyword),
-            (r'(%s)@[^%s]*' % (_start, _newline), Error),
-            (r'([^@]|(?<!%s)@)+' % _start, Comment.Preproc)
+            (r'(%s)@[%sa-zA-Z_0-9:]*[ %s]' % (_start, _dash, _newline),
+             Keyword),
+            # Technically allowed, but undocumented and probably a mistake
+            (r'(%s)@[^%s]*' % (_start, _newline), Error)
         ],
         '+command': [
             (r'}', Punctuation, '#pop'),
@@ -4130,7 +4134,8 @@ class Inform7Lexer(RegexLexer):
 
 class Inform6TemplateLexer(Inform7Lexer):
     """
-    For `Inform 6 template <http://inform7.com/>`_ code.
+    For `Inform 6 template
+    <http://inform7.com/sources/src/i6template/Woven/index.html>`_ code.
     """
 
     name = 'Inform 6 template'
