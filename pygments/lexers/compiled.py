@@ -3557,21 +3557,21 @@ class Inform6Lexer(RegexLexer):
             (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
              '_expression'),
             (r'(from|near|to)\b', Keyword, '_expression'),
-            (r'@', Error),
+            (r'[@{]', Error),
             (r'', Text, '#pop')
         ],
-        'for-expression2': [
+        '_for-expression2': [
             (r'\)', Punctuation, '#pop:2'),
             (r':', Punctuation, '#pop'),
             include('expression2')
         ],
-        'list-expression2': [
+        '_list-expression2': [
             (r',', Punctuation, '#pop'),
             include('expression2')
         ],
-        'object-expression2': [
+        '_object-expression2': [
             (r'has\b', Keyword.Declaration, '#pop'),
-            include('list-expression2')
+            include('_list-expression2')
         ],
 
         # Values
@@ -3625,21 +3625,21 @@ class Inform6Lexer(RegexLexer):
              r'temp__global2|temp__global3|temp__global4|temp_global|true|'
              r'USE_MODULES|WORDSIZE)\b', Name.Builtin, '#pop'),
             # Other values
-            (_name, Name, '#pop'),
-            (r'.+?\b', Error, '#pop')
+            (_name, Name, '#pop')
         ],
+        # Strings
         'dictionary-word': [
             (r'[~^]+', String.Escape),
-            (r'[^~^\\@({\[\]%s]+' % _squote, String.Single),
-            (r'[({\[\]]', String.Single),
+            (r'[^~^\\@({%s]+' % _squote, String.Single),
+            (r'[({]', String.Single),
             (r'@{[0-9a-fA-F]{,4}}', String.Escape),
             (r'@..', String.Escape),
             (r'[%s]' % _squote, String.Single, '#pop')
         ],
         'string': [
             (r'[~^]+', String.Escape),
-            (r'[^~^\\@({\[\]%s]+' % _dquote, String.Double),
-            (r'[({\[\]]', String.Double),
+            (r'[^~^\\@({%s]+' % _dquote, String.Double),
+            (r'[({]', String.Double),
             (r'\\', String.Escape),
             (r'@(\\\s*[%s]\s*)*@((\\\s*[%s]\s*)*[0-9])*' %
              (_newline, _newline), String.Escape),
@@ -3656,12 +3656,13 @@ class Inform6Lexer(RegexLexer):
             (r'\\', String.Escape),
             (r'[%s]' % _dquote, String.Double, '#pop')
         ],
-        'constant': [
+        # Names
+        '_constant': [
             include('_whitespace'),
             (_name, Name.Constant, '#pop'),
             include('value')
         ],
-        'global': [
+        '_global': [
             include('_whitespace'),
             (_name, Name.Variable.Global, '#pop'),
             include('value')
@@ -3674,9 +3675,9 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r'(%s)?' % _name, Name.Variable, '#pop')
         ],
-        # Values after a hash
+        # Values after hashes
         'obsolete-dictionary-word': [
-            (r'(\S[a-zA-Z_0-9]*)', String.Other, '#pop')
+            (r'\S[a-zA-Z_0-9]*', String.Other, '#pop')
         ],
         'system-constant': [
             include('_whitespace'),
@@ -3694,24 +3695,24 @@ class Inform6Lexer(RegexLexer):
              r'iftrue|ifv3|ifv5|release|serial|switches|system_file|version)'
              r'\b', Keyword, 'default'),
             (r'(?i)(array|global)\b', Keyword,
-             ('default', 'directive-keyword?', 'global')),
-            (r'(?i)attribute\b', Keyword, ('default', 'alias?', 'constant')),
+             ('default', 'directive-keyword?', '_global')),
+            (r'(?i)attribute\b', Keyword, ('default', 'alias?', '_constant')),
             (r'(?i)class\b', Keyword,
              ('object-body', 'duplicates', 'class-name')),
             (r'(?i)(constant|default)\b', Keyword,
-             ('default', 'expression2', 'constant')),
+             ('default', 'expression2', '_constant')),
             (r'(?i)(end\b)(.*)', bygroups(Keyword, Text)),
             (r'(?i)(extend|verb)\b', Keyword, 'grammar'),
-            (r'(?i)fake_action\b', Keyword, ('default', 'constant')),
+            (r'(?i)fake_action\b', Keyword, ('default', '_constant')),
             (r'(?i)import\b', Keyword, 'manifest'),
             (r'(?i)(include|link)\b', Keyword,
              ('default', 'before-plain-string')),
-            (r'(?i)(lowstring|undef)\b', Keyword, ('default', 'constant')),
+            (r'(?i)(lowstring|undef)\b', Keyword, ('default', '_constant')),
             (r'(?i)message\b', Keyword, ('default', 'diagnostic')),
             (r'(?i)(nearby|object)\b', Keyword,
              ('object-body', '_object-head')),
             (r'(?i)property\b', Keyword,
-             ('default', 'alias?', 'constant', 'property-keyword*')),
+             ('default', 'alias?', '_constant', 'property-keyword*')),
             (r'(?i)replace\b', Keyword,
              ('default', 'routine-name?', 'routine-name?')),
             (r'(?i)statusline\b', Keyword, ('default', 'directive-keyword?')),
@@ -3743,7 +3744,7 @@ class Inform6Lexer(RegexLexer):
         # Attribute, Property
         'alias?': [
             include('_whitespace'),
-            (r'alias\b', Keyword, ('#pop', 'constant')),
+            (r'alias\b', Keyword, ('#pop', '_constant')),
             (r'', Text, '#pop')
         ],
         # Class, Object, Nearby
@@ -3760,7 +3761,7 @@ class Inform6Lexer(RegexLexer):
         '_object-head': [
             (r'[%s]>' % _dash, Punctuation),
             (r'(class|has|private|with)\b', Keyword.Declaration, '#pop'),
-            include('global')
+            include('_global')
         ],
         'object-body': [
             include('_whitespace'),
@@ -3768,7 +3769,7 @@ class Inform6Lexer(RegexLexer):
             (r',', Punctuation),
             (r'class\b', Keyword.Declaration, 'class-segment'),
             (r'(has|private|with)\b', Keyword.Declaration),
-            (r'', Text, ('object-expression2', '_expression'))
+            (r'', Text, ('_object-expression2', '_expression'))
         ],
         'class-segment': [
             include('_whitespace'),
@@ -3781,7 +3782,7 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r'=', Punctuation, ('#pop', 'default')),
             (r'\*', Punctuation, ('#pop', 'grammar-line')),
-            (r'', Text, 'directive-keyword')
+            (r'', Text, '_directive-keyword')
         ],
         'grammar-line': [
             include('_whitespace'),
@@ -3789,7 +3790,7 @@ class Inform6Lexer(RegexLexer):
             (r'[/*]', Punctuation),
             (r'[%s]>' % _dash, Punctuation, 'value'),
             (r'(noun|scope)\b', Keyword, '=routine'),
-            (r'', Text, 'directive-keyword')
+            (r'', Text, '_directive-keyword')
         ],
         '=routine': [
             include('_whitespace'),
@@ -3801,7 +3802,7 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r';', Punctuation, '#pop'),
             (r',', Punctuation),
-            (r'(?i)(global\b)?', Keyword, 'global')
+            (r'(?i)(global\b)?', Keyword, '_global')
         ],
         # Include, Link, Message
         'diagnostic': [
@@ -3819,7 +3820,7 @@ class Inform6Lexer(RegexLexer):
         ],
 
         # Keywords used in directives
-        '_directive-keyword': [
+        '_directive-keyword!': [
             include('_whitespace'),
             (r'(additive|alias|buffer|class|creature|data|error|fatalerror|'
              r'first|has|held|initial|initstr|last|long|meta|multi|'
@@ -3828,12 +3829,12 @@ class Inform6Lexer(RegexLexer):
              r'time|topic|warning|with)\b', Keyword, '#pop'),
             (r'[%s]{1,2}>|[+=]' % _dash, Punctuation, '#pop')
         ],
-        'directive-keyword': [
-            include('_directive-keyword'),
+        '_directive-keyword': [
+            include('_directive-keyword!'),
             include('value')
         ],
         'directive-keyword?': [
-            include('_directive-keyword'),
+            include('_directive-keyword!'),
             (r'', Text, '#pop')
         ],
         'property-keyword*': [
@@ -3888,13 +3889,13 @@ class Inform6Lexer(RegexLexer):
         ],
         'for': [
             include('_whitespace'),
-            (r';?', Punctuation, ('for-expression2', '_expression'))
+            (r';?', Punctuation, ('_for-expression2', '_expression'))
         ],
         'print-list': [
             include('_whitespace'),
             (r';', Punctuation, '#pop'),
             (r'', Text,
-             ('list-expression2', '_expression', 'list-expression2', 'form'))
+             ('_list-expression2', '_expression', '_list-expression2', 'form'))
         ],
         'form': [
             include('_whitespace'),
@@ -3989,6 +3990,7 @@ class Inform7Lexer(RegexLexer):
             (r'[%s]' % _dquote, Generic.Heading, '#pop')
         ],
         '+titling': [
+            (r'\[', Comment.Multiline, '+comment'),
             (r'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
             (r'[%s]' % _dquote, Generic.Heading, '+titling-string'),
             (r'[%s]{2}|(?<=[\s%s])\|[\s%s]' % (_newline, _dquote, _dquote),
