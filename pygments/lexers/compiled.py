@@ -3976,7 +3976,7 @@ class Inform7Lexer(RegexLexer):
     for token in Inform6Lexer.tokens:
         tokens[token] = list(Inform6Lexer.tokens[token])
         if not token.startswith('_'):
-            tokens[token].insert(0, include('+i6t'))
+            tokens[token][:0] = [include('+i6t-not-inline'), include('+i6t')]
     tokens.update({
         'root': [
             (r'(\|?\s)+', Text),
@@ -4057,11 +4057,13 @@ class Inform7Lexer(RegexLexer):
             (r'[^\[%s]+[%s]' % (_newline, _newline), Text),
             (r'\[', Comment.Multiline, '+comment'),
         ],
-        '+i6t': [
-            (r'(%s)@c(?=[%s]|\Z)' % (_start, _newline), Comment.Preproc),
+        '+i6t-not-inline': [
+            (r'(%s)@c([%s]|\Z)' % (_start, _newline), Comment.Preproc),
             (r'(%s)@([%s]+|Purpose:)[^%s]*' % (_start, _dash, _newline),
              Comment.Preproc),
-            (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading, '+p'),
+            (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading, '+p')
+        ],
+        '+i6t': [
             (r'({[%s])(![^}]*)(}?)' % _dash,
              bygroups(Punctuation, Comment.Single, Punctuation)),
             (r'({[%s])(lines)(:)([^}]*)(}?)' % _dash,
@@ -4074,7 +4076,7 @@ class Inform7Lexer(RegexLexer):
         ],
         '+p': [
             (r'[^@]+', Comment.Preproc),
-            (r'(%s)@c(?=[%s]|\Z)' % (_start, _newline), Comment.Preproc,
+            (r'(%s)@c([%s]|\Z)' % (_start, _newline), Comment.Preproc,
              '#pop'),
             (r'(%s)@([%s]|Purpose:)' % (_start, _dash), Comment.Preproc),
             (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading),
@@ -4082,7 +4084,7 @@ class Inform7Lexer(RegexLexer):
             (r'@', Comment.Preproc)
         ],
         '+lines': [
-            (r'(%s)@c(?=[%s]|\Z)' % (_start, _newline), Comment.Preproc),
+            (r'(%s)@c([%s]|\Z)' % (_start, _newline), Comment.Preproc),
             (r'(%s)@([%s]|Purpose:)[^%s]*' % (_start, _dash, _newline),
              Comment.Preproc),
             (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading, '+p'),
@@ -4098,12 +4100,12 @@ class Inform7Lexer(RegexLexer):
         if get_bool_opt(options, 'inline', False):
             for token in self.tokens:
                 if token != 'root' and not token.startswith(('_', '+')):
-                    self.tokens[token].insert(1,
-                                              (r'({)(\S[^}]*)?(})',
-                                               bygroups(Punctuation,
-                                                        using(this,
-                                                              state='+main'),
-                                                        Punctuation)))
+                    self._tokens[token][0:len(
+                        self.tokens['+i6t-not-inline'])] = [(
+                            re.compile(r'({)(\S[^}]*)?(})',
+                                       flags=self.flags).match,
+                            bygroups(Punctuation, using(this, state='+main'),
+                                     Punctuation), None)]
         RegexLexer.__init__(self, **options)
 
 
