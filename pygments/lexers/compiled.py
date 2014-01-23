@@ -3971,13 +3971,17 @@ class Inform7Lexer(RegexLexer):
     # Inform 7 can include snippets of Inform 6 template language, so
     # all of Inform6Lexer's states are copied here, with modifications
     # to account for template syntax. Inform7Lexer's own states begin
-    # with '+' to avoid name conflicts.
+    # with '+' to avoid name conflicts. Some of Inform6Lexer's states
+    # begin with '_': these are not modified. They deal with template
+    # syntax either by including modified states, or by matching r''
+    # then pushing to modified states.
     tokens = {}
     for token in Inform6Lexer.tokens:
         tokens[token] = list(Inform6Lexer.tokens[token])
         if not token.startswith('_'):
             tokens[token][:0] = [include('+i6t-not-inline'), include('+i6t')]
     tokens.update({
+        '+i6-root': Inform6Lexer.tokens['root'],
         'root': [
             (r'(\|?\s)+', Text),
             (r'\[', Comment.Multiline, '+comment'),
@@ -3999,22 +4003,32 @@ class Inform7Lexer(RegexLexer):
             (r'[|%s]' % _newline, Generic.Heading)
         ],
         '+main': [
-            (r'[^%s:\[(|%s]+' % (_dquote, _newline), Text),
+            (r'(?i)[^%s:a\[(|%s]+' % (_dquote, _newline), Text),
             (r'[%s]' % _dquote, String.Double, '+text'),
             (r':', Text, '+phrase-definition'),
+            (r'(?i)\bas\b', Text, '+use-option'),  # "Use ... translates as"
             (r'\[', Comment.Multiline, '+comment'),
             (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation, using(this, state='directive',
+             bygroups(Punctuation, using(this, state=('+i6-root', 'directive'),
                                          inline=False), Punctuation)),
             (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2,}' % (_start, _dquote, _newline),
              Text, '+heading?'),
-            (r'[(|%s]' % _newline, Text)
+            (r'(?i)[a(|%s]' % _newline, Text)
         ],
         '+phrase-definition': [
             (r'\s+', Text),
             (r'\[', Comment.Multiline, '+comment'),
             (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation, using(this, state='statements',
+             bygroups(Punctuation, using(this, state=('+i6-root', 'directive',
+                                                      'default', 'statements'),
+                                         inline=True), Punctuation), '#pop'),
+            (r'', Text, '#pop')
+        ],
+        '+use-option': [
+            (r'\s+', Text),
+            (r'\[', Comment.Multiline, '+comment'),
+            (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+             bygroups(Punctuation, using(this, state=('+i6-root', 'directive'),
                                          inline=True), Punctuation), '#pop'),
             (r'', Text, '#pop')
         ],
@@ -4098,14 +4112,14 @@ class Inform7Lexer(RegexLexer):
 
     def __init__(self, **options):
         if get_bool_opt(options, 'inline', False):
+            not_inline_length = len(self.tokens['+i6t-not-inline'])
             for token in self.tokens:
                 if token != 'root' and not token.startswith(('_', '+')):
-                    self._tokens[token][0:len(
-                        self.tokens['+i6t-not-inline'])] = [(
-                            re.compile(r'({)(\S[^}]*)?(})',
-                                       flags=self.flags).match,
-                            bygroups(Punctuation, using(this, state='+main'),
-                                     Punctuation), None)]
+                    self._tokens[token][0:not_inline_length] = [
+                        (re.compile(r'({)(\S[^}]*)?(})',
+                                    flags=self.flags).match,
+                         bygroups(Punctuation, using(this, state='+main'),
+                                  Punctuation), None)]
         RegexLexer.__init__(self, **options)
 
 
