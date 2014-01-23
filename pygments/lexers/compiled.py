@@ -3979,7 +3979,7 @@ class Inform7Lexer(RegexLexer):
     for token in Inform6Lexer.tokens:
         tokens[token] = list(Inform6Lexer.tokens[token])
         if not token.startswith('_'):
-            tokens[token][:0] = [include('+i6t-not-inline'), include('+i6t')]
+            tokens[token][:0] = [include('+i6t'), include('+i6t-not-inline')]
     tokens.update({
         '+i6-root': Inform6Lexer.tokens['root'],
         'root': [
@@ -4112,10 +4112,11 @@ class Inform7Lexer(RegexLexer):
 
     def __init__(self, **options):
         if get_bool_opt(options, 'inline', False):
+            not_inline_start = len(self.tokens['+i6t'])
             not_inline_length = len(self.tokens['+i6t-not-inline'])
             for token in self.tokens:
                 if token != 'root' and not token.startswith(('_', '+')):
-                    self._tokens[token][0:not_inline_length] = [
+                    self._tokens[token][not_inline_start:not_inline_length] = [
                         (re.compile(r'({)(\S[^}]*)?(})',
                                     flags=self.flags).match,
                          bygroups(Punctuation, using(this, state='+main'),
