@@ -3863,7 +3863,7 @@ class Inform6Lexer(RegexLexer):
             (r'for\b', Keyword, ('for', '(?')),
             (r'(if|switch|while)', Keyword,
              ('expression2', '_expression', '(?')),
-            (r'jump\b', Keyword, ('default', 'label?')),
+            (r'(jump|save|restore)\b', Keyword, ('default', 'label?')),
             (r'objectloop\b', Keyword, ('expression2', 'variable?', '(?')),
             (r'print(_ret)?\b|(?=[%s])' % _dquote, Keyword, 'print-list'),
             (r'\.', Name.Label, 'label?'),
