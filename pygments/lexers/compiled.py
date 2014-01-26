@@ -3560,6 +3560,10 @@ class Inform6Lexer(RegexLexer):
             (r'[@{]', Error),
             (r'', Text, '#pop')
         ],
+        '_assembly-expression2': [
+            (r'\(', Punctuation, '#pop'),
+            include('expression2')
+        ],
         '_for-expression2': [
             (r'\)', Punctuation, '#pop:2'),
             (r':', Punctuation, '#pop'),
@@ -3916,7 +3920,7 @@ class Inform6Lexer(RegexLexer):
             (r'\?~?', Name.Label, 'label?'),
             (r'[\[\]()]', Punctuation),
             (r';', Punctuation, '#pop:2'),
-            (r'', Text, ('expression2', '_expression'))
+            (r'', Text, ('_assembly-expression2', '_expression'))
         ]
     }
 
