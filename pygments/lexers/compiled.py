@@ -4072,11 +4072,13 @@ class Inform7Lexer(RegexLexer):
                 (r'', Text, '#pop:2')
             ],
             '+documentation': [
-                (r'(?i)(%s)\s+(chapter|example|section)\s+:[^%s]+' %
+                (r'(?i)(%s)\s*(chapter|example)\s*:[^%s]*' %
                  (_start, _newline), Generic.Heading),
+                (r'(?i)(%s)\s*section\s*:[^%s]*' % (_start, _newline),
+                 Generic.Subheading),
                 (r'((%s)\t.*?[%s])+' % (_start, _newline),
                  using(this, state='+main')),
-                (r'[^\[%s]+[%s]' % (_newline, _newline), Text),
+                (r'[^%s\[]+|[%s\[]' % (_newline, _newline), Text),
                 (r'\[', Comment.Multiline, '+comment'),
             ],
             '+i6t-not-inline': [

@@ -20,11 +20,7 @@ This is a paragraph.
 So is this.
 @Purpose: This purpose line is ignored.
 
-@c Braced invocation syntax and at signs.
+@c At signs.
 [ Foo i;
 @add sp 1 -> i; ! Assembly works even in the first column.
-    if (i == 0) {
-        i = 1;
-    }
-;
 ];

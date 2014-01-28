@@ -20,7 +20,9 @@ To add an example to the story, we write:
 
 To interact with it in Inform 6, we write something like:
 
-	To say (E - example): (-print (object) {E};-).
+	To say (E - example): (-
+		print (object) {E};
+	-).
 	[The IDE's documentation viewer does not display the closing -). I don't know how to fix that.]
 
 Section: Testing
