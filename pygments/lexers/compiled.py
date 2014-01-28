@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
     pygments.lexers.compiled
     ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3972,159 +3971,188 @@ class Inform7Lexer(RegexLexer):
     _newline = Inform6Lexer._newline
     _start = r'\A|(?<=[%s])' % _newline
 
-    # Inform 7 can include snippets of Inform 6 template language, so
-    # all of Inform6Lexer's states are copied here, with modifications
-    # to account for template syntax. Inform7Lexer's own states begin
-    # with '+' to avoid name conflicts. Some of Inform6Lexer's states
-    # begin with '_': these are not modified. They deal with template
-    # syntax either by including modified states, or by matching r''
-    # then pushing to modified states.
+    # There are three variants of Inform 7, differing in how to
+    # interpret at signs and braces in I6T. In top-level inclusions, at
+    # signs in the first column are inweb syntax. In phrase definitions,
+    # tokens in braces are treated as I7. In use options, both are true.
     tokens = {}
-    for token in Inform6Lexer.tokens:
-        tokens[token] = list(Inform6Lexer.tokens[token])
-        if not token.startswith('_'):
-            tokens[token][:0] = [include('+i6t'), include('+i6t-not-inline')]
-    tokens.update({
-        '+i6-root': Inform6Lexer.tokens['root'],
-        'root': [
-            (r'(\|?\s)+', Text),
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'[%s]' % _dquote, Generic.Heading,
-             ('+main', '+titling', '+titling-string')),
-            (r'', Text, ('+main', '+heading?'))
-        ],
-        '+titling-string': [
-            (r'[^%s]+' % _dquote, Generic.Heading),
-            (r'[%s]' % _dquote, Generic.Heading, '#pop')
-        ],
-        '+titling': [
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
-            (r'[%s]' % _dquote, Generic.Heading, '+titling-string'),
-            (r'[%s]{2}|(?<=[\s%s])\|[\s%s]' % (_newline, _dquote, _dquote),
-             Text, ('#pop', '+heading?')),
-            (r'[.;:]|(?<=[\s%s])\|' % _dquote, Text, '#pop'),
-            (r'[|%s]' % _newline, Generic.Heading)
-        ],
-        '+main': [
-            (r'(?i)[^%s:a\[(|%s]+' % (_dquote, _newline), Text),
-            (r'[%s]' % _dquote, String.Double, '+text'),
-            (r':', Text, '+phrase-definition'),
-            (r'(?i)\bas\b', Text, '+use-option'),  # "Use ... translates as"
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation, using(this, state=('+i6-root', 'directive'),
-                                         inline=False), Punctuation)),
-            (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2,}' % (_start, _dquote, _newline),
-             Text, '+heading?'),
-            (r'(?i)[a(|%s]' % _newline, Text)
-        ],
-        '+phrase-definition': [
-            (r'\s+', Text),
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation, using(this, state=('+i6-root', 'directive',
-                                                      'default', 'statements'),
-                                         inline=True), Punctuation), '#pop'),
-            (r'', Text, '#pop')
-        ],
-        '+use-option': [
-            (r'\s+', Text),
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
-             bygroups(Punctuation, using(this, state=('+i6-root', 'directive'),
-                                         inline=True), Punctuation), '#pop'),
-            (r'', Text, '#pop')
-        ],
-        '+comment': [
-            (r'[^\[\]]+', Comment.Multiline),
-            (r'\[', Comment.Multiline, '#push'),
-            (r'\]', Comment.Multiline, '#pop')
-        ],
-        '+text': [
-            (r'[^\[%s]+' % _dquote, String.Double),
-            (r'\[.*?\]', String.Interpol),
-            (r'[%s]' % _dquote, String.Double, '#pop')
-        ],
-        '+heading?': [
-            (r'(\|?\s)+', Text),
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'[%s]{4}\s+' % _dash, Text, '+documentation-heading'),
-            (r'[%s]{1,3}' % _dash, Text),
-            (r'(?i)(volume|book|part|chapter|section)\b[^%s]*' % _newline,
-             Generic.Heading, '#pop'),
-            (r'', Text, '#pop')
-        ],
-        '+documentation-heading': [
-            (r'\s+', Text),
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'(?i)documentation\s+', Text, '+documentation-heading2'),
-            (r'', Text, '#pop')
-        ],
-        '+documentation-heading2': [
-            (r'\s+', Text),
-            (r'\[', Comment.Multiline, '+comment'),
-            (r'[%s]{4}\s' % _dash, Text, '+documentation'),
-            (r'', Text, '#pop:2')
-        ],
-        '+documentation': [
-            (r'(?i)(%s)\s+(chapter|example|section)\s+:[^%s]+' %
-             (_start, _newline), Generic.Heading),
-            (r'((%s)\t.*?[%s])+' % (_start, _newline),
-             using(this, state='+main')),
-            (r'[^\[%s]+[%s]' % (_newline, _newline), Text),
-            (r'\[', Comment.Multiline, '+comment'),
-        ],
-        '+i6t-not-inline': [
-            (r'(%s)@c([%s]|\Z)' % (_start, _newline), Comment.Preproc),
-            (r'(%s)@([%s]+|Purpose:)[^%s]*' % (_start, _dash, _newline),
-             Comment.Preproc),
-            (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading, '+p')
-        ],
-        '+i6t': [
-            (r'({[%s])(![^}]*)(}?)' % _dash,
-             bygroups(Punctuation, Comment.Single, Punctuation)),
-            (r'({[%s])(lines)(:)([^}]*)(}?)' % _dash,
-             bygroups(Punctuation, Keyword, Punctuation, Text, Punctuation),
-             '+lines'),
-            (r'({[%s])([^:}]*)(:?)([^}]*)(}?)' % _dash,
-             bygroups(Punctuation, Keyword, Punctuation, Text, Punctuation)),
-            (r'(\(\+)(.*?)(\+\)|\Z)',
-             bygroups(Punctuation, using(this, state='+main'), Punctuation))
-        ],
-        '+p': [
-            (r'[^@]+', Comment.Preproc),
-            (r'(%s)@c([%s]|\Z)' % (_start, _newline), Comment.Preproc,
-             '#pop'),
-            (r'(%s)@([%s]|Purpose:)' % (_start, _dash), Comment.Preproc),
-            (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading),
-            (r'(%s)@[a-zA-Z_0-9]*[ %s]' % (_start, _newline), Keyword),
-            (r'@', Comment.Preproc)
-        ],
-        '+lines': [
-            (r'(%s)@c([%s]|\Z)' % (_start, _newline), Comment.Preproc),
-            (r'(%s)@([%s]|Purpose:)[^%s]*' % (_start, _dash, _newline),
-             Comment.Preproc),
-            (r'(%s)@p( .*?)?[%s]' % (_start, _newline), Generic.Heading, '+p'),
-            (r'(%s)@[a-zA-Z_0-9]*[ %s]' % (_start, _newline), Keyword),
-            (r'![^%s]*' % _newline, Comment.Single),
-            (r'({)([%s]endlines)(})' % _dash,
-             bygroups(Punctuation, Keyword, Punctuation), '#pop'),
-            (r'[^@!{]+?([%s]|\Z)|.' % _newline, Text)
-        ]
-    })
+    token_variants = ['+i6t-not-inline', '+i6t-inline', '+i6t-use-option']
+
+    for state in token_variants:
+        tokens[state] = {
+            '+i6-root': list(Inform6Lexer.tokens['root']),
+            '+i6t-root': [  # For Inform6TemplateLexer
+                (r'[^%s]*' % Inform6Lexer._newline, Comment.Preproc,
+                 ('directive', '+p'))
+            ],
+            'root': [
+                (ur'\ufeff?(\|?\s)+', Text),
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'[%s]' % _dquote, Generic.Heading,
+                 ('+main', '+titling', '+titling-string')),
+                (r'', Text, ('+main', '+heading?'))
+            ],
+            '+titling-string': [
+                (r'[^%s]+' % _dquote, Generic.Heading),
+                (r'[%s]' % _dquote, Generic.Heading, '#pop')
+            ],
+            '+titling': [
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'[^%s.;:|%s]+' % (_dquote, _newline), Generic.Heading),
+                (r'[%s]' % _dquote, Generic.Heading, '+titling-string'),
+                (r'[%s]{2}|(?<=[\s%s])\|[\s%s]' % (_newline, _dquote, _dquote),
+                 Text, ('#pop', '+heading?')),
+                (r'[.;:]|(?<=[\s%s])\|' % _dquote, Text, '#pop'),
+                (r'[|%s]' % _newline, Generic.Heading)
+            ],
+            '+main': [
+                (r'(?i)[^%s:a\[(|%s]+' % (_dquote, _newline), Text),
+                (r'[%s]' % _dquote, String.Double, '+text'),
+                (r':', Text, '+phrase-definition'),
+                (r'(?i)\bas\b', Text, '+use-option'),  # "Use UO translates as"
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+                 bygroups(Punctuation,
+                          using(this, state=('+i6-root', 'directive'),
+                                             inline='+i6t-not-inline'),
+                          Punctuation)),
+                (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2,}' %
+                 (_start, _dquote, _newline), Text, '+heading?'),
+                (r'(?i)[a(|%s]' % _newline, Text)
+            ],
+            '+phrase-definition': [
+                (r'\s+', Text),
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+                 bygroups(Punctuation,
+                          using(this, state=('+i6-root', 'directive',
+                                             'default', 'statements'),
+                                inline='+i6t-inline'), Punctuation), '#pop'),
+                (r'', Text, '#pop')
+            ],
+            '+use-option': [
+                (r'\s+', Text),
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
+                 bygroups(Punctuation,
+                          using(this, state=('+i6-root', 'directive'),
+                                inline='+i6t-use-option'), Punctuation),
+                 '#pop'),
+                (r'', Text, '#pop')
+            ],
+            '+comment': [
+                (r'[^\[\]]+', Comment.Multiline),
+                (r'\[', Comment.Multiline, '#push'),
+                (r'\]', Comment.Multiline, '#pop')
+            ],
+            '+text': [
+                (r'[^\[%s]+' % _dquote, String.Double),
+                (r'\[.*?\]', String.Interpol),
+                (r'[%s]' % _dquote, String.Double, '#pop')
+            ],
+            '+heading?': [
+                (r'(\|?\s)+', Text),
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'[%s]{4}\s+' % _dash, Text, '+documentation-heading'),
+                (r'[%s]{1,3}' % _dash, Text),
+                (r'(?i)(volume|book|part|chapter|section)\b[^%s]*' % _newline,
+                 Generic.Heading, '#pop'),
+                (r'', Text, '#pop')
+            ],
+            '+documentation-heading': [
+                (r'\s+', Text),
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'(?i)documentation\s+', Text, '+documentation-heading2'),
+                (r'', Text, '#pop')
+            ],
+            '+documentation-heading2': [
+                (r'\s+', Text),
+                (r'\[', Comment.Multiline, '+comment'),
+                (r'[%s]{4}\s' % _dash, Text, '+documentation'),
+                (r'', Text, '#pop:2')
+            ],
+            '+documentation': [
+                (r'(?i)(%s)\s+(chapter|example|section)\s+:[^%s]+' %
+                 (_start, _newline), Generic.Heading),
+                (r'((%s)\t.*?[%s])+' % (_start, _newline),
+                 using(this, state='+main')),
+                (r'[^\[%s]+[%s]' % (_newline, _newline), Text),
+                (r'\[', Comment.Multiline, '+comment'),
+            ],
+            '+i6t-not-inline': [
+                (r'(%s)@c( .*?)?([%s]|\Z)' % (_start, _newline),
+                 Comment.Preproc),
+                (r'(%s)@([%s]+|Purpose:)[^%s]*' % (_start, _dash, _newline),
+                 Comment.Preproc),
+                (r'(%s)@p( .*?)?([%s]|\Z)' % (_start, _newline),
+                 Generic.Heading, '+p')
+            ],
+            '+i6t-inline': [
+                (r'({)(\S[^}]*)?(})',
+                 bygroups(Punctuation, using(this, state='+main'),
+                          Punctuation))
+            ],
+            '+i6t-use-option': [
+                include('+i6t-not-inline'),
+                include('+i6t-inline')
+            ],
+            '+i6t': [
+                (r'({[%s])(![^}]*)(}?)' % _dash,
+                 bygroups(Punctuation, Comment.Single, Punctuation)),
+                (r'({[%s])(lines)(:)([^}]*)(}?)' % _dash,
+                 bygroups(Punctuation, Keyword, Punctuation, Text,
+                          Punctuation), '+lines'),
+                (r'({[%s])([^:}]*)(:?)([^}]*)(}?)' % _dash,
+                 bygroups(Punctuation, Keyword, Punctuation, Text,
+                          Punctuation)),
+                (r'(\(\+)(.*?)(\+\)|\Z)',
+                 bygroups(Punctuation, using(this, state='+main'),
+                          Punctuation))
+            ],
+            '+p': [
+                (r'[^@]+', Comment.Preproc),
+                (r'(%s)@c( .*?)?([%s]|\Z)' % (_start, _newline),
+                 Comment.Preproc, '#pop'),
+                (r'(%s)@([%s]|Purpose:)' % (_start, _dash), Comment.Preproc),
+                (r'(%s)@p( .*?)?([%s]|\Z)' % (_start, _newline),
+                 Generic.Heading),
+                (r'(%s)@[a-zA-Z_0-9]*[ %s]' % (_start, _newline), Keyword),
+                (r'@', Comment.Preproc)
+            ],
+            '+lines': [
+                (r'(%s)@c( .*?)?([%s]|\Z)' % (_start, _newline),
+                 Comment.Preproc),
+                (r'(%s)@([%s]|Purpose:)[^%s]*' % (_start, _dash, _newline),
+                 Comment.Preproc),
+                (r'(%s)@p( .*?)?([%s]|\Z)' % (_start, _newline),
+                 Generic.Heading, '+p'),
+                (r'(%s)@[a-zA-Z_0-9]*[ %s]' % (_start, _newline), Keyword),
+                (r'![^%s]*' % _newline, Comment.Single),
+                (r'({)([%s]endlines)(})' % _dash,
+                 bygroups(Punctuation, Keyword, Punctuation), '#pop'),
+                (r'[^@!{]+?([%s]|\Z)|.' % _newline, Text)
+            ]
+        }
+        # Inform 7 can include snippets of Inform 6 template language,
+        # so all of Inform6Lexer's states are copied here, with
+        # modifications to account for template syntax. Inform7Lexer's
+        # own states begin with '+' to avoid name conflicts. Some of
+        # Inform6Lexer's states begin with '_': these are not modified.
+        # They deal with template syntax either by including modified
+        # states, or by matching r'' then pushing to modified states.
+        for token in Inform6Lexer.tokens:
+            if token == 'root':
+                continue
+            tokens[state][token] = list(Inform6Lexer.tokens[token])
+            if not token.startswith('_'):
+                tokens[state][token][:0] = [include('+i6t'), include(state)]
 
     def __init__(self, **options):
-        if get_bool_opt(options, 'inline', False):
-            not_inline_start = len(self.tokens['+i6t'])
-            not_inline_length = len(self.tokens['+i6t-not-inline'])
-            for token in self.tokens:
-                if token != 'root' and not token.startswith(('_', '+')):
-                    self._tokens[token][not_inline_start:not_inline_length] = [
-                        (re.compile(r'({)(\S[^}]*)?(})',
-                                    flags=self.flags).match,
-                         bygroups(Punctuation, using(this, state='+main'),
-                                  Punctuation), None)]
+        state = options.get('inline', '+i6t-not-inline')
+        if state not in self._all_tokens:
+            self._tokens = self.__class__.process_tokendef(state)
+        else:
+            self._tokens = self._all_tokens[inline]
         RegexLexer.__init__(self, **options)
 
 
@@ -4138,9 +4166,6 @@ class Inform6TemplateLexer(Inform7Lexer):
     aliases = ['i6t']
     filenames = ['*.i6t']
 
-    tokens = {
-        'root': [
-            (r'[^%s]*' % Inform6Lexer._newline, Comment.Preproc,
-             ('directive', '+p'))
-        ]
-    }
+    def get_tokens_unprocessed(self, text):
+        return Inform7Lexer.get_tokens_unprocessed(self, text,
+                                                   stack=('+i6t-root',))
