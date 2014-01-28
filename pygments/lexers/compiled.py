@@ -4116,7 +4116,6 @@ class Inform7Lexer(RegexLexer):
                 (r'(%s)@([%s]|Purpose:)' % (_start, _dash), Comment.Preproc),
                 (r'(%s)@p( .*?)?([%s]|\Z)' % (_start, _newline),
                  Generic.Heading),
-                (r'(%s)@[a-zA-Z_0-9]*[ %s]' % (_start, _newline), Keyword),
                 (r'@', Comment.Preproc)
             ],
             '+lines': [
