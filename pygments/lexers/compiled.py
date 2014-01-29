@@ -3532,22 +3532,23 @@ class Inform6Lexer(RegexLexer):
             (r'\[', Punctuation, 'many-values'),  # Array initialization
             (r':|(?=;)', Punctuation, '#pop'),
             (r'<', Punctuation),  # Second angle bracket in an action statement
-            (r'', Text, ('expression2', '_expression'))
+            (r'', Text, ('expression', '_expression'))
         ],
 
         # Expressions
         '_expression': [
             include('_whitespace'),
+            (r'(?=sp\b)', Text, '#pop'),
             (r'(?=[%s%s$0-9#a-zA-Z_])' % (_dquote, _squote), Text,
              ('#pop', 'value')),
-            (r'\+\+|[%s]{1,2}|~~?' % _dash, Operator),
-            (r'\[', Punctuation, ('#pop', 'statements', 'locals')),
-            (r'(?=[,;:(){@])', Text, '#pop')
+            (r'\+\+|[%s]{1,2}(?!>)|~~?' % _dash, Operator),
+            (r'(?=.)', Text, '#pop')
         ],
-        'expression2': [
+        'expression': [
             include('_whitespace'),
-            (r'\(', Punctuation, ('expression2', '_expression')),
+            (r'\(', Punctuation, ('expression', '_expression')),
             (r'\)', Punctuation, '#pop'),
+            (r'\[', Punctuation, ('#pop', 'statements', 'locals')),
             (r'>(?=(\s+|(![^%s]*))*[>;])' % _newline, Punctuation),
             (r'\+\+|[%s]{2}(?!>)' % _dash, Operator),
             (r',', Punctuation, '_expression'),
@@ -3556,25 +3557,31 @@ class Inform6Lexer(RegexLexer):
             (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
              '_expression'),
             (r'(from|near|to)\b', Keyword, '_expression'),
+            (r'sp\b', Name),
+            (r'\?~?', Name.Label, 'label?'),
             (r'[@{]', Error),
             (r'', Text, '#pop')
         ],
-        '_assembly-expression2': [
-            (r'\(', Punctuation, '#pop'),
-            include('expression2')
+        '_assembly-expression': [
+            (r'\(', Punctuation, ('#push', '_expression')),
+            (r'[\[\]]', Punctuation),
+            (r'[%s]>' % _dash, Punctuation, '_expression'),
+            (r'sp\b', Keyword.Pseudo),
+            (r';', Punctuation, '#pop:3'),
+            include('expression')
         ],
-        '_for-expression2': [
+        '_for-expression': [
             (r'\)', Punctuation, '#pop:2'),
             (r':', Punctuation, '#pop'),
-            include('expression2')
+            include('expression')
         ],
-        '_list-expression2': [
+        '_list-expression': [
             (r',', Punctuation, '#pop'),
-            include('expression2')
+            include('expression')
         ],
-        '_object-expression2': [
+        '_object-expression': [
             (r'has\b', Keyword.Declaration, '#pop'),
-            include('_list-expression2')
+            include('_list-expression')
         ],
 
         # Values
@@ -3703,7 +3710,7 @@ class Inform6Lexer(RegexLexer):
             (r'(?i)class\b', Keyword,
              ('object-body', 'duplicates', 'class-name')),
             (r'(?i)(constant|default)\b', Keyword,
-             ('default', 'expression2', '_constant')),
+             ('default', 'expression', '_constant')),
             (r'(?i)(end\b)(.*)', bygroups(Keyword, Text)),
             (r'(?i)(extend|verb)\b', Keyword, 'grammar'),
             (r'(?i)fake_action\b', Keyword, ('default', '_constant')),
@@ -3742,7 +3749,7 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r';', Punctuation),
             (r'\]', Punctuation, '#pop'),
-            (r'', Text, ('expression2', '_expression'))
+            (r'', Text, ('expression', '_expression'))
         ],
         # Attribute, Property
         'alias?': [
@@ -3758,7 +3765,7 @@ class Inform6Lexer(RegexLexer):
         ],
         'duplicates': [
             include('_whitespace'),
-            (r'\(', Punctuation, ('#pop', 'expression2', '_expression')),
+            (r'\(', Punctuation, ('#pop', 'expression', '_expression')),
             (r'', Text, '#pop')
         ],
         '_object-head': [
@@ -3772,7 +3779,7 @@ class Inform6Lexer(RegexLexer):
             (r',', Punctuation),
             (r'class\b', Keyword.Declaration, 'class-segment'),
             (r'(has|private|with)\b', Keyword.Declaration),
-            (r'', Text, ('_object-expression2', '_expression'))
+            (r'', Text, ('_object-expression', '_expression'))
         ],
         'class-segment': [
             include('_whitespace'),
@@ -3865,9 +3872,9 @@ class Inform6Lexer(RegexLexer):
              ('default', 'miscellaneous-keyword?')),
             (r'for\b', Keyword, ('for', '(?')),
             (r'(if|switch|while)', Keyword,
-             ('expression2', '_expression', '(?')),
+             ('expression', '_expression', '(?')),
             (r'(jump|save|restore)\b', Keyword, ('default', 'label?')),
-            (r'objectloop\b', Keyword, ('expression2', 'variable?', '(?')),
+            (r'objectloop\b', Keyword, ('expression', 'variable?', '(?')),
             (r'print(_ret)?\b|(?=[%s])' % _dquote, Keyword, 'print-list'),
             (r'\.', Name.Label, 'label?'),
             (r'@', Keyword, 'opcode'),
@@ -3892,13 +3899,13 @@ class Inform6Lexer(RegexLexer):
         ],
         'for': [
             include('_whitespace'),
-            (r';?', Punctuation, ('_for-expression2', '_expression'))
+            (r';?', Punctuation, ('_for-expression', '_expression'))
         ],
         'print-list': [
             include('_whitespace'),
             (r';', Punctuation, '#pop'),
             (r'', Text,
-             ('_list-expression2', '_expression', '_list-expression2', 'form'))
+             ('_list-expression', '_expression', '_list-expression', 'form'))
         ],
         'form': [
             include('_whitespace'),
@@ -3913,13 +3920,7 @@ class Inform6Lexer(RegexLexer):
             (_name, Keyword, 'operands')
         ],
         'operands': [
-            include('_whitespace'),
-            (r'[%s]>' % _dash, Punctuation),
-            (r'sp\b', Keyword.Pseudo),
-            (r'\?~?', Name.Label, 'label?'),
-            (r'[\[\]()]', Punctuation),
-            (r';', Punctuation, '#pop:2'),
-            (r'', Text, ('_assembly-expression2', '_expression'))
+            (r'', Text, ('_assembly-expression', '_expression'))
         ]
     }
 
