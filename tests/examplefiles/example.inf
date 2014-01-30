@@ -99,7 +99,7 @@ Nearby person "person"
          ]
     has has animate transparent;
 
-Object -> -> "test tube"
+Object -> -> test_tube "test tube"
     with name 'test' "tube" 'testtube',
     has ~openable ~opaque container;
 
@@ -109,7 +109,7 @@ Bird -> pigeon
             "The pigeon has a wingspan of ", self.&wingspan-->0, " wing units.";
         ];
 
-Object -> thimble "thimble" with name 'thimble';
+Object -> "thimble" with name 'thimble';
 
 Object -> pebble "pebble" with name 'pebble';
 
@@ -186,7 +186,11 @@ Extend only 'feel' 'touch' replace * noun -> Feel;
     switch (parse-->1) {
     'save':
         #Ifdef TARGET_ZCODE;
+        #Ifv3;
+        @save ?saved;
+        #Ifnot;
         save saved;
+        #Endif;
         #Endif;
         print "Saving failed.^";
     'restore':
@@ -247,7 +251,8 @@ Extend only 'feel' 'touch' replace * noun -> Feel;
         #Ifdef TARGET_ZCODE;
         #Trace assembly on;
 @ ! This is assembly.
-        add -4 (1+3) -> b;
+        add -4 ($$1+$3)*2 -> b;
+        @get_sibling test_tube -> b ?saved;
         @inc [b];
         @je sp (1+3*0) ? equal;
         @je 1 ((sp)) ?~ different;
@@ -293,7 +298,9 @@ Extend only 'feel' 'touch' replace * noun -> Feel;
         a = person notin kitchen;
         a = person ofclass Bird;
         a = a == 0 or 1;
+        a = StubR();
         a = StubR(a);
+        a = StubR(, a);
         a = "string";
         a = 'word';
         a = '''; ! character
@@ -310,7 +317,7 @@ Extend only 'feel' 'touch' replace * noun -> Feel;
         }
         new_line;
     }
-    .saved; @nop;
+    .saved;;
 ];
 
 [ TestNumberSub;

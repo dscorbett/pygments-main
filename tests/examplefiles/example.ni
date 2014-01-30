@@ -1,4 +1,4 @@
-﻿  | | |
+  | | |
 "Informal by Nature"
 [ * * * ]
 by
@@ -9,7 +9,9 @@ David Corbett
 
 Section 1 - Use option translation
 
-Use maximum tests of at least 100 translates as (- Constant MAX_TESTS = {N}; —). | Section 2
+Use maximum tests of at least 100 translates as (-
+@c
+Constant MAX_TESTS = {N}; —). | Section 2
 
 A room has a number called size.
 

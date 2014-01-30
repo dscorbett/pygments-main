@@ -3542,7 +3542,7 @@ class Inform6Lexer(RegexLexer):
             (r'(?=[%s%s$0-9#a-zA-Z_])' % (_dquote, _squote), Text,
              ('#pop', 'value')),
             (r'\+\+|[%s]{1,2}(?!>)|~~?' % _dash, Operator),
-            (r'(?=.)', Text, '#pop')
+            (r'(?=[()\[%s,?@{])' % _dash, Text, '#pop')
         ],
         'expression': [
             include('_whitespace'),
@@ -3974,8 +3974,9 @@ class Inform7Lexer(RegexLexer):
 
     # There are three variants of Inform 7, differing in how to
     # interpret at signs and braces in I6T. In top-level inclusions, at
-    # signs in the first column are inweb syntax. In phrase definitions,
-    # tokens in braces are treated as I7. In use options, both are true.
+    # signs in the first column are inweb syntax. In phrase definitions
+    # and use options, tokens in braces are treated as I7. Use options
+    # also interpret "{N}".
     tokens = {}
     token_variants = ['+i6t-not-inline', '+i6t-inline', '+i6t-use-option']
 
@@ -3987,7 +3988,7 @@ class Inform7Lexer(RegexLexer):
                  ('directive', '+p'))
             ],
             'root': [
-                (ur'\ufeff?(\|?\s)+', Text),
+                (r'(\|?\s)+', Text),
                 (r'\[', Comment.Multiline, '+comment'),
                 (r'[%s]' % _dquote, Generic.Heading,
                  ('+main', '+titling', '+titling-string')),
@@ -4010,7 +4011,7 @@ class Inform7Lexer(RegexLexer):
                 (r'(?i)[^%s:a\[(|%s]+' % (_dquote, _newline), Text),
                 (r'[%s]' % _dquote, String.Double, '+text'),
                 (r':', Text, '+phrase-definition'),
-                (r'(?i)\bas\b', Text, '+use-option'),  # "Use UO translates as"
+                (r'(?i)\bas\b', Text, '+use-option'),
                 (r'\[', Comment.Multiline, '+comment'),
                 (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
                  bygroups(Punctuation,
@@ -4090,14 +4091,14 @@ class Inform7Lexer(RegexLexer):
                 (r'(%s)@p( .*?)?([%s]|\Z)' % (_start, _newline),
                  Generic.Heading, '+p')
             ],
+            '+i6t-use-option': [
+                include('+i6t-not-inline'),
+                (r'({)(N)(})', bygroups(Punctuation, Text, Punctuation))
+            ],
             '+i6t-inline': [
                 (r'({)(\S[^}]*)?(})',
                  bygroups(Punctuation, using(this, state='+main'),
                           Punctuation))
-            ],
-            '+i6t-use-option': [
-                include('+i6t-not-inline'),
-                include('+i6t-inline')
             ],
             '+i6t': [
                 (r'({[%s])(![^}]*)(}?)' % _dash,
