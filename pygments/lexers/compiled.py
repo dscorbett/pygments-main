@@ -3980,8 +3980,8 @@ class Inform7Lexer(RegexLexer):
     tokens = {}
     token_variants = ['+i6t-not-inline', '+i6t-inline', '+i6t-use-option']
 
-    for state in token_variants:
-        tokens[state] = {
+    for level in token_variants:
+        tokens[level] = {
             '+i6-root': list(Inform6Lexer.tokens['root']),
             '+i6t-root': [  # For Inform6TemplateLexer
                 (r'[^%s]*' % Inform6Lexer._newline, Comment.Preproc,
@@ -4016,8 +4016,7 @@ class Inform7Lexer(RegexLexer):
                 (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
                  bygroups(Punctuation,
                           using(this, state=('+i6-root', 'directive'),
-                                             inline='+i6t-not-inline'),
-                          Punctuation)),
+                                i6t='+i6t-not-inline'), Punctuation)),
                 (r'(%s|(?<=[\s;:.%s]))\|\s|[%s]{2,}' %
                  (_start, _dquote, _newline), Text, '+heading?'),
                 (r'(?i)[a(|%s]' % _newline, Text)
@@ -4029,7 +4028,7 @@ class Inform7Lexer(RegexLexer):
                  bygroups(Punctuation,
                           using(this, state=('+i6-root', 'directive',
                                              'default', 'statements'),
-                                inline='+i6t-inline'), Punctuation), '#pop'),
+                                i6t='+i6t-inline'), Punctuation), '#pop'),
                 (r'', Text, '#pop')
             ],
             '+use-option': [
@@ -4038,8 +4037,7 @@ class Inform7Lexer(RegexLexer):
                 (r'(\([%s])(.*?)([%s]\))' % (_dash, _dash),
                  bygroups(Punctuation,
                           using(this, state=('+i6-root', 'directive'),
-                                inline='+i6t-use-option'), Punctuation),
-                 '#pop'),
+                                i6t='+i6t-use-option'), Punctuation), '#pop'),
                 (r'', Text, '#pop')
             ],
             '+comment': [
@@ -4146,16 +4144,16 @@ class Inform7Lexer(RegexLexer):
         for token in Inform6Lexer.tokens:
             if token == 'root':
                 continue
-            tokens[state][token] = list(Inform6Lexer.tokens[token])
+            tokens[level][token] = list(Inform6Lexer.tokens[token])
             if not token.startswith('_'):
-                tokens[state][token][:0] = [include('+i6t'), include(state)]
+                tokens[level][token][:0] = [include('+i6t'), include(level)]
 
     def __init__(self, **options):
-        state = options.get('inline', '+i6t-not-inline')
-        if state not in self._all_tokens:
-            self._tokens = self.__class__.process_tokendef(state)
+        level = options.get('i6t', '+i6t-not-inline')
+        if level not in self._all_tokens:
+            self._tokens = self.__class__.process_tokendef(level)
         else:
-            self._tokens = self._all_tokens[inline]
+            self._tokens = self._all_tokens[level]
         RegexLexer.__init__(self, **options)
 
 
@@ -4169,6 +4167,5 @@ class Inform6TemplateLexer(Inform7Lexer):
     aliases = ['i6t']
     filenames = ['*.i6t']
 
-    def get_tokens_unprocessed(self, text):
-        return Inform7Lexer.get_tokens_unprocessed(self, text,
-                                                   stack=('+i6t-root',))
+    def get_tokens_unprocessed(self, text, stack=('+i6t-root',)):
+        return Inform7Lexer.get_tokens_unprocessed(self, text, stack)

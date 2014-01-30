@@ -1,7 +1,7 @@
 B/examt: Example Template.
 
-@Purpose: To show the syntax of I6T, specifically the parts relating to braced
-invocation syntax and at signs in the first column.
+@Purpose: To show the syntax of I6T, specifically the parts relating to the
+inclusion of I7 and at signs in the first column.
 
 @-------------------------------------------------------------------------------
 
@@ -17,10 +17,16 @@ invocation syntax and at signs in the first column.
 @p Paragraph.
 This is a paragraph.
 @p Another paragraph.
-So is this.
+So
+
+is
+
+this.
+
 @Purpose: This purpose line is ignored.
 
-@c At signs.
+@c At signs and (+ +).
 [ Foo i;
+print (+score [an I7 value]+), "^";
 @add sp 1 -> i; ! Assembly works even in the first column.
 ];
