@@ -198,6 +198,8 @@ Extend only 'feel' 'touch' replace * noun -> Feel;
         restore saved;
         #Endif;
         print "Restoring failed.^";
+    'restart':
+        @restart;
     'quit', 'q//':
         quit;
         return 2; rtrue; rfalse; return;
@@ -316,6 +318,7 @@ Extend only 'feel' 'touch' replace * noun -> Feel;
             print (char) buffer->a;
         }
         new_line;
+        for (::) break;
     }
     .saved;;
 ];

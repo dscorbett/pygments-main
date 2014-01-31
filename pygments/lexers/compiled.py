@@ -3542,7 +3542,7 @@ class Inform6Lexer(RegexLexer):
             (r'(?=[%s%s$0-9#a-zA-Z_])' % (_dquote, _squote), Text,
              ('#pop', 'value')),
             (r'\+\+|[%s]{1,2}(?!>)|~~?' % _dash, Operator),
-            (r'(?=[()\[%s,?@{])' % _dash, Text, '#pop')
+            (r'(?=[()\[%s,?@{:;])' % _dash, Text, '#pop')
         ],
         'expression': [
             include('_whitespace'),
@@ -3749,6 +3749,7 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r';', Punctuation),
             (r'\]', Punctuation, '#pop'),
+            (r':', Error),
             (r'', Text, ('expression', '_expression'))
         ],
         # Attribute, Property
@@ -3779,6 +3780,7 @@ class Inform6Lexer(RegexLexer):
             (r',', Punctuation),
             (r'class\b', Keyword.Declaration, 'class-segment'),
             (r'(has|private|with)\b', Keyword.Declaration),
+            (r':', Error),
             (r'', Text, ('_object-expression', '_expression'))
         ],
         'class-segment': [
@@ -3904,6 +3906,7 @@ class Inform6Lexer(RegexLexer):
         'print-list': [
             include('_whitespace'),
             (r';', Punctuation, '#pop'),
+            (r':', Error),
             (r'', Text,
              ('_list-expression', '_expression', '_list-expression', 'form'))
         ],
@@ -3920,6 +3923,7 @@ class Inform6Lexer(RegexLexer):
             (_name, Keyword, 'operands')
         ],
         'operands': [
+            (r':', Error),
             (r'', Text, ('_assembly-expression', '_expression'))
         ]
     }
