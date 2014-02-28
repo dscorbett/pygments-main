@@ -4086,13 +4086,16 @@ class Inform6Lexer(RegexLexer):
             # Other built-in symbols
             (r'(?i)(call|copy|create|DEBUG|destroy|DICT_CHAR_SIZE|'
              r'DICT_ENTRY_BYTES|DICT_IS_UNICODE|DICT_WORD_SIZE|false|'
-             r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|Grammar__Version|'
-             r'INDIV_PROP_START|INFIX|infix__watching|MODULE_MODE|name|'
-             r'nothing|NUM_ATTR_BYTES|print|print_to_array|recreate|remaining|'
-             r'self|sender|STRICT_MODE|sw__var|sys__glob0|sys__glob1|'
-             r'sys__glob2|sys_statusline_flag|TARGET_GLULX|TARGET_ZCODE|'
-             r'temp__global2|temp__global3|temp__global4|temp_global|true|'
-             r'USE_MODULES|WORDSIZE)\b', Name.Builtin, '#pop'),
+             r'FLOAT_INFINITY|FLOAT_NAN|FLOAT_NINFINITY|GOBJFIELD_CHAIN|'
+             r'GOBJFIELD_CHILD|GOBJFIELD_NAME|GOBJFIELD_PARENT|'
+             r'GOBJFIELD_PROPTAB|GOBJFIELD_SIBLING|GOBJ_EXT_START|'
+             r'GOBJ_TOTAL_LENGTH|Grammar__Version|INDIV_PROP_START|INFIX|'
+             r'infix__watching|MODULE_MODE|name|nothing|NUM_ATTR_BYTES|print|'
+             r'print_to_array|recreate|remaining|self|sender|STRICT_MODE|'
+             r'sw__var|sys__glob0|sys__glob1|sys__glob2|sys_statusline_flag|'
+             r'TARGET_GLULX|TARGET_ZCODE|temp__global2|temp__global3|'
+             r'temp__global4|temp_global|true|USE_MODULES|WORDSIZE)\b',
+             Name.Builtin, '#pop'),
             # Other values
             (_name, Name, '#pop')
         ],
