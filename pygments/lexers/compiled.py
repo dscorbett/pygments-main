@@ -4015,7 +4015,6 @@ class Inform6Lexer(RegexLexer):
              Operator, '_expression'),
             (r'(has|hasnt|in|notin|ofclass|or|provides)\b', Operator.Word,
              '_expression'),
-            (r'(from|near|to)\b', Keyword, '_expression'),
             (r'sp\b', Name),
             (r'\?~?', Name.Label, 'label?'),
             (r'[@{]', Error),
@@ -4032,6 +4031,10 @@ class Inform6Lexer(RegexLexer):
         '_for-expression': [
             (r'\)', Punctuation, '#pop:2'),
             (r':', Punctuation, '#pop'),
+            include('expression')
+        ],
+        '_keyword-expression': [
+            (r'(from|near|to)\b', Keyword, '_expression'),
             include('expression')
         ],
         '_list-expression': [
@@ -4328,9 +4331,9 @@ class Inform6Lexer(RegexLexer):
             include('_whitespace'),
             (r'\]', Punctuation, '#pop'),
             (r'[;{}]', Punctuation),
-            (r'(box|break|continue|default|give|inversion|move|new_line|quit|'
-             r'read|remove|return|rfalse|rtrue|spaces|string|until)\b',
-             Keyword, 'default'),
+            (r'(box|break|continue|default|give|inversion|new_line|quit|read|'
+             r'remove|return|rfalse|rtrue|spaces|string|until)\b', Keyword,
+             'default'),
             (r'(do|else)\b', Keyword),
             (r'(font|style)\b', Keyword,
              ('default', 'miscellaneous-keyword?')),
@@ -4338,13 +4341,15 @@ class Inform6Lexer(RegexLexer):
             (r'(if|switch|while)', Keyword,
              ('expression', '_expression', '(?')),
             (r'(jump|save|restore)\b', Keyword, ('default', 'label?')),
-            (r'objectloop\b', Keyword, ('expression', 'variable?', '(?')),
+            (r'objectloop\b', Keyword,
+             ('_keyword-expression', 'variable?', '(?')),
             (r'print(_ret)?\b|(?=[%s])' % _dquote, Keyword, 'print-list'),
             (r'\.', Name.Label, 'label?'),
             (r'@', Keyword, 'opcode'),
             (r'#(?![agrnw]\$|#)', Punctuation, 'directive'),
             (r'<', Punctuation, 'default'),
-            (r'', Text, 'default')
+            (r'(move\b)?', Keyword,
+             ('default', '_keyword-expression', '_expression'))
         ],
         'miscellaneous-keyword?': [
             include('_whitespace'),
