@@ -20,7 +20,7 @@ from pygments import unistring as uni
 
 __all__ = ['JavaLexer', 'ScalaLexer', 'GosuLexer', 'GosuTemplateLexer',
            'GroovyLexer', 'IokeLexer', 'ClojureLexer', 'KotlinLexer',
-           'XtendLexer', 'AspectJLexer', 'CeylonLexer']
+           'XtendLexer', 'AspectJLexer', 'CeylonLexer', 'JasminLexer']
 
 
 class JavaLexer(RegexLexer):
@@ -1066,3 +1066,231 @@ class XtendLexer(RegexLexer):
             (r'.', String)
         ],
     }
+
+
+class JasminLexer(RegexLexer):
+    """
+    For `Jasmin <http://jasmin.sourceforge.net/>`_ assembly code.
+    """
+
+    name = 'Jasmin'
+    aliases = ['jasmin', 'jasminxt']
+    # TODO: Oolong: https://github.com/ymasory/programming-for-the-jvm/tree/master/src/main/java/COM/sootNsmoke/oolong
+    # TODO: Soot Jasmin: https://github.com/Sable/jasmin
+    # TODO: Dare Jasmin: https://github.com/dare-android/jasmin
+    filenames = ['*.j']
+
+    _whitespace = r' \n\t\r'
+    _separator = r'%s:=' % _whitespace
+    _separator_lookahead = r'(?=[%s]|$)' % _separator
+    _name = r'(?:[^%s]+)' % _separator
+    _unqualified_name = r'(?:[^%s.;\[/]+)' % _separator
+
+    tokens = {
+        'default': [
+            (r';.*', Comment.Single),
+            (r'(\$[-+])?0x[-+]?[\da-fA-F]+%s' % _separator_lookahead,
+             Number.Hex),
+            (r'(\$[-+]|\+)?[-+]?\d+%s' % _separator_lookahead,
+             Number.Integer),
+            (r'-?(\d+\.\d*|\.\d+)([eE][-+]?\d+)?[fFdD]?'
+             u'[\x00-\x08\x0b\x0c\x0e-\x1f]*%s' %
+             _separator_lookahead, Number.Float),
+            (r'\$%s' % _name, Name.Variable),
+            (r'"', String.Double, 'string'),
+            (r"'", String.Single, ('#pop', 'quote')),
+            (r'[%s]+' % _whitespace, Text),
+            (r'=', Operator),
+            (r':', Punctuation, 'label'),
+
+            # Directives
+            (r'(\.bytecode|\.debug|\.deprecated|\.enclosing|\.interface|'
+             r'\.line|\.signature|\.stack|\.var|abstract|annotation|bridge|'
+             r'class|default|enum|field|final|fpstrict|interface|method|'
+             r'native|private|protected|public|signature|static|synchronized|'
+             r'synthetic|transient|varargs|volatile)%s' %
+             _separator_lookahead, Keyword.Reserved),
+            (r'\.annotation%s' % _separator_lookahead, Keyword.Reserved,
+             ('annotation-type', 'annotation')),
+            (r'\.attribute%s' % _separator_lookahead, Keyword.Reserved,
+             'annotation'),
+            (r'\.catch%s' % _separator_lookahead, Keyword.Reserved,
+             ('descriptor', 'caught-exception')),
+            (r'(\.class|\.implements|\.inner|\.super|inner|invisible|'
+             r'invisibleparam|outer|visible|visibleparam)%s' %
+             _separator_lookahead, Keyword.Reserved, 'class'),
+            (r'\.field%s' % _separator_lookahead, Keyword.Reserved,
+             ('descriptor', 'field')),
+            (r'(\.end|\.limit|use)%s' % _separator_lookahead,
+             Keyword.Reserved, 'no-verification'),
+            (r'\.method%s' % _separator_lookahead, Keyword.Reserved,
+             'method'),
+            (r'\.throws%s' % _separator_lookahead, Keyword.Reserved,
+             ('descriptor', 'exception')),
+            (r'(from|offset|to|using)%s' % _separator_lookahead,
+             Keyword.Reserved, 'label'),
+            (r'is%s' % _separator_lookahead, Keyword.Reserved,
+             ('descriptor', 'var')),
+            (r'(locals|stack)%s' % _separator_lookahead, Keyword.Reserved,
+             'verification'),
+            (r'\.set%s' % _separator_lookahead, Keyword.Reserved, 'var'),
+            (r'\.source%s' % _separator_lookahead, Keyword.Reserved,
+             'filename'),
+
+            # Instructions
+            (r'(aaload|aastore|aconst_null|aload|aload_0|aload_1|aload_2|'
+             r'aload_3|aload_w|areturn|arraylength|astore|astore_0|astore_1|'
+             r'astore_2|astore_3|astore_w|athrow|baload|bastore|bipush|'
+             r'breakpoint|caload|castore|d2f|d2i|d2l|dadd|daload|dastore|'
+             r'dcmpg|dcmpl|dconst_0|dconst_1|ddiv|dload|dload_0|dload_1|'
+             r'dload_2|dload_3|dload_w|dmul|dneg|drem|dreturn|dstore|'
+             r'dstore_0|dstore_1|dstore_2|dstore_3|dstore_w|dsub|dup|dup2|'
+             r'dup2_x1|dup2_x2|dup_x1|dup_x2|f2d|f2i|f2l|fadd|faload|fastore|'
+             r'fcmpg|fcmpl|fconst_0|fconst_1|fconst_2|fdiv|fload|fload_0|'
+             r'fload_1|fload_2|fload_3|fload_w|fmul|fneg|frem|freturn|fstore|'
+             r'fstore_0|fstore_1|fstore_2|fstore_3|fstore_w|fsub|i2b|i2c|i2d|'
+             r'i2f|i2l|i2s|iadd|iaload|iand|iastore|iconst_0|iconst_1|'
+             r'iconst_2|iconst_3|iconst_4|iconst_5|iconst_m1|idiv|iinc|'
+             r'iinc_w|iload|iload_0|iload_1|iload_2|iload_3|iload_w|imul|'
+             r'ineg|int2byte|int2char|int2short|ior|irem|ireturn|ishl|ishr|'
+             r'istore|istore_0|istore_1|istore_2|istore_3|istore_w|isub|'
+             r'iushr|ixor|l2d|l2f|l2i|ladd|laload|land|lastore|lcmp|lconst_0|'
+             r'lconst_1|ldc|ldc2_w|ldc_w|ldiv|lload|lload_0|lload_1|lload_2|'
+             r'lload_3|lload_w|lmul|lneg|lookupswitch|lor|lrem|lreturn|lshl|'
+             r'lshr|lstore|lstore_0|lstore_1|lstore_2|lstore_3|lstore_w|lsub|'
+             r'lushr|lxor|monitorenter|monitorexit|nop|pop|pop2|ret|ret_w|'
+             r'return|saload|sastore|sipush|swap)%s' % _separator_lookahead,
+             Keyword.Reserved),
+            (r'(anewarray|checkcast|instanceof|new)%s' % _separator_lookahead,
+             Keyword.Reserved, 'class'),
+            (r'(invokedynamic|invokeinterface|invokenonvirtual|invokespecial|'
+             r'invokestatic|invokevirtual)%s' % _separator_lookahead,
+             Keyword.Reserved, 'invocation'),
+            (r'(getfield|putfield)%s' % _separator_lookahead,
+             Keyword.Reserved, ('descriptor', 'field')),
+            (r'(getstatic|putstatic)%s' % _separator_lookahead,
+             Keyword.Reserved, ('descriptor', 'static')),
+            (r'(goto|goto_w|if_acmpeq|if_acmpne|if_icmpeq|if_icmpge|'
+             r'if_icmpgt|if_icmple|if_icmplt|if_icmpne|ifeq|ifge|ifgt|ifle|'
+             r'iflt|ifne|ifnonnull|ifnull|jsr|jsr_w)%s' %
+             _separator_lookahead, Keyword.Reserved, 'label'),
+            (r'(multianewarray|newarray)%s' % _separator_lookahead,
+             Keyword.Reserved, 'descriptor'),
+            (r'tableswitch%s' % _separator_lookahead, Keyword.Reserved,
+             'table')
+        ],
+        'string': [
+            (r'"', String.Double, '#pop'),
+            (r'\\([nrtfb"\'\\]|u[0-9a-fA-F]{4}|[0-3]?[0-7]{1,2})',
+             String.Escape),
+            (r'[^"\\]+', String.Double)
+        ],
+        'quote': [
+            (r"'", String.Single, '#pop'),
+            (r'\\u[0-9a-fA-F]{4}', String.Escape),
+            (r"[^'\\]+", String.Single)
+        ],
+        'root': [
+            (r"'", String.Single, 'quote'),
+            include('default'),
+            (r'(%s)([ \t\r]*)(:)' % _name,
+             bygroups(Name.Label, Text, Punctuation)),
+            (_name, Name)
+        ],
+        'annotation': [
+            include('default'),
+            (_name, Name.Decorator, '#pop')
+        ],
+        'annotation-type': [
+            include('default'),
+            (r'[e@]', Keyword.Type, ('#pop', 'descriptor')),
+            (_name, Keyword.Type, '#pop')
+        ],
+        'class': [
+            include('default'),
+            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class), '#pop')
+        ],
+        'caught-exception': [
+            (r'all%s' % _separator_lookahead, Keyword),
+            include('exception')
+        ],
+        'descriptor': [
+            include('default'),
+            (r'\[', Punctuation),
+            (r'(L)((?:%s[/.])*)(%s)(;)' % (_unqualified_name, _name),
+             bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
+             '#pop'),
+            (r'[^%s%s\[)L]*' % (_separator, _whitespace), Keyword.Type,
+             '#pop')
+        ],
+        'descriptors': [
+            (r'\)', Punctuation, '#pop'),
+            (r'', Text, 'descriptor')
+        ],
+        'exception': [
+            include('default'),
+            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Exception), '#pop')
+        ],
+        'field': [
+            (r'static%s' % _separator_lookahead, Keyword.Reserved,
+             ('#pop', 'static')),
+            include('default'),
+            (r'((?:%s[/.](?=[^%s]*[/.]))*)(%s[/.])?(%s)' %
+             (_unqualified_name, _separator, _unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class, Name.Variable.Instance),
+             '#pop')
+        ],
+        'filename': [
+            include('default'),
+            (_name, String.Other, '#pop')
+        ],
+        'invocation': [
+            include('default'),
+            (r'((?:%s[/.](?=[^%s(]*[/.]))*)(%s[/.])?(%s)(\()' %
+             (_unqualified_name, _separator, _unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class, Name.Function, Punctuation),
+             ('#pop', 'descriptor', 'descriptors', 'descriptor'))
+        ],
+        'label': [
+            include('default'),
+            (_name, Name.Label, '#pop')
+        ],
+        'method': [
+            include('default'),
+            (r'(%s)(\()' % _name, bygroups(Name.Function, Punctuation),
+             ('#pop', 'descriptor', 'descriptors', 'descriptor'))
+        ],
+        'no-verification': [
+            (r'(annotation|field|locals|method|stack)%s' %
+             _separator_lookahead, Keyword.Reserved, '#pop'),
+            include('default')
+        ],
+        'static': [
+            include('default'),
+            (r'((?:%s[/.](?=[^%s]*[/.]))*)(%s[/.])?(%s)' %
+             (_unqualified_name, _separator, _unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class, Name.Variable.Class),
+             '#pop')
+        ],
+        'table': [
+            (r'default%s' % _separator_lookahead, Keyword.Reserved, '#pop'),
+            include('default'),
+            (_name, Name.Label)
+        ],
+        'var': [
+            include('default'),
+            (_name, Name.Variable, '#pop')
+        ],
+        'verification': [
+            include('default'),
+            (r'(Double|Float|Integer|Long|Null|Top|UninitializedThis)%s' %
+             _separator_lookahead, Keyword, '#pop'),
+            (r'Object%s' % _separator_lookahead, Keyword,
+             ('#pop', 'class')),
+            (r'Uninitialized%s' % _separator_lookahead, Keyword,
+             ('#pop', 'label'))
+        ]
+    }
+
