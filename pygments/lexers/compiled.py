@@ -32,7 +32,7 @@ __all__ = ['CLexer', 'CppLexer', 'DLexer', 'DelphiLexer', 'ECLexer',
            'DylanLidLexer', 'DylanConsoleLexer', 'CobolLexer',
            'CobolFreeformatLexer', 'LogosLexer', 'ClayLexer', 'PikeLexer',
            'ChapelLexer', 'EiffelLexer', 'Inform6Lexer', 'Inform7Lexer',
-           'Inform6TemplateLexer', 'MqlLexer']
+           'Inform6TemplateLexer', 'MqlLexer', 'Tads3Lexer']
 
 
 class CFamilyLexer(RegexLexer):
@@ -5088,4 +5088,397 @@ class MqlLexer(CppLexer):
                 Name.Constant),
             inherit,
         ],
+    }
+
+
+class Tads3Lexer(RegexLexer):
+    """
+    For `TADS 3 <http://www.tads.org/>`_ source code.
+    """
+
+    name = 'TADS 3'
+    aliases = ['tads3']
+    filenames = ['*.t']
+
+    flags = re.MULTILINE # TODO: re.U?
+
+    _name = r'[_a-zA-Z][_a-zA-Z0-9]*'
+    _operator = (r'->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|' # TODO: explain absense of ? and :
+                 r'([=+\-*/%><!&|^]|<<|>>>?)=?') # TODO: rm r'[\[\]]'?
+
+    # TODO: export/property: always constant, or any symbol?
+    # TODO: allow comments wherever there is r'\(\\s[+*]\)'
+    # TODO: ',' is operator (list) or punctuation (arglist)
+    # TODO: '*' is operator (multiplication) or punctuation (glob)
+    # TODO: '?' is operator (?:) or punctuation (object template optional item)
+    # TODO: ':' is operator (?:) or punctuation (object definition, label, switch)
+    # TODO: '+' is operator (addition) or punctuation ("+" property)
+    # TODO:     r'\+\++' is always punctuation though
+    # TODO: '@' is always(?) punctuation (template); can anything be?
+    # TODO: '<', '>' are operators (relations) or punctuation (inherited, opt arg in func def)
+    # TODO: Test '{x: x}' as a statement (an expression in void context).
+    # TODO: Text 'object { identity = {x: x} }'.
+
+    from pygments.lexers.web import HtmlLexer
+    tokens = {
+        'root': [
+            (_operator, Punctuation),
+            (r'(?!\Z)', Text, 'main/start')
+        ],
+        'main': [
+            include('whitespace'),
+            (r'\(', Punctuation, ('#pop', 'more', 'main')),
+            (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
+            (r'{', Punctuation, ('more', 'main/lambda', 'variables')),
+            (r'\*', Punctuation),
+
+            # Prefix operators
+            (r'\+\+|--|[&!~+-]', Operator),
+
+            # Values
+            (r'\.{3}', Punctuation, '#pop'),
+            (r'#', Punctuation, ('#pop', 'debugger-type')),
+            (r'0[xX][0-9a-fA-F]+', Number.Hex, '#pop'), # TODO: \b needed for numbers?
+            (r'0[0-7]+', Number.Oct, '#pop'),
+            (r'[0-9]+((\.[0-9]*)?[eE][+-]?[0-9]+|\.(?!\.)[0-9]*)', # TODO: end in '[.eE]'?
+             Number.Float, '#pop'),
+            (r'[0-9]+', Number.Integer, '#pop'),
+            # TODO: float without leading integer part?
+            # TODO: can hex, octal be floats?
+            # TODO: yes and yes; see tctok.cpp
+            include('string'),
+            (r'R"""', String.Regex, ('#pop', 'tdqr')),
+            (r"R'''", String.Regex, ('#pop', 'tsqr')),
+            (r'R"', String.Regex, ('#pop', 'dqr')),
+            (r"R'", String.Regex, ('#pop', 'sqr')),
+            (r'(argcount|definingobj|delegated|invokee|replaced|self|'
+             r'targetobj|targetprop)\b', Name.Builtin.Pseudo, '#pop'),
+            (r'(function|method)\b', Keyword.Reserved, '#pop'),
+            (r'inherited\b', Keyword.Reserved, ('more', 'inherited')),
+            (r'new\b', Keyword.Reserved, ('#pop', 'new')),
+            (r'(nil|true)\b', Keyword.Constant, '#pop'),
+
+            # Statements
+            (r'(object)(\s+)(template\b)',
+             bygroups(Keyword.Reserved, Text, Keyword.Reserved), 'template'),
+            (r'(string)(\s+)(template\b)',
+             bygroups(Keyword, Text, Keyword.Reserved), 'string-template'),
+            (r'case\b', Keyword.Reserved, 'main/case'),
+            (r'(default|else|export|extern|finally|if|intrinsic|modify|'
+             r'multimethod|property|propertyset|replace|return|static|switch|'
+             r'throw|transient|try|while)\b', Keyword.Reserved),
+            (r'(break|continue|goto)\b', Keyword.Reserved, 'label'),
+            (r'catch\b', Keyword.Reserved, 'catch'),
+            (r'class\b', Keyword.Reserved, 'class'),
+            (r'dictionary\b', Keyword.Reserved, 'constants'),
+            (r'do\b', Keyword.Reserved, '#pop'),
+            (r'enum\b', Keyword.Reserved, 'enum'),
+            #(r'(for|foreach)\b', Keyword.Reserved, 'for'),
+            (r'grammar\b', Keyword.Reserved, 'grammar'),
+            (r'local\b', Keyword.Reserved, ('more/local', 'main/local')),
+            (r'object\b', Keyword.Reserved,
+             ('more', 'main', 'more/template', 'superclasses')),
+            (r'operator\b', Keyword.Reserved, 'operator'),
+            (r'template\b', Keyword.Reserved, 'template'),
+
+            # Unused keywords
+            (r'(external|formatstring|pass)\b', Error), # TODO: remove
+
+            (r'(%s)(\s*)(:)' % _name, bygroups(Name.Label, Text, Punctuation)),
+            (r'(__objref|defined)(\s*)(\()',
+             bygroups(Operator.Word, Text, Punctuation), ('#pop', '__objref')),
+            (r'((Con|De)structor|(Last|ObjectCall)Prop)\b', Name.Builtin,
+             '#pop'), # TODO: are these really built in?
+            (_name, Name, '#pop'),
+
+            (r'', Text, '#pop')
+        ],
+        'more': [
+            include('whitespace'),
+            (r'\(', Punctuation, # TODO: distinguish between call and defn
+             ('#pop', 'main/statement', 'more/parameters', 'main/parameters')),
+            (r'\[', Punctuation, ('more', 'main')),
+            (r';', Punctuation, ('#pop', 'main/statement')),
+            (r'[:)\]}]', Punctuation, '#pop'),
+            (_operator, Operator, 'main'),
+            (r'\?(?!\?)', Operator, ('main', 'more/conditional', 'main')),
+            (r'(is|not)(\s+)(in)',
+             bygroups(Operator.Word, Text, Operator.Word), 'main'),
+            (r'', Text, '#pop')
+        ],
+        # Switch case
+        'main/case': [
+            (r'(%s)(\s*)(:)' % _name, bygroups(Name, Text, Punctuation),
+             '#pop'),
+            include('main') # TODO: include 'main/case' within 'main' not v.v.
+        ],
+        # Then expression (conditional operator)
+        'more/conditional': [
+            (r':(?!:)', Operator, '#pop'),
+            include('more')
+        ],
+        # Short-form anonymous function
+        'main/lambda': [
+            (r'local\b', Keyword.Reserved, ('more', 'main/local')),
+            include('main')
+        ],
+        # Local
+        'main/local': [
+            (_name, Name.Variable),
+            include('main')
+        ],
+        'more/local': [
+            (r',', Punctuation, 'main/local'),
+            include('more')
+        ],
+        # List
+        'more/list': [
+            (r',', Punctuation, 'main'),
+            include('more')
+        ],
+        # Function/method call or definition
+        'main/parameters': [
+            (r'(%s)(\s*)(:)' % _name, bygroups(Name, Text, Punctuation)),
+            (r'(%s)(\s+)(%s)' % (_name, _name),
+             bygroups(Name.Class, Text, Name.Variable), '#pop'),
+            include('main')
+        ],
+        'more/parameters': [
+            (r'\?', Punctuation),
+            (r'[,:=]', Punctuation, 'main/parameters'),
+            include('more')
+        ],
+        # Start of object property
+        'main/start': [ # TODO: rename? combine with 'root'?
+            (r'[{;}]', Punctuation.X),
+            (_operator, Punctuation, 'main'),
+            include('string'),
+            (r'(%s)(\s*)(=)' % _name,
+             bygroups(Name.Variable, Text, Punctuation), 'main/statement?'),
+            (r'(%s)(\s*(?=:))' % _name, bygroups(Name.Variable, Text),
+             'superclasses'),
+            (r'(%s)(\s*(?=\())' % _name, bygroups(Name.Function, Text),
+             'more'),
+            include('main')
+        ],
+        # Start of statement
+        'main/statement': [
+            (r'{', Punctuation, '#push'),
+            (r'', Text, ('#pop', 'more', 'main'))
+        ],
+        # Start of statement, top-level
+        'main/statement?': [
+            (r'{', Punctuation, ('#pop', 'main/statement')),
+            (r'', Text, ('#pop', 'more', 'main'))
+        ],
+        # Template properties
+        'more/template': [
+            include('whitespace'),
+            (_operator, Punctuation, 'main'), # TODO: combine with 'root'?
+            include('string'),
+            (r'{', Punctuation),
+            (r'', Text, '#pop')
+        ],
+
+        # Statements and expressions
+        '__objref': [
+            (r',', Punctuation, 'mode'),
+            include('main/parameters')
+        ],
+        'mode': [
+            (r'(error|warn)\b', Keyword, '#pop'),
+            include('whitespace')
+        ],
+        'catch': [
+            include('whitespace'),
+            (r'\(', Punctuation),
+            (_name, Name.Exception, 'variables')
+        ],
+        'class': [
+            include('whitespace'),
+            (_name, Name.Class, 'superclasses')
+        ],
+        'debugger-type': [
+            include('whitespace'),
+            (_name, Keyword.Type, '#pop')
+        ],
+        'enum': [
+            include('whitespace'),
+            (r'(token\b)?', Keyword, ('#pop', 'constants'))
+        ],
+        'grammar': [
+            include('whitespace'),
+            (_name, Name.Variable.Global),
+            (r'\)', Punctuation),
+            (r'\(', Punctuation, 'main'),
+            (r':', Punctuation, 'grammar-rules')
+        ],
+        'grammar-rules': [
+            include('whitespace'),
+            include('string'),
+            (r':', Punctuation, 'superclasses'),
+            (r'->|[<>()|*]', Punctuation),
+            (r'(\[)(\s*)(badness)', bygroups(Punctuation, Text, Keyword),
+             'more'),
+            (_name, Name)
+        ],
+        'inherited': [
+            include('whitespace'),
+            (r'<', Punctuation, 'type-list'),
+            (r'(%s)?' % _name, Name.Class, '#pop'),
+        ],
+        'type-list': [
+            (r'>', Punctuation, '#pop'),
+            (r'\*', Punctuation),
+            include('main')
+        ],
+        'new': [
+            include('whitespace'),
+            (r'transient\b', Keyword.Reserved),
+            (r'(function|method)\b', Keyword.Reserved, '#pop'),
+            (_name, Name.Class, '#pop')
+        ],
+        'operator': [
+            include('whitespace'),
+            (r'negate\b', Operator.Word),
+            (_operator, Operator),
+            (r'', Text, '#pop')
+            # TODO: '('
+        ],
+        'string-template': [
+            include('whitespace'),
+            (r'<<([^>]|>>>|>(?!>))*>>', String.Other), # TODO: >>> legal here?
+            (_name, Name.Function, '#pop')
+        ],
+        'template': [ # TODO: if only allowed at top level, is this necessary?
+            include('whitespace'),
+            include('string'),
+            (r'->|[@+\-*/%&!~,?|]', Punctuation),
+            (r'inherited\b', Keyword.Reserved),
+            (_name, Name),
+            (r';', Punctuation, '#pop')
+        ],
+
+        # Identifiers
+        'constants': [
+            (r',', Punctuation),
+            (r';', Punctuation, '#pop'),
+            (r'property\b', Keyword.Reserved),
+            (_name, Name.Constant),
+            include('whitespace')
+        ],
+        'label': [
+            include('whitespace'),
+            (_name, Name.Label, '#pop')
+        ],
+        'superclass': [ # TODO: combine with 'new'
+            include('whitespace'),
+            (r'object\b', Keyword.Reserved, '#pop'),
+            (_name, Name.Class, '#pop')
+        ],
+        'superclasses': [
+            include('whitespace'),
+            (r'[:,]', Punctuation, 'superclass'),
+            (r'', Text, '#pop')
+        ],
+        'variables': [
+            include('whitespace'),
+            (r',', Punctuation),
+            (r'[:)]', Punctuation, '#pop'),
+            (_name, Name.Variable)
+        ],
+
+        # Whitespace and comments
+        'whitespace': [
+            (r'^\s*#if\s+0', Comment.Preproc, 'if0'), # TODO: #if 0 + 1
+            (r'^\s*#(.*?[^\\])?$', Comment.Preproc),
+            (r'\s+|\\\n', Text),
+            (r'//(.*?[^\\])?$', Comment.Single),
+            (r'/\*.*?\*/', Comment.Multiline)
+        ],
+        'if0': [
+            (r'^\s*#if.*?(?<!\\)$', Comment.Preproc, '#push'),
+            (r'^\s*#el(?:se|if).*?$', Comment.Preproc, '#pop'),
+            (r'^\s*#endif.*?(?<!\\)$', Comment.Preproc, '#pop'),
+            (r'.*?$', Comment)
+        ],
+
+        # Strings
+        'string': [
+            (r'"""', String.Double, 'tdqs'),
+            (r"'''", String.Single, 'tsqs'),
+            (r'"', String.Double, 'dqs'),
+            (r"'", String.Single, 'sqs')
+        ],
+        's': [
+            (r'\\([\\<>"\'^v bnrt]|u[0-9a-fA-F]{,4}|x[0-9a-fA-F]{,2}|'
+             r'[0-7]{1,3})', String.Escape), # TODO: check octal > 255
+            # TODO: test <<*>>
+            # TODO: check << without >>
+            # TODO: test <<only>> without <<first time>>
+            (r'(<<\s*(?:(?:else|otherwise)\s+)?(?:if|unless)\s+)(.*?)(>>)',
+             bygroups(String.Interpol, using(this), String.Interpol)),
+            (r'<<\s*(one\s+of|first\s+time|or|\|\||only|else|end|otherwise|'
+             r'((then\s+)?(purely\s+)?at|sticky)\+random|'
+             r'(then\s+)?(half\s+)?shuffled|cycling|stopping|'
+             r'as\s+decreasingly\s+likely\s+outcomes)\s*>>',
+             String.Interpol), # TODO: rearrange these
+            (r'(<<(?:%\S*)?)(.*?)(>>)', # TODO: check sprintf code(s)
+             bygroups(String.Interpol, using(this), String.Interpol)),
+            (r'(<)(.*?>)', bygroups(Name.Tag, using(HtmlLexer, state='tag'))),
+            (r'&\S*?;', Name.Entity)
+            # TODO: test '&' by itself, and unclosed HTML tag
+        ],
+        'tdqs': [
+            include('s'),
+            (r'[^\\<&"]+', String.Double),
+            (r'"{3,}', String.Double, '#pop'),
+            (r'\\"+', String.Escape),
+            (r'"', String.Double),
+            (r'[\\&<]', String.Double)
+        ],
+        'tsqs': [
+            include('s'),
+            (r"[^\\<&']+", String.Single),
+            (r"'{3,}", String.Single, '#pop'),
+            (r"\\'+", String.Escape),
+            (r"'", String.Single),
+            (r'[\\&<]', String.Single)
+        ],
+        'dqs': [
+            include('s'),
+            (r'[^\\<&"]+', String.Double),
+            (r'"', String.Double, '#pop'),
+            (r'[\\<&]', String.Double)
+        ],
+        'sqs': [
+            include('s'),
+            (r"[^\\<&']+", String.Single),
+            (r"'", String.Single, '#pop'),
+            (r'[\\<&]', String.Single)
+        ],
+
+        # Regular expressions
+        'tdqr': [
+            (r'[^\\"]+', String.Regex),
+            (r'\\"*', String.Regex),
+            (r'"{3,}', String.Regex, '#pop'),
+            (r'"', String.Regex)
+        ],
+        'tsqr': [
+            (r"[^\\']+", String.Regex),
+            (r"\\'*", String.Regex),
+            (r"'{3,}", String.Regex, '#pop'),
+            (r"'", String.Regex)
+        ],
+        'dqr': [
+            (r'[^\\"]+', String.Regex),
+            (r'\\"?', String.Regex),
+            (r'"', String.Regex, '#pop')
+        ],
+        'sqr': [
+            (r"[^\\']+", String.Regex),
+            (r"\\'?", String.Regex),
+            (r"'", String.Regex, '#pop')
+        ]
     }

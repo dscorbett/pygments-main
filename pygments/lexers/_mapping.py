@@ -299,6 +299,7 @@ LEXERS = {
     'StanLexer': ('pygments.lexers.math', 'Stan', ('stan',), ('*.stan',), ()),
     'SwigLexer': ('pygments.lexers.compiled', 'SWIG', ('swig',), ('*.swg', '*.i'), ('text/swig',)),
     'SystemVerilogLexer': ('pygments.lexers.hdl', 'systemverilog', ('systemverilog', 'sv'), ('*.sv', '*.svh'), ('text/x-systemverilog',)),
+    'Tads3Lexer': ('pygments.lexers.compiled', 'TADS 3', ('tads3',), ('*.t',), ()),
     'TclLexer': ('pygments.lexers.agile', 'Tcl', ('tcl',), ('*.tcl',), ('text/x-tcl', 'text/x-script.tcl', 'application/x-tcl')),
     'TcshLexer': ('pygments.lexers.shell', 'Tcsh', ('tcsh', 'csh'), ('*.tcsh', '*.csh'), ('application/x-csh',)),
     'TeaTemplateLexer': ('pygments.lexers.templates', 'Tea', ('tea',), ('*.tea',), ('text/x-tea',)),
