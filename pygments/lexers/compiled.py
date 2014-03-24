@@ -5102,7 +5102,7 @@ class Tads3Lexer(RegexLexer):
 
     flags = re.MULTILINE # TODO: re.U?
 
-    _name = r'[_a-zA-Z][_a-zA-Z0-9]*'
+    _name = r'[_a-zA-Z][_a-zA-Z\d]*'
     _operator = (r'->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|' # TODO: explain absense of ? and :
                  r'([=+\-*/%><!&|^]|<<|>>>?)=?') # TODO: rm r'[\[\]]'?
 
@@ -5130,7 +5130,7 @@ class Tads3Lexer(RegexLexer):
             (r'\(', Punctuation, ('#pop', 'more', 'main')),
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
             (r'{', Punctuation, ('more', 'main/lambda', 'variables')),
-            (r'\*', Punctuation),
+            (r'\*', Punctuation),  # Used in propertyset
 
             # Prefix operators
             (r'\+\+|--|[&!~+-]', Operator),
@@ -5138,14 +5138,11 @@ class Tads3Lexer(RegexLexer):
             # Values
             (r'\.{3}', Punctuation, '#pop'),
             (r'#', Punctuation, ('#pop', 'debugger-type')),
-            (r'0[xX][0-9a-fA-F]+', Number.Hex, '#pop'), # TODO: \b needed for numbers?
-            (r'0[0-7]+', Number.Oct, '#pop'),
-            (r'[0-9]+((\.[0-9]*)?[eE][+-]?[0-9]+|\.(?!\.)[0-9]*)', # TODO: end in '[.eE]'?
+            (r'0[xX][\da-fA-F]+', Number.Hex, '#pop'),
+            (r'(\d+\.(?!\.)\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+',
              Number.Float, '#pop'),
-            (r'[0-9]+', Number.Integer, '#pop'),
-            # TODO: float without leading integer part?
-            # TODO: can hex, octal be floats?
-            # TODO: yes and yes; see tctok.cpp
+            (r'0[0-7]+', Number.Oct, '#pop'),
+            (r'\d+', Number.Integer, '#pop'),
             include('string'),
             (r'R"""', String.Regex, ('#pop', 'tdqr')),
             (r"R'''", String.Regex, ('#pop', 'tsqr')),
@@ -5173,7 +5170,8 @@ class Tads3Lexer(RegexLexer):
             (r'dictionary\b', Keyword.Reserved, 'constants'),
             (r'do\b', Keyword.Reserved, '#pop'),
             (r'enum\b', Keyword.Reserved, 'enum'),
-            #(r'(for|foreach)\b', Keyword.Reserved, 'for'),
+            (r'(for|foreach)\b', Keyword.Reserved,
+             ('#pop', 'more/for', 'main/for')),
             (r'grammar\b', Keyword.Reserved, 'grammar'),
             (r'local\b', Keyword.Reserved, ('more/local', 'main/local')),
             (r'object\b', Keyword.Reserved,
@@ -5217,6 +5215,18 @@ class Tads3Lexer(RegexLexer):
             (r':(?!:)', Operator, '#pop'),
             include('more')
         ],
+        # For or foreach loop
+        'main/for': [
+            (r'\(', Punctuation),
+            (r'local\b', Keyword.Reserved, ('more/for', 'main/local')),
+            include('main')
+        ],
+        'more/for': [
+            (r',', Punctuation),
+            (r'\.\.', Punctuation, 'main/for'),
+            (r'(in|step)\b', Keyword, 'main/for'),
+            include('more')
+        ],
         # Short-form anonymous function
         'main/lambda': [
             (r'local\b', Keyword.Reserved, ('more', 'main/local')),
@@ -5224,7 +5234,7 @@ class Tads3Lexer(RegexLexer):
         ],
         # Local
         'main/local': [
-            (_name, Name.Variable),
+            (_name, Name.Variable, '#pop'),
             include('main')
         ],
         'more/local': [
@@ -5411,8 +5421,8 @@ class Tads3Lexer(RegexLexer):
             (r"'", String.Single, 'sqs')
         ],
         's': [
-            (r'\\([\\<>"\'^v bnrt]|u[0-9a-fA-F]{,4}|x[0-9a-fA-F]{,2}|'
-             r'[0-7]{1,3})', String.Escape), # TODO: check octal > 255
+            (r'\\([\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
+             r'[0-3]?[0-7]{1,2})', String.Escape),
             # TODO: test <<*>>
             # TODO: check << without >>
             # TODO: test <<only>> without <<first time>>
