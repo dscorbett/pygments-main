@@ -5105,6 +5105,7 @@ class Tads3Lexer(RegexLexer):
     _name = r'[_a-zA-Z][_a-zA-Z\d]*'
     _operator = (r'->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|' # TODO: explain absense of ? and :
                  r'([=+\-*/%><!&|^]|<<|>>>?)=?') # TODO: rm r'[\[\]]'?
+    _tag = r'<[^\s>]*'
 
     # TODO: export/property: always constant, or any symbol?
     # TODO: allow comments wherever there is r'\(\\s[+*]\)'
@@ -5119,7 +5120,6 @@ class Tads3Lexer(RegexLexer):
     # TODO: Test '{x: x}' as a statement (an expression in void context).
     # TODO: Text 'object { identity = {x: x} }'.
 
-    from pygments.lexers.web import HtmlLexer
     tokens = {
         'root': [
             (_operator, Punctuation),
@@ -5154,6 +5154,7 @@ class Tads3Lexer(RegexLexer):
             (r'inherited\b', Keyword.Reserved, ('more', 'inherited')),
             (r'new\b', Keyword.Reserved, ('#pop', 'new')),
             (r'(nil|true)\b', Keyword.Constant, '#pop'),
+            (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
 
             # Statements
             (r'(object)(\s+)(template\b)',
@@ -5176,7 +5177,6 @@ class Tads3Lexer(RegexLexer):
             (r'local\b', Keyword.Reserved, ('more/local', 'main/local')),
             (r'object\b', Keyword.Reserved,
              ('more', 'main', 'more/template', 'superclasses')),
-            (r'operator\b', Keyword.Reserved, 'operator'),
             (r'template\b', Keyword.Reserved, 'template'),
 
             # Unused keywords
@@ -5353,11 +5353,10 @@ class Tads3Lexer(RegexLexer):
             (r'negate\b', Operator.Word),
             (_operator, Operator),
             (r'', Text, '#pop')
-            # TODO: '('
         ],
         'string-template': [
             include('whitespace'),
-            (r'<<([^>]|>>>|>(?!>))*>>', String.Other), # TODO: >>> legal here?
+            (r'<<([^>]|>>>|>(?!>))*>>', String.Other),
             (_name, Name.Function, '#pop')
         ],
         'template': [ # TODO: if only allowed at top level, is this necessary?
@@ -5400,9 +5399,9 @@ class Tads3Lexer(RegexLexer):
 
         # Whitespace and comments
         'whitespace': [
-            (r'^\s*#if\s+0', Comment.Preproc, 'if0'), # TODO: #if 0 + 1
+            (r'^\s*#if\s+0$', Comment.Preproc, 'if0'), # TODO: '#if 0 // xyz'
             (r'^\s*#(.*?[^\\])?$', Comment.Preproc),
-            (r'\s+|\\\n', Text),
+            (r'(\s|\\\n)+', Text),
             (r'//(.*?[^\\])?$', Comment.Single),
             (r'/\*.*?\*/', Comment.Multiline)
         ],
@@ -5428,16 +5427,13 @@ class Tads3Lexer(RegexLexer):
             # TODO: test <<only>> without <<first time>>
             (r'(<<\s*(?:(?:else|otherwise)\s+)?(?:if|unless)\s+)(.*?)(>>)',
              bygroups(String.Interpol, using(this), String.Interpol)),
-            (r'<<\s*(one\s+of|first\s+time|or|\|\||only|else|end|otherwise|'
-             r'((then\s+)?(purely\s+)?at|sticky)\+random|'
-             r'(then\s+)?(half\s+)?shuffled|cycling|stopping|'
-             r'as\s+decreasingly\s+likely\s+outcomes)\s*>>',
-             String.Interpol), # TODO: rearrange these
-            (r'(<<(?:%\S*)?)(.*?)(>>)', # TODO: check sprintf code(s)
+            (r'<<\s*(as\s+decreasingly\s+likely\s+outcomes|cycling|else|end|'
+             r'first\s+time|one\s+of|only|or|otherwise|'
+             r'(sticky|(then\s+)?(purely\s+)?at)\s+random|stopping|'
+             r'(then\s+)?(half\s+)?shuffled|\|\|)\s*>>', String.Interpol),
+            (r'(<<(?:%(?:[_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.)?)(.*?)(>>)',
              bygroups(String.Interpol, using(this), String.Interpol)),
-            (r'(<)(.*?>)', bygroups(Name.Tag, using(HtmlLexer, state='tag'))),
-            (r'&\S*?;', Name.Entity)
-            # TODO: test '&' by itself, and unclosed HTML tag
+            (r'&(#([xX][\da-fA-F]+|\d+)|[\da-zA-Z]+);?', Name.Entity)
         ],
         'tdqs': [
             include('s'),
@@ -5445,6 +5441,7 @@ class Tads3Lexer(RegexLexer):
             (r'"{3,}', String.Double, '#pop'),
             (r'\\"+', String.Escape),
             (r'"', String.Double),
+            (_tag, Name.Tag, 'tdqt'),
             (r'[\\&<]', String.Double)
         ],
         'tsqs': [
@@ -5453,19 +5450,52 @@ class Tads3Lexer(RegexLexer):
             (r"'{3,}", String.Single, '#pop'),
             (r"\\'+", String.Escape),
             (r"'", String.Single),
+            (_tag, Name.Tag, 'tsqt'),
             (r'[\\&<]', String.Single)
         ],
         'dqs': [
             include('s'),
             (r'[^\\<&"]+', String.Double),
             (r'"', String.Double, '#pop'),
+            (_tag, Name.Tag, 'dqt'),
             (r'[\\<&]', String.Double)
         ],
         'sqs': [
             include('s'),
             (r"[^\\<&']+", String.Single),
             (r"'", String.Single, '#pop'),
+            (_tag, Name.Tag, 'sqt'),
             (r'[\\<&]', String.Single)
+        ],
+
+        # Tags
+        'tag': [
+            (r'=', Punctuation),
+            (r'(\s|\\\n)+', Text),
+            (r'([^=\s"\'>]*)(=)((?!\\?["\'])[^\s>]+)',
+             bygroups(Name.Attribute, Punctuation, String.Other)),
+            (r'[^=\s"\'>]+', Name.Attribute),
+            (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop')
+        ],
+        'tdqt': [
+            (r'\\?".*?(\\"|"(?!""))', String.Double),
+            (r'\\?\'([^"\']|\\"|"(?!""))*\'', String.Single),
+            include('tag')
+        ],
+        'tsqt': [
+            (r'\\?"([^"\']|\\\'|\'(?!\'\'))*"', String.Double),
+            (r"\\?'.*?(\\'|'(?!''))", String.Single),
+            include('tag')
+        ],
+        'dqt': [
+            (r'\\".*?\\"', String.Double),
+            (r'\\?\'([^"\']|\\")*\'', String.Single),
+            include('tag')
+        ],
+        'sqt': [
+            (r'\\?"([^"\']|\\\')*"', String.Double),
+            (r"\\'.*?\\'", String.Single),
+            include('tag')
         ],
 
         # Regular expressions
