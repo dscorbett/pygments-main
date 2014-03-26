@@ -1155,9 +1155,9 @@ class JasminLexer(RegexLexer):
              r'ineg|int2byte|int2char|int2short|ior|irem|ireturn|ishl|ishr|'
              r'istore|istore_0|istore_1|istore_2|istore_3|istore_w|isub|'
              r'iushr|ixor|l2d|l2f|l2i|ladd|laload|land|lastore|lcmp|lconst_0|'
-             r'lconst_1|ldc|ldc2_w|ldc_w|ldiv|lload|lload_0|lload_1|lload_2|'
-             r'lload_3|lload_w|lmul|lneg|lookupswitch|lor|lrem|lreturn|lshl|'
-             r'lshr|lstore|lstore_0|lstore_1|lstore_2|lstore_3|lstore_w|lsub|'
+             r'lconst_1|ldc2_w|ldiv|lload|lload_0|lload_1|lload_2|lload_3|'
+             r'lload_w|lmul|lneg|lookupswitch|lor|lrem|lreturn|lshl|lshr|'
+             r'lstore|lstore_0|lstore_1|lstore_2|lstore_3|lstore_w|lsub|'
              r'lushr|lxor|monitorenter|monitorexit|nop|pop|pop2|ret|ret_w|'
              r'return|saload|sastore|sipush|swap)%s' % _separator_lookahead,
              Keyword.Reserved),
@@ -1174,6 +1174,7 @@ class JasminLexer(RegexLexer):
              r'if_icmpgt|if_icmple|if_icmplt|if_icmpne|ifeq|ifge|ifgt|ifle|'
              r'iflt|ifne|ifnonnull|ifnull|jsr|jsr_w)%s' %
              _separator_lookahead, Keyword.Reserved, 'label'),
+            (r'(ldc|ldc_w)\b', Keyword.Reserved, 'class?'),
             (r'(multianewarray|newarray)%s' % _separator_lookahead,
              Keyword.Reserved, 'descriptor'),
             (r'tableswitch%s' % _separator_lookahead, Keyword.Reserved,
@@ -1210,6 +1211,12 @@ class JasminLexer(RegexLexer):
             include('default'),
             (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
              bygroups(Name.Namespace, Name.Class), '#pop')
+        ],
+        'class?': [
+            (r'[%s]+' % _whitespace, Text),
+            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class), '#pop'),
+            (r'', Text, '#pop')
         ],
         'caught-exception': [
             (r'all%s' % _separator_lookahead, Keyword),
