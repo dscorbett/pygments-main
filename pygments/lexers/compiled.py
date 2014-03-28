@@ -5421,7 +5421,7 @@ class Tads3Lexer(RegexLexer):
             (r"'", String.Single, 'sqs')
         ],
         's': [
-            (r'\\([\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
+            (r'{{|}}|\\([\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
              r'[0-3]?[0-7]{1,2})', String.Escape),
             # TODO: test <<*>>
             # TODO: check << without >>
@@ -5438,71 +5438,78 @@ class Tads3Lexer(RegexLexer):
         ],
         'tdqs': [
             include('s'),
-            (r'[^\\<&"]+', String.Double),
+            (r'[^\\<&{"]+', String.Double),
             (r'"{3,}', String.Double, '#pop'),
             (r'\\"+', String.Escape),
             (r'"', String.Double),
+            (r'{([^}<"]|<(?!<)|(?<=\\)"+|"(?!""))*}', String.Interpol),
             (_tag, Name.Tag, 'tdqt'),
-            (r'[\\&]', String.Double)
+            (r'[\\&{]', String.Double)
         ],
         'tsqs': [
             include('s'),
-            (r"[^\\<&']+", String.Single),
+            (r"[^\\<&{']+", String.Single),
             (r"'{3,}", String.Single, '#pop'),
             (r"\\'+", String.Escape),
             (r"'", String.Single),
+            (r"{([^}<']|<(?!<)|(?<=\\)'+|'(?!''))*}", String.Interpol),
             (_tag, Name.Tag, 'tsqt'),
-            (r'[\\&]', String.Single)
+            (r'[\\&{]', String.Single)
         ],
         'dqs': [
             include('s'),
-            (r'[^\\<&"]+', String.Double),
+            (r'[^\\<&{"]+', String.Double),
             (r'"', String.Double, '#pop'),
+            (r'{([^}<"]|<(?!<)|(?<=\\)")*}', String.Interpol),
             (_tag, Name.Tag, 'dqt'),
-            (r'[\\&]', String.Double)
+            (r'[\\&{]', String.Double)
         ],
         'sqs': [
             include('s'),
-            (r"[^\\<&']+", String.Single),
+            (r"[^\\<&{']+", String.Single),
             (r"'", String.Single, '#pop'),
+            (r"{([^}<']|<(?!<)|(?<=\\)')*}", String.Interpol),
             (_tag, Name.Tag, 'sqt'),
-            (r'[\\&]', String.Single)
+            (r'[\\&{]', String.Single)
         ],
 
         # Tags
         'tag': [
             (r'=', Punctuation),
             (r'(\s|\\\n)+', Text),
-            (r'([^=\s"\'>]*)(=)((?!\\?["\'])[^\s"\'>]+)',
+            (r'(?=<<)', Text, '#pop'),
+            (r'(([^=\s"\'<>]|<(?!<))*)(=)((?!\\?["\'])(?:[^\s"\'<>]|<(?!<))+)',
              bygroups(Name.Attribute, Punctuation, String.Other)),
-            (r'[^=\s"\'>]+', Name.Attribute),
+            (r'([^=\s"\'<>]|<(?!<))+', Name.Attribute),
             (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop')
         ],
         'tdqt': [
             (r'"{3,}', String.Double, '#pop:2'),
-            (r'\\?".*?(\\"|"(?!"")|(?="""))', String.Double),
-            (r'\\?\'([^"\']|\\"|"(?!""))*(\'|(?="""))', String.Single),
+            (r'\\?".*?(\\"|"(?!"")|(?="""|<<))', String.Double),
+            (r'\\?\'([^"\'<]|\\"+|"(?!"")|<(?!<))*(\'|(?="""|<<))',
+             String.Single),
             include('tag'),
             (r'.', String.Double)
         ],
         'tsqt': [
             (r"'{3,}", String.Single, '#pop:2'),
-            (r'\\?"([^"\']|\\\'|\'(?!\'\'))*("|(?=\'\'\'))', String.Double),
-            (r"\\?'.*?(\\'|'(?!'')|(?='''))", String.Single),
+            (r'\\?"([^"\'<]|\\\'|\'(?!\'\')|<(?!<))*("|(?=\'\'\'|<<))',
+             String.Double),
+            (r"\\?'.*?(\\'+|'(?!'')|(?='''|<<))", String.Single),
             include('tag'),
             (r'.', String.Single)
         ],
         'dqt': [
             (r'"', String.Double, '#pop:2'),
-            (r'\\".*?(\\"|(?="))', String.Double),
-            (r'\\?\'([^"\']|\\")*(\'|(?="))', String.Single),
+            (r'\\".*?(\\"|(?="|<<))', String.Double),
+            (r'\\?\'([^"\'<]|\\"|<(?!<))*(\'|(?="|<<))', String.Single),
             include('tag'),
             (r'.', String.Double)
         ],
         'sqt': [
             (r"'", String.Single, '#pop:2'),
-            (r'\\?"([^"\']|\\\')*("|(?=\'))', String.Double),
-            (r"\\'.*?(\\'|(?='))", String.Single),
+            (r'\\?"([^"\'<]|\\\'|<(?!<))*("|(?=\'|<<))', String.Double),
+            (r"\\'.*?(\\'|(?='|<<))", String.Single),
             include('tag'),
             (r'.', String.Single)
         ],
