@@ -5193,8 +5193,9 @@ class Tads3Lexer(RegexLexer):
         ],
         'more': [
             include('whitespace'),
-            (r'\(', Punctuation, # TODO: distinguish between call and defn
-             ('#pop', 'main/statement', 'more/parameters', 'main/parameters')),
+            # TODO: distinguish between call and defn
+            (r'\(', Punctuation, ('#pop', 'main/statement?', 'more/parameters',
+                                  'main/parameters')),
             (r'\[', Punctuation, ('more', 'main')),
             (r';', Punctuation, ('#pop', 'main/statement')),
             (r'[:)\]}]', Punctuation, '#pop'),
@@ -5260,7 +5261,7 @@ class Tads3Lexer(RegexLexer):
         ],
         # Start of object property
         'main/start': [ # TODO: rename? combine with 'root'?
-            (r'[{;}]', Punctuation.X),
+            (r'[{;}]', Punctuation),
             (_operator, Punctuation, 'main'),
             include('string'),
             (r'(%s)(\s*)(=)' % _name,
@@ -5442,7 +5443,7 @@ class Tads3Lexer(RegexLexer):
             (r'\\"+', String.Escape),
             (r'"', String.Double),
             (_tag, Name.Tag, 'tdqt'),
-            (r'[\\&<]', String.Double)
+            (r'[\\&]', String.Double)
         ],
         'tsqs': [
             include('s'),
@@ -5451,51 +5452,59 @@ class Tads3Lexer(RegexLexer):
             (r"\\'+", String.Escape),
             (r"'", String.Single),
             (_tag, Name.Tag, 'tsqt'),
-            (r'[\\&<]', String.Single)
+            (r'[\\&]', String.Single)
         ],
         'dqs': [
             include('s'),
             (r'[^\\<&"]+', String.Double),
             (r'"', String.Double, '#pop'),
             (_tag, Name.Tag, 'dqt'),
-            (r'[\\<&]', String.Double)
+            (r'[\\&]', String.Double)
         ],
         'sqs': [
             include('s'),
             (r"[^\\<&']+", String.Single),
             (r"'", String.Single, '#pop'),
             (_tag, Name.Tag, 'sqt'),
-            (r'[\\<&]', String.Single)
+            (r'[\\&]', String.Single)
         ],
 
         # Tags
         'tag': [
             (r'=', Punctuation),
             (r'(\s|\\\n)+', Text),
-            (r'([^=\s"\'>]*)(=)((?!\\?["\'])[^\s>]+)',
+            (r'([^=\s"\'>]*)(=)((?!\\?["\'])[^\s"\'>]+)',
              bygroups(Name.Attribute, Punctuation, String.Other)),
             (r'[^=\s"\'>]+', Name.Attribute),
             (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop')
         ],
         'tdqt': [
-            (r'\\?".*?(\\"|"(?!""))', String.Double),
-            (r'\\?\'([^"\']|\\"|"(?!""))*\'', String.Single),
-            include('tag')
+            (r'"{3,}', String.Double, '#pop:2'),
+            (r'\\?".*?(\\"|"(?!"")|(?="""))', String.Double),
+            (r'\\?\'([^"\']|\\"|"(?!""))*(\'|(?="""))', String.Single),
+            include('tag'),
+            (r'.', String.Double)
         ],
         'tsqt': [
-            (r'\\?"([^"\']|\\\'|\'(?!\'\'))*"', String.Double),
-            (r"\\?'.*?(\\'|'(?!''))", String.Single),
-            include('tag')
+            (r"'{3,}", String.Single, '#pop:2'),
+            (r'\\?"([^"\']|\\\'|\'(?!\'\'))*("|(?=\'\'\'))', String.Double),
+            (r"\\?'.*?(\\'|'(?!'')|(?='''))", String.Single),
+            include('tag'),
+            (r'.', String.Single)
         ],
         'dqt': [
-            (r'\\".*?\\"', String.Double),
-            (r'\\?\'([^"\']|\\")*\'', String.Single),
-            include('tag')
+            (r'"', String.Double, '#pop:2'),
+            (r'\\".*?(\\"|(?="))', String.Double),
+            (r'\\?\'([^"\']|\\")*(\'|(?="))', String.Single),
+            include('tag'),
+            (r'.', String.Double)
         ],
         'sqt': [
-            (r'\\?"([^"\']|\\\')*"', String.Double),
-            (r"\\'.*?\\'", String.Single),
-            include('tag')
+            (r"'", String.Single, '#pop:2'),
+            (r'\\?"([^"\']|\\\')*("|(?=\'))', String.Double),
+            (r"\\'.*?(\\'|(?='))", String.Single),
+            include('tag'),
+            (r'.', String.Single)
         ],
 
         # Regular expressions
