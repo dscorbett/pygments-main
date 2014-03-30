@@ -5104,7 +5104,7 @@ class Tads3Lexer(RegexLexer):
 
     _name = r'[_a-zA-Z][_a-zA-Z\d]*'
     _operator = (r'->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|' # TODO: explain absense of ? and :
-                 r'([=+\-*/%><!&|^]|<<|>>>?)=?') # TODO: rm r'[\[\]]'?
+                 r'([=+\-*/%!&|^]|<<?|>>?>?)=?') # TODO: rm r'[\[\]]'?
     _tag = r'<[^\s>]*'
 
     # TODO: export/property: always constant, or any symbol?
@@ -5191,7 +5191,7 @@ class Tads3Lexer(RegexLexer):
 
             (r'', Text, '#pop')
         ],
-        'more': [
+        'more/basic': [
             include('whitespace'),
             # TODO: distinguish between call and defn
             (r'\(', Punctuation, ('#pop', 'main/statement?', 'more/parameters',
@@ -5202,7 +5202,10 @@ class Tads3Lexer(RegexLexer):
             (_operator, Operator, 'main'),
             (r'\?(?!\?)', Operator, ('main', 'more/conditional', 'main')),
             (r'(is|not)(\s+)(in)',
-             bygroups(Operator.Word, Text, Operator.Word), 'main'),
+             bygroups(Operator.Word, Text, Operator.Word), 'main')
+        ],
+        'more': [
+            include('more/basic'),
             (r'', Text, '#pop')
         ],
         # Switch case
@@ -5215,6 +5218,12 @@ class Tads3Lexer(RegexLexer):
         'more/conditional': [
             (r':(?!:)', Operator, '#pop'),
             include('more')
+        ],
+        # Embedded expressions
+        'more/embed': [
+            (r'>>', String.Interpol, '#pop'),
+            include('more/basic'),
+            (r'', Text, 'main')
         ],
         # For or foreach loop
         'main/for': [
@@ -5423,17 +5432,13 @@ class Tads3Lexer(RegexLexer):
         's': [
             (r'{{|}}|\\([\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
              r'[0-3]?[0-7]{1,2})', String.Escape),
-            # TODO: test <<*>>
-            # TODO: check << without >>
-            # TODO: test <<only>> without <<first time>>
-            (r'(<<\s*(?:(?:else|otherwise)\s+)?(?:if|unless)\s+)(.*?)(>>)',
-             bygroups(String.Interpol, using(this), String.Interpol)),
             (r'<<\s*(as\s+decreasingly\s+likely\s+outcomes|cycling|else|end|'
              r'first\s+time|one\s+of|only|or|otherwise|'
              r'(sticky|(then\s+)?(purely\s+)?at)\s+random|stopping|'
              r'(then\s+)?(half\s+)?shuffled|\|\|)\s*>>', String.Interpol),
-            (r'(<<(?:%(?:[_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.)?)(.*?)(>>)',
-             bygroups(String.Interpol, using(this), String.Interpol)),
+            (r'<<(%([_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.|'
+             r'\s*((else|otherwise)\s+)?(if|unless)\b)?', String.Interpol,
+             ('more/embed', 'main')),
             (r'&(#([xX][\da-fA-F]+|\d+)|[\da-zA-Z]+);?', Name.Entity)
         ],
         'tdqs': [
