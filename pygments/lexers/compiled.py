@@ -5105,8 +5105,8 @@ class Tads3Lexer(RegexLexer):
     _comment_single = r'//(?:[^\\\n]|\\\n)*$'
     _comment_multiline = r'/\*(?:[^*]|\*[^/])*\*/'
     _name = r'[_a-zA-Z]\w*'
-    _operator = (r'->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|' # TODO: explain absense of ? and :
-                 r'([=+\-*/%!&|^]|<<?|>>?>?)=?') # TODO: rm r'[\[\]]'?
+    _operator = (r'(?:->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
+                 r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)') # TODO: r'[\[\]]'?
     _tag = r'<[^\s>]*'
     _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
 
@@ -5122,55 +5122,80 @@ class Tads3Lexer(RegexLexer):
 
     tokens = {
         'root': [
-            include('whitespace'),
             (r'{', Punctuation, 'object-body'),
-            (r'[;:)}]', Punctuation),
-            (_operator, Punctuation),
-            (r'(?!\Z)', Text, 'main/root') # TODO: check for infinite loop
+            (r';', Punctuation),
+            (r'(%s)(%s*(?=\())' % (_name, _ws),
+             bygroups(Name.Function, using(this, state='whitespace')),
+             ('block?', 'more')),
+            include('whitespace'),
+            (r'\++', Punctuation),
+            (r'(?!\Z)', Text, 'main/root')
         ],
         'main/root': [
             include('main/basic'),
-            (r'(%s)(%s*(?=\())' % (_name, _ws),
-             bygroups(Name.Function, using(this, state='whitespace')), 'more'),
-            (r'(%s)(%s*)({)' % (_name, _ws),
-             bygroups(Name.Function, using(this, state='whitespace'),
-                      Punctuation), 'block'),
-            (r'(%s)(%s*(?=:))' % (_name, _ws),
-             bygroups(Name, using(this, state='whitespace')), # TODO: Name.Global? Name.Variable?
-             ('more/template', 'classes')), # TODO: object-body?
-            (r'(%s)(%s*)(=?)' % (_name, _ws),
-             bygroups(Name, using(this, state='whitespace'), # TODO: Name.X?
-                      Punctuation), ('more', 'main')),
-            (_name, Name, '#pop'),
-            (r'(?![{}):;]|%s).' % _operator, Error, '#pop'),
-            (r'', Text, '#pop')
+            (r'(%s)(%s*)(:)' % (_name, _ws),
+             bygroups(Name.Constant, using(this, state='whitespace'),
+                      Punctuation),
+             ('#pop', 'object-body-naked', 'classes', 'class')),
+            (r'', Text, ('#pop', 'object-body-naked', 'classes', 'class'))
+            # TODO: (..., 'object-body-naked', 'classes', ...) or just
+            # TODO: (..., 'object-body-naked', ...)? Here and elsewhere.
+        ],
+        'object-body-naked': [ # TODO: rename
+           (r';', Punctuation, '#pop'),
+           (r'{', Punctuation, ('#pop', 'object-body')),
+           include('object-body')
         ],
         'object-body': [
+            (r';', Punctuation),
+            (r'{', Punctuation, '#push'),
             (r'}', Punctuation, '#pop'),
-            include('root')
+            (r':', Punctuation, ('classes', 'class')),
+            (r'(%s)(%s*(?=[({]))' % (_name, _ws),
+             bygroups(Name.Function, using(this, state='whitespace')),
+             ('block?', 'more')),
+            (r'(%s)(%s*)(:)' % (_name, _ws),
+             bygroups(Name.Variable.Instance, using(this, state='whitespace'),
+                      Punctuation), ('classes', 'class')),
+            include('whitespace'),
+            (_operator, Punctuation, 'main'),
+            (r'', Text, 'main/object-body')
+        ],
+        'main/object-body': [
+            include('main/basic'),
+            (r'(%s)(%s*)(=?)' % (_name, _ws),
+             bygroups(Name.Variable.Instance, using(this, state='whitespace'),
+                      Punctuation), ('#pop', 'more', 'main')),
+            (r'', Text, '#pop:2')
         ],
         'block?': [
-            include('whitespace'),
             (r'{', Punctuation, ('#pop', 'block')),
+            include('whitespace'),
             (r'', Text, '#pop')
         ],
         'block': [
-            include('whitespace'),
+            (r';', Punctuation),
             (r'{', Punctuation, '#push'),
             (r'}', Punctuation, '#pop'),
-            (r'', Text, ('more', 'main'))
+            (r'(%s)(%s*)(:)' % (_name, _ws),
+             bygroups(Name.Label, using(this, state='whitespace'),
+                      Punctuation)),
+            include('whitespace'),
+            (r'(?!\Z)', Text, ('more', 'main'))
         ],
+
         'main/basic': [
             include('whitespace'),
+
+            (r'\+\+|--|[&!~+-]', Operator), # TODO: needed?
+            (r'(case|export|extern|if|intrinsic|return|static|while)\b',
+             Keyword.Reserved),
+
             (r'\(', Punctuation, ('#pop', 'more', 'main')),
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
-            (r'{', Punctuation, ('more/lambda', 'main/lambda', 'variables')),
-            (r'\*', Punctuation),  # Used in propertyset
-
-            # Prefix operators
-            (r'\+\+|--|[&!~+-]', Operator),
-
-            # Values
+            (r'{', Punctuation,
+             ('#pop', 'more/lambda', 'main/lambda', 'variables')),
+            (r'\*', Punctuation, '#pop'),  # Used in propertyset
             (r'\.{3}', Punctuation, '#pop'),
             (r'#', Punctuation, ('#pop', 'debugger-type')),
             (r'0[xX][\da-fA-F]+', Number.Hex, '#pop'),
@@ -5187,82 +5212,67 @@ class Tads3Lexer(RegexLexer):
             (r"R'''", String.Regex, ('#pop', 'tsqr')),
             (r'R"', String.Regex, ('#pop', 'dqr')),
             (r"R'", String.Regex, ('#pop', 'sqr')),
-            (r'(argcount|definingobj|delegated|invokee|replaced|self|'
-             r'targetobj|targetprop)\b', Name.Builtin.Pseudo, '#pop'),
-            (r'(function|method)\b', Keyword.Reserved, '#pop'),
-            (r'inherited\b', Keyword.Reserved, ('more', 'inherited')),
-            (r'new\b', Keyword.Reserved, ('#pop', 'new')),
-            (r'(nil|true)\b', Keyword.Constant, '#pop'),
-            (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
-
-            # Statements
+            (r'(modify)(%s+)(grammar\b)' % _ws,
+             bygroups(Keyword.Reserved, using(this, state='whitespace'),
+                      Keyword.Reserved), ('#pop', ':', 'grammar')),
             (r'(object)(%s+)(template\b)' % _ws,
              bygroups(Keyword.Reserved, using(this, state='whitespace'),
-                      Keyword.Reserved), 'template'),
+                      Keyword.Reserved), ('#pop', 'template')),
             (r'(string)(%s+)(template\b)' % _ws,
              bygroups(Keyword, using(this, state='whitespace'),
-                      Keyword.Reserved), 'string-template'),
-            (r'case\b', Keyword.Reserved, 'main/case'),
-            # TODO: 'multimethod' is not a reserved word
-            (r'(default|export|extern|finally|if|intrinsic|modify|'
-             r'multimethod|property|propertyset|replace|return|static|switch|'
-             r'throw|transient|try|while)\b', Keyword.Reserved),
-            (r'(break|continue|goto)\b', Keyword.Reserved, 'label'),
-            (r'catch\b', Keyword.Reserved, 'catch'),
+                      Keyword.Reserved), ('#pop', 'string-template')),
+            (r'(argcount|definingobj|delegated|invokee|replaced|self|'
+             r'targetobj|targetprop)\b', Name.Builtin.Pseudo, '#pop'),
+            (r'(break|continue|goto)\b', Keyword.Reserved, ('#pop', 'label')),
+            (r'catch\b', Keyword.Reserved, ('#pop', 'catch')),
             (r'class\b', Keyword.Reserved,
-             ('more/template', 'classes', 'class')), # TODO: object-body?
-            (r'dictionary\b', Keyword.Reserved, 'constants'),
-            (r'(do|else)\b', Keyword.Reserved, '#pop'),
-            (r'enum\b', Keyword.Reserved, 'enum'),
+             ('#pop', 'object-body-naked', 'class')),
+            (r'(default|do|else|finally|function|method|try)\b',
+             Keyword.Reserved, '#pop'),
+            (r'dictionary\b', Keyword.Reserved, ('#pop', 'constants')),
+            (r'enum\b', Keyword.Reserved, ('#pop', 'enum')),
             (r'(for|foreach)\b', Keyword.Reserved,
              ('#pop', 'more/for', 'main/for')),
-            (r'grammar\b', Keyword.Reserved, 'grammar'),
-            (r'local\b', Keyword.Reserved, ('more/local', 'main/local')),
-            (r'object\b', Keyword.Reserved,
-             ('more/template', 'classes')), # TODO: object-body?
-            (r'template\b', Keyword.Reserved, 'template'),
-
-            # Unused keywords
-            (r'(external|formatstring|pass)\b', Error), # TODO: remove
+            (r'grammar\b', Keyword.Reserved,
+             ('#pop', 'object-body-naked', 'grammar')),
+            (r'inherited\b', Keyword.Reserved, ('#pop', 'inherited')),
+            (r'local\b', Keyword.Reserved,
+             ('#pop', 'more/local', 'main/local')),
+            # TODO: 'modify' works on both objects and classes.
+            (r'(modify|property|propertyset|replace|switch|'
+             r'throw|transient)\b', Keyword.Reserved, '#pop'),
+            (r'new\b', Keyword.Reserved, ('#pop', 'new')),
+            (r'(nil|true)\b', Keyword.Constant, '#pop'),
+            (r'object\b', Keyword.Reserved, ('#pop', 'object-body-naked')),
+            (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
+            (r'template\b', Keyword.Reserved, ('#pop', 'template')),
 
             (r'(__objref|defined)(%s*)(\()' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
-                      Punctuation), ('#pop', '__objref')),
+                      Operator), ('#pop', '__objref')),
             (r'((Con|De)structor|(Last|ObjectCall)Prop)\b', Name.Builtin,
-             '#pop'), # TODO: are these really built in?
+             '#pop') # TODO: Are these really built in?
         ],
         'main': [
             include('main/basic'),
-            (r'(%s)(%s*)(:)' % (_name, _ws),
-             bygroups(Name.Label, using(this, state='whitespace'),
-                      Punctuation)),
             (_name, Name, '#pop'),
             (r'', Text, '#pop')
         ],
         'more/basic': [
-            include('whitespace'),
             # TODO: distinguish between call and defn
-            (r'\(', Punctuation,
-             ('block?', 'more/parameters', 'main/parameters')),
+            (r'\(', Punctuation, ('more/parameters', 'main/parameters')),
             (r'\[', Punctuation, ('more', 'main')),
-            (r';', Punctuation, ('#pop', 'block?')),
-            (r'[:)\]]', Punctuation, '#pop'),
+            (r'\?', Operator, ('main', 'more/conditional', 'main')),
+            (r'(?=;)|[:)\]]', Punctuation, '#pop'),
+            include('whitespace'),
             (_operator, Operator, 'main'),
-            (r'\?(?!\?)', Operator, ('main', 'more/conditional', 'main')),
-            (r'(is|not)(%s+)(in)' % _ws,
+            (r'(is|not)(%s+)(in\b)' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
                       Operator.Word), 'main')
         ],
         'more': [
             include('more/basic'),
             (r'', Text, '#pop')
-        ],
-        # Switch case
-        'main/case': [
-            (r'(%s)(%s*)(:)' % (_name, _ws),
-             bygroups(Name, using(this, state='whitespace'), Punctuation),
-             '#pop'),
-            include('main') # TODO: include 'main/case' within 'main' not v.v.
         ],
         # Then expression (conditional operator)
         'more/conditional': [
@@ -5299,7 +5309,7 @@ class Tads3Lexer(RegexLexer):
         # Local
         'main/local': [
             (_name, Name.Variable, '#pop'),
-            include('main')
+            include('whitespace')
         ],
         'more/local': [
             (r',', Punctuation, 'main/local'),
@@ -5321,8 +5331,14 @@ class Tads3Lexer(RegexLexer):
         ],
         'more/parameters': [
             (r'\?', Punctuation),
+            (r'\)', Punctuation, ('#pop', 'multimethod?')),
             (r'[,:=]', Punctuation, 'main/parameters'),
             include('more')
+        ],
+        'multimethod?': [
+            (r'multimethod\b', Keyword, '#pop'),
+            include('whitespace'),
+            (r'', Text, '#pop')
         ],
         # Template properties
         'more/template': [
@@ -5344,42 +5360,41 @@ class Tads3Lexer(RegexLexer):
             include('whitespace')
         ],
         'catch': [
-            include('whitespace'),
             (r'\(', Punctuation),
-            (_name, Name.Exception, 'variables')
-        ],
-        'class': [
-            include('whitespace'),
-            (_name, Name.Class, 'classes')
+            (_name, Name.Exception, ('#pop', 'variables')),
+            include('whitespace')
         ],
         'debugger-type': [
-            include('whitespace'),
-            (_name, Keyword.Type, '#pop')
+            (_name, Keyword.Type, '#pop'),
+            include('whitespace')
         ],
         'enum': [
-            include('whitespace'),
-            (r'(token\b)?', Keyword, ('#pop', 'constants'))
+            (r'(token\b)?', Keyword, ('#pop', 'constants')),
+            include('whitespace')
         ],
         'grammar': [
-            include('whitespace'),
-            (_name, Name.Variable.Global),
             (r'\)', Punctuation),
-            (r'\(', Punctuation, 'main'),
-            (r':', Punctuation, 'grammar-rules')
+            (r'\(', Punctuation, 'main'), # TODO: any token works here
+            (r':', Punctuation, 'grammar-rules'),
+            (_name, Name.Constant),
+            include('whitespace')
         ],
         'grammar-rules': [
-            include('whitespace'),
             include('string'),
-            (r':', Punctuation, 'classes'),
-            (r'->|[<>()|*]', Punctuation),
+            include('whitespace'),
+            (r'%s|[()\]]' % _operator, Punctuation),
             (r'(\[)(%s*)(badness)' % _ws,
              bygroups(Punctuation, using(this, state='whitespace'), Keyword),
-             'more'),
-            (_name, Name)
+             'main'),
+            (_name, Name.Constant),
+            (r'', Text, '#pop:2')
+        ],
+        ':': [
+            (r':', Punctuation, '#pop')
         ],
         'inherited': [
-            include('whitespace'),
             (r'<', Punctuation, 'type-list'),
+            include('whitespace'),
             (r'(%s)?' % _name, Name.Class, '#pop'),
         ],
         'type-list': [
@@ -5388,29 +5403,29 @@ class Tads3Lexer(RegexLexer):
             include('main')
         ],
         'new': [
-            include('whitespace'),
             (r'transient\b', Keyword.Reserved),
             (r'(function|method)\b', Keyword.Reserved, '#pop'),
-            (_name, Name.Class, '#pop')
+            (_name, Name.Class, '#pop'),
+            include('whitespace')
         ],
         'operator': [
-            include('whitespace'),
             (r'negate\b', Operator.Word),
+            include('whitespace'),
             (_operator, Operator),
             (r'', Text, '#pop')
         ],
         'string-template': [
-            include('whitespace'),
             (r'<<([^>]|>>>|>(?!>))*>>', String.Other),
-            (_name, Name.Function, '#pop')
+            (_name, Name.Function, '#pop'),
+            include('whitespace')
         ],
         'template': [ # TODO: if only allowed at top level, is this necessary?
-            include('whitespace'),
+            (r'(?=;)', Text, '#pop'),
             include('string'),
-            (r'->|[@+\-*/%&!~,?|]', Punctuation),
+            include('whitespace'),
+            (_operator, Punctuation),
             (r'inherited\b', Keyword.Reserved),
-            (_name, Name),
-            (r';', Punctuation, '#pop')
+            (_name, Name)
         ],
 
         # Identifiers
@@ -5422,35 +5437,35 @@ class Tads3Lexer(RegexLexer):
             include('whitespace')
         ],
         'label': [
-            include('whitespace'),
             (_name, Name.Label, '#pop'),
+            include('whitespace'),
             (r'', Text, '#pop')
         ],
         'class': [ # TODO: combine with 'new'
-            include('whitespace'),
             (r'object\b', Keyword.Reserved, '#pop'),
+            include('whitespace'),
             (_name, Name.Class, '#pop')
         ],
         'classes': [
-            include('whitespace'),
             (r'[:,]', Punctuation, 'class'),
+            include('whitespace'),
             (r'', Text, '#pop')
         ],
         'variables': [
-            include('whitespace'),
             (r',', Punctuation),
             (r'[:)]', Punctuation, '#pop'),
+            include('whitespace'),
             (_name, Name.Variable)
         ],
 
         # Whitespace and comments
         'whitespace': [
-            (r'^\s*#if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
-             'if0'),
-            (r'^\s*#.*?(?<!\\)$', Comment.Preproc),
             (r'(\s|\\\n)+', Text),
             (_comment_single, Comment.Single),
-            (_comment_multiline, Comment.Multiline)
+            (_comment_multiline, Comment.Multiline),
+            (r'^\s*#if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
+             'if0'),
+            (r'^\s*#.*?(?<!\\)$', Comment.Preproc)
         ],
         'if0': [
             (r'^\s*#if.*?(?<!\\)\n', Comment.Preproc, 'if0/inner'),
@@ -5481,7 +5496,7 @@ class Tads3Lexer(RegexLexer):
             (r'<<(%([_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.|'
              r'\s*((else|otherwise)\s+)?(if|unless)\b)?', String.Interpol,
              ('more/embed', 'main')),
-            (r'&(#([xX][\da-fA-F]+|\d+)|\w+);?', Name.Entity)
+            (r'&(#([xX][\da-fA-F]+|\d+)|[\da-zA-Z]+);?', Name.Entity)
         ],
         'tdqs': [
             include('s'),
