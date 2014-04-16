@@ -5241,7 +5241,7 @@ class Tads3Lexer(RegexLexer):
             # TODO: 'modify' works on both objects and classes.
             (r'(modify|property|propertyset|replace|switch|'
              r'throw|transient)\b', Keyword.Reserved, '#pop'),
-            (r'new\b', Keyword.Reserved, ('#pop', 'new')),
+            (r'new\b', Keyword.Reserved, ('#pop', 'class')),
             (r'(nil|true)\b', Keyword.Constant, '#pop'),
             (r'object\b', Keyword.Reserved, ('#pop', 'object-body-naked')),
             (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
@@ -5402,12 +5402,6 @@ class Tads3Lexer(RegexLexer):
             (r'\*', Punctuation),
             include('main')
         ],
-        'new': [
-            (r'transient\b', Keyword.Reserved),
-            (r'(function|method)\b', Keyword.Reserved, '#pop'),
-            (_name, Name.Class, '#pop'),
-            include('whitespace')
-        ],
         'operator': [
             (r'negate\b', Operator.Word),
             include('whitespace'),
@@ -5441,10 +5435,12 @@ class Tads3Lexer(RegexLexer):
             include('whitespace'),
             (r'', Text, '#pop')
         ],
-        'class': [ # TODO: combine with 'new'
+        'class': [
+            (r'(function|method)\b', Keyword.Reserved, '#pop'),
             (r'object\b', Keyword.Reserved, '#pop'),
-            include('whitespace'),
-            (_name, Name.Class, '#pop')
+            (r'transient\b', Keyword.Reserved),
+            (_name, Name.Class, '#pop'),
+            include('whitespace')
         ],
         'classes': [
             (r'[:,]', Punctuation, 'class'),
