@@ -5104,22 +5104,13 @@ class Tads3Lexer(RegexLexer):
 
     _comment_single = r'//(?:[^\\\n]|\\\n)*$'
     _comment_multiline = r'/\*(?:[^*]|\*[^/])*\*/'
-    _name = r'[_a-zA-Z]\w*'
+    _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
-                 r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)') # TODO: r'[\[\]]'?
+                 r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
     _tag = r'<[^\s>]*'
     _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
 
     # TODO: export/property: always constant, or any symbol?
-    # TODO: ',' is operator (list) or punctuation (arglist)
-    # TODO: '*' is operator (multiplication) or punctuation (glob)
-    # TODO: '?' is operator (?:) or punctuation (object template optional item)
-    # TODO: ':' is operator (?:) or punctuation (object definition, label, switch)
-    # TODO: '+' is operator (addition) or punctuation ("+" property)
-    # TODO:     r'\+\++' is always punctuation though
-    # TODO: '@' is always(?) punctuation (template); can anything be?
-    # TODO: '<', '>' are operators (relations) or punctuation (inherited, opt arg in func def)
-
     tokens = {
         'root': [
             (r'{', Punctuation, 'object-body'),
@@ -5136,12 +5127,10 @@ class Tads3Lexer(RegexLexer):
             (r'(%s)(%s*)(:)' % (_name, _ws),
              bygroups(Name.Constant, using(this, state='whitespace'),
                       Punctuation),
-             ('#pop', 'object-body-naked', 'classes', 'class')),
-            (r'', Text, ('#pop', 'object-body-naked', 'classes', 'class'))
-            # TODO: (..., 'object-body-naked', 'classes', ...) or just
-            # TODO: (..., 'object-body-naked', ...)? Here and elsewhere.
+             ('#pop', 'object-body-no-braces', 'classes', 'class')),
+            (r'', Text, ('#pop', 'object-body-no-braces', 'classes', 'class'))
         ],
-        'object-body-naked': [ # TODO: rename
+        'object-body-no-braces': [
            (r';', Punctuation, '#pop'),
            (r'{', Punctuation, ('#pop', 'object-body')),
            include('object-body')
@@ -5226,7 +5215,7 @@ class Tads3Lexer(RegexLexer):
             (r'(break|continue|goto)\b', Keyword.Reserved, ('#pop', 'label')),
             (r'catch\b', Keyword.Reserved, ('#pop', 'catch')),
             (r'class\b', Keyword.Reserved,
-             ('#pop', 'object-body-naked', 'class')),
+             ('#pop', 'object-body-no-braces', 'class')),
             (r'(default|do|else|finally|function|method|try)\b',
              Keyword.Reserved, '#pop'),
             (r'dictionary\b', Keyword.Reserved, ('#pop', 'constants')),
@@ -5234,7 +5223,7 @@ class Tads3Lexer(RegexLexer):
             (r'(for|foreach)\b', Keyword.Reserved,
              ('#pop', 'more/for', 'main/for')),
             (r'grammar\b', Keyword.Reserved,
-             ('#pop', 'object-body-naked', 'grammar')),
+             ('#pop', 'object-body-no-braces', 'grammar')),
             (r'inherited\b', Keyword.Reserved, ('#pop', 'inherited')),
             (r'local\b', Keyword.Reserved,
              ('#pop', 'more/local', 'main/local')),
@@ -5243,7 +5232,7 @@ class Tads3Lexer(RegexLexer):
              r'throw|transient)\b', Keyword.Reserved, '#pop'),
             (r'new\b', Keyword.Reserved, ('#pop', 'class')),
             (r'(nil|true)\b', Keyword.Constant, '#pop'),
-            (r'object\b', Keyword.Reserved, ('#pop', 'object-body-naked')),
+            (r'object\b', Keyword.Reserved, ('#pop', 'object-body-no-braces')),
             (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
             (r'template\b', Keyword.Reserved, ('#pop', 'template')),
 
@@ -5259,11 +5248,12 @@ class Tads3Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
         'more/basic': [
-            # TODO: distinguish between call and defn
+            # TODO: Distinguish between call and definition (necessary
+            # TODO: to lex 'multimethod' properly).
             (r'\(', Punctuation, ('more/parameters', 'main/parameters')),
             (r'\[', Punctuation, ('more', 'main')),
             (r'\?', Operator, ('main', 'more/conditional', 'main')),
-            (r'(?=;)|[:)\]]', Punctuation, '#pop'),
+            (r'(?=;)|[:)\]]|\.{3}', Punctuation, '#pop'),
             include('whitespace'),
             (_operator, Operator, 'main'),
             (r'(is|not)(%s+)(in\b)' % _ws,
@@ -5292,7 +5282,7 @@ class Tads3Lexer(RegexLexer):
             include('main')
         ],
         'more/for': [
-            (r',', Punctuation),
+            (r',', Punctuation, 'main/for'),
             (r'\.\.', Punctuation, 'main/for'),
             (r'(in|step)\b', Keyword, 'main/for'),
             include('more')
@@ -5338,15 +5328,6 @@ class Tads3Lexer(RegexLexer):
         'multimethod?': [
             (r'multimethod\b', Keyword, '#pop'),
             include('whitespace'),
-            (r'', Text, '#pop')
-        ],
-        # Template properties
-        'more/template': [
-            include('whitespace'),
-            (_operator, Punctuation, 'main'), # TODO: combine with 'root'?
-            include('string'),
-            (r'{', Punctuation,
-             ('#pop', 'object-body', 'more/template')),
             (r'', Text, '#pop')
         ],
 
@@ -5395,7 +5376,7 @@ class Tads3Lexer(RegexLexer):
         'inherited': [
             (r'<', Punctuation, 'type-list'),
             include('whitespace'),
-            (r'(%s)?' % _name, Name.Class, '#pop'),
+            (r'%s?' % _name, Name.Class, '#pop'),
         ],
         'type-list': [
             (r'>', Punctuation, '#pop'),
@@ -5413,13 +5394,13 @@ class Tads3Lexer(RegexLexer):
             (_name, Name.Function, '#pop'),
             include('whitespace')
         ],
-        'template': [ # TODO: if only allowed at top level, is this necessary?
+        'template': [
             (r'(?=;)', Text, '#pop'),
             include('string'),
+            (r'inherited\b', Keyword.Reserved),
             include('whitespace'),
             (_operator, Punctuation),
-            (r'inherited\b', Keyword.Reserved),
-            (_name, Name)
+            (_name, Name.Variable)
         ],
 
         # Identifiers
