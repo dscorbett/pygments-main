@@ -5112,7 +5112,6 @@ class Tads3Lexer(RegexLexer):
 
     # TODO: export/property: always constant, or any symbol?
     # TODO: ',' is punctuation after 'is/not in'
-    # TODO: 'default' is not a label
     # TODO: {} interpolation in attribute?
     # TODO: 'enum token'
     # TODO: '<font color=red>xyz</<<font>>>'
@@ -5169,9 +5168,10 @@ class Tads3Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
         'block': [
-            (r';', Punctuation),
+            (r'[;:]', Punctuation),
             (r'{', Punctuation, '#push'),
             (r'}', Punctuation, '#pop'),
+            (r'default\b', Keyword.Reserved),
             (r'(%s)(%s*)(:)' % (_name, _ws),
              bygroups(Name.Label, using(this, state='whitespace'),
                       Punctuation)),
