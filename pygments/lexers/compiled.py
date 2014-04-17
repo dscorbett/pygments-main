@@ -5105,12 +5105,18 @@ class Tads3Lexer(RegexLexer):
     _comment_single = r'//(?:[^\\\n]|\\\n)*$'
     _comment_multiline = r'/\*(?:[^*]|\*[^/])*\*/'
     _name = r'(?:[_a-zA-Z]\w*)'
-    _operator = (r'(?:->|&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
+    _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
     _tag = r'<[^\s>]*'
     _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
 
     # TODO: export/property: always constant, or any symbol?
+    # TODO: ',' is punctuation after 'is/not in'
+    # TODO: 'default' is not a label
+    # TODO: {} interpolation in attribute?
+    # TODO: 'enum token'
+    # TODO: '<font color=red>xyz</<<font>>>'
+
     tokens = {
         'root': [
             (r'{', Punctuation, 'object-body'),
@@ -5147,7 +5153,7 @@ class Tads3Lexer(RegexLexer):
              bygroups(Name.Variable.Instance, using(this, state='whitespace'),
                       Punctuation), ('classes', 'class')),
             include('whitespace'),
-            (_operator, Punctuation, 'main'),
+            (r'->|%s' % _operator, Punctuation, 'main'),
             (r'', Text, 'main/object-body')
         ],
         'main/object-body': [
@@ -5184,7 +5190,7 @@ class Tads3Lexer(RegexLexer):
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
             (r'{', Punctuation,
              ('#pop', 'more/lambda', 'main/lambda', 'variables')),
-            (r'\*', Punctuation, '#pop'),  # Used in propertyset
+            (r'\*', Punctuation, '#pop'),  # propertyset and LookupTable
             (r'\.{3}', Punctuation, '#pop'),
             (r'#', Punctuation, ('#pop', 'debugger-type')),
             (r'0[xX][\da-fA-F]+', Number.Hex, '#pop'),
@@ -5253,6 +5259,7 @@ class Tads3Lexer(RegexLexer):
             (r'\(', Punctuation, ('more/parameters', 'main/parameters')),
             (r'\[', Punctuation, ('more', 'main')),
             (r'\?', Operator, ('main', 'more/conditional', 'main')),
+            (r'->', Punctuation, 'main'),
             (r'(?=;)|[:)\]]|\.{3}', Punctuation, '#pop'),
             include('whitespace'),
             (_operator, Operator, 'main'),
@@ -5363,7 +5370,7 @@ class Tads3Lexer(RegexLexer):
         'grammar-rules': [
             include('string'),
             include('whitespace'),
-            (r'%s|[()\]]' % _operator, Punctuation),
+            (r'->|%s|[()\]]' % _operator, Punctuation),
             (r'(\[)(%s*)(badness)' % _ws,
              bygroups(Punctuation, using(this, state='whitespace'), Keyword),
              'main'),
@@ -5384,7 +5391,7 @@ class Tads3Lexer(RegexLexer):
             include('main')
         ],
         'operator': [
-            (r'negate\b', Operator.Word),
+            (r'negate\b', Operator.Word, '#pop'),
             include('whitespace'),
             (_operator, Operator),
             (r'', Text, '#pop')
@@ -5399,7 +5406,7 @@ class Tads3Lexer(RegexLexer):
             include('string'),
             (r'inherited\b', Keyword.Reserved),
             include('whitespace'),
-            (_operator, Punctuation),
+            (r'->|%s' % _operator, Punctuation),
             (_name, Name.Variable)
         ],
 
