@@ -5113,7 +5113,6 @@ class Tads3Lexer(RegexLexer):
     # TODO: export/property: always constant, or any symbol?
     # TODO: ',' is punctuation after 'is/not in'
     # TODO: {} interpolation in attribute?
-    # TODO: 'enum token'
     # TODO: '<font color=red>xyz</<<font>>>'
 
     tokens = {
@@ -5357,8 +5356,8 @@ class Tads3Lexer(RegexLexer):
             include('whitespace')
         ],
         'enum': [
-            (r'(token\b)?', Keyword, ('#pop', 'constants')),
-            include('whitespace')
+            include('whitespace'),
+            (r'(token\b)?', Keyword, ('#pop', 'constants'))
         ],
         'grammar': [
             (r'\)', Punctuation),
