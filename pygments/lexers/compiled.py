@@ -5110,7 +5110,6 @@ class Tads3Lexer(RegexLexer):
     _tag = r'<[^\s>]*'
     _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
 
-    # TODO: ',' is punctuation after 'is/not in'
     # TODO: {} interpolation in attribute?
     # TODO: '<font color=red>xyz</<<font>>>'
 
@@ -5118,9 +5117,10 @@ class Tads3Lexer(RegexLexer):
         'root': [
             (r'{', Punctuation, 'object-body'),
             (r';', Punctuation),
-            (r'(%s)(%s*(?=\())' % (_name, _ws),
-             bygroups(Name.Function, using(this, state='whitespace')),
-             ('block?', 'more')),
+            (r'(%s)(%s*)(\()' % (_name, _ws),
+             bygroups(Name.Function, using(this, state='whitespace'),
+                      Punctuation),
+             ('block?', 'more/parameters', 'main/parameters')),
             include('whitespace'),
             (r'\++', Punctuation),
             (r'(?!\Z)', Text, 'main/root')
@@ -5143,9 +5143,14 @@ class Tads3Lexer(RegexLexer):
             (r'{', Punctuation, '#push'),
             (r'}', Punctuation, '#pop'),
             (r':', Punctuation, ('classes', 'class')),
-            (r'(%s)(%s*(?=[({]))' % (_name, _ws),
-             bygroups(Name.Function, using(this, state='whitespace')),
-             ('block?', 'more')),
+            (r'(%s)(%s*)(\()' % (_name, _ws),
+             bygroups(Name.Function, using(this, state='whitespace'),
+                      Punctuation),
+             ('block?', 'more/parameters', 'main/parameters')),
+            (r'(%s)(%s*)({)' % (_name, _ws),
+             bygroups(Name.Function, using(this, state='whitespace'),
+                      Punctuation),
+             'block'),
             (r'(%s)(%s*)(:)' % (_name, _ws),
              bygroups(Name.Variable.Instance, using(this, state='whitespace'),
                       Punctuation), ('classes', 'class')),
@@ -5254,18 +5259,16 @@ class Tads3Lexer(RegexLexer):
             (r'', Text, '#pop')
         ],
         'more/basic': [
-            # TODO: Distinguish between call and definition (necessary
-            # TODO: to lex 'multimethod' properly).
-            (r'\(', Punctuation, ('more/parameters', 'main/parameters')),
+            (r'\(', Punctuation, ('more/list', 'main')),
             (r'\[', Punctuation, ('more', 'main')),
-            (r'\?', Operator, ('main', 'more/conditional', 'main')),
             (r'->', Punctuation, 'main'),
             (r'(?=;)|[:)\]]|\.{3}', Punctuation, '#pop'),
             include('whitespace'),
             (_operator, Operator, 'main'),
+            (r'\?', Operator, ('main', 'more/conditional', 'main')),
             (r'(is|not)(%s+)(in\b)' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
-                      Operator.Word), 'main')
+                      Operator.Word))
         ],
         'more': [
             include('more/basic'),
@@ -5314,10 +5317,10 @@ class Tads3Lexer(RegexLexer):
         ],
         # List
         'more/list': [
-            (r',', Punctuation, 'main'),
+            (r'[,:]', Punctuation, 'main'),
             include('more')
         ],
-        # Function/method call or definition
+        # Parameter list
         'main/parameters': [
             (r'(%s)(%s*)(:)' % (_name, _ws),
              bygroups(Name, using(this, state='whitespace'), Punctuation)),
@@ -5327,9 +5330,14 @@ class Tads3Lexer(RegexLexer):
             include('main')
         ],
         'more/parameters': [
-            (r'\?', Punctuation),
+            (r'[:?]', Punctuation),
             (r'\)', Punctuation, ('#pop', 'multimethod?')),
-            (r'[,:=]', Punctuation, 'main/parameters'),
+            (r',', Punctuation, 'main/parameters'),
+            (r'=', Punctuation, ('more/parameter', 'main')),
+            include('more')
+        ],
+        'more/parameter': [
+            (r'(?=[,)])', Text, '#pop'),
             include('more')
         ],
         'multimethod?': [
