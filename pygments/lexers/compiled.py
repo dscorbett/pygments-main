@@ -5110,7 +5110,6 @@ class Tads3Lexer(RegexLexer):
     _tag = r'<[^\s>]*'
     _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
 
-    # TODO: export/property: always constant, or any symbol?
     # TODO: ',' is punctuation after 'is/not in'
     # TODO: {} interpolation in attribute?
     # TODO: '<font color=red>xyz</<<font>>>'
@@ -5182,8 +5181,9 @@ class Tads3Lexer(RegexLexer):
             include('whitespace'),
 
             (r'\+\+|--|[&!~+-]', Operator), # TODO: needed?
-            (r'(case|export|extern|if|intrinsic|return|static|while)\b',
+            (r'(case|extern|if|intrinsic|return|static|while)\b',
              Keyword.Reserved),
+            (r'export\b', Keyword.Reserved, ('#pop', 'main')),
 
             (r'\(', Punctuation, ('#pop', 'more', 'main')),
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
@@ -5223,7 +5223,8 @@ class Tads3Lexer(RegexLexer):
              ('#pop', 'object-body-no-braces', 'class')),
             (r'(default|do|else|finally|function|method|try)\b',
              Keyword.Reserved, '#pop'),
-            (r'dictionary\b', Keyword.Reserved, ('#pop', 'constants')),
+            (r'(dictionary|property)\b', Keyword.Reserved,
+             ('#pop', 'constants')),
             (r'enum\b', Keyword.Reserved, ('#pop', 'enum')),
             (r'(for|foreach)\b', Keyword.Reserved,
              ('#pop', 'more/for', 'main/for')),
@@ -5233,8 +5234,8 @@ class Tads3Lexer(RegexLexer):
             (r'local\b', Keyword.Reserved,
              ('#pop', 'more/local', 'main/local')),
             # TODO: 'modify' works on both objects and classes.
-            (r'(modify|property|propertyset|replace|switch|'
-             r'throw|transient)\b', Keyword.Reserved, '#pop'),
+            (r'(modify|propertyset|replace|switch|throw|transient)\b',
+             Keyword.Reserved, '#pop'),
             (r'new\b', Keyword.Reserved, ('#pop', 'class')),
             (r'(nil|true)\b', Keyword.Constant, '#pop'),
             (r'object\b', Keyword.Reserved, ('#pop', 'object-body-no-braces')),
@@ -5410,18 +5411,6 @@ class Tads3Lexer(RegexLexer):
         ],
 
         # Identifiers
-        'constants': [
-            (r',', Punctuation),
-            (r';', Punctuation, '#pop'),
-            (r'property\b', Keyword.Reserved),
-            (_name, Name.Constant),
-            include('whitespace')
-        ],
-        'label': [
-            (_name, Name.Label, '#pop'),
-            include('whitespace'),
-            (r'', Text, '#pop')
-        ],
         'class': [
             (r'(function|method)\b', Keyword.Reserved, '#pop'),
             (r'object\b', Keyword.Reserved, '#pop'),
@@ -5431,6 +5420,18 @@ class Tads3Lexer(RegexLexer):
         ],
         'classes': [
             (r'[:,]', Punctuation, 'class'),
+            include('whitespace'),
+            (r'', Text, '#pop')
+        ],
+        'constants': [
+            (r',', Punctuation),
+            (r';', Punctuation, '#pop'),
+            (r'property\b', Keyword.Reserved),
+            (_name, Name.Constant),
+            include('whitespace')
+        ],
+        'label': [
+            (_name, Name.Label, '#pop'),
             include('whitespace'),
             (r'', Text, '#pop')
         ],
