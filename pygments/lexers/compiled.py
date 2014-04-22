@@ -5370,10 +5370,18 @@ class Tads3Lexer(RegexLexer):
         ],
         'grammar': [
             (r'\)', Punctuation),
-            (r'\(', Punctuation, 'main'), # TODO: any token works here
+            (r'\(', Punctuation, 'grammar-tag'),
             (r':', Punctuation, 'grammar-rules'),
             (_name, Name.Constant),
             include('whitespace')
+        ],
+        'grammar-tag': [
+            include('whitespace'),
+            (r'R?"""([^\\"<]|""?(?!")|\\"+|\\.|<(?!<))+("{3,}|<<)|'
+             r"R?'''([^\\'<]|''?(?!')|\\'+|\\.|<(?!<))+('{3,}|<<)|"
+             r'R?"([^\\"<]|\\.|<(?!<))+("|<<)|'
+             r"R?'([^\\'<]|\\.|<(?!<))+('|<<)|([^)\"'\s\\/]|[\\/](?!%s))+|\)" %
+             _ws, String.Other, '#pop')
         ],
         'grammar-rules': [
             include('string'),
@@ -5570,6 +5578,7 @@ class Tads3Lexer(RegexLexer):
         ],
 
         # Regular expressions
+        # TODO: interpolations
         'tdqr': [
             (r'[^\\"]+', String.Regex),
             (r'\\"*', String.Regex),
