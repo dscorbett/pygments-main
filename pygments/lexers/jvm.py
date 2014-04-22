@@ -1214,7 +1214,7 @@ class JasminLexer(RegexLexer):
         ],
         'class?': [
             (r'[%s]+' % _whitespace, Text),
-            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+            (r'(?!")((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
              bygroups(Name.Namespace, Name.Class), '#pop'),
             (r'', Text, '#pop')
         ],
