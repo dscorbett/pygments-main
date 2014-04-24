@@ -1115,10 +1115,10 @@ class JasminLexer(RegexLexer):
             (r'\.attribute%s' % _separator_lookahead, Keyword.Reserved,
              'annotation'),
             (r'\.catch%s' % _separator_lookahead, Keyword.Reserved,
-             ('descriptor', 'caught-exception')),
+             'caught-exception'),
             (r'(\.class|\.implements|\.inner|\.super|inner|invisible|'
              r'invisibleparam|outer|visible|visibleparam)%s' %
-             _separator_lookahead, Keyword.Reserved, 'class'),
+             _separator_lookahead, Keyword.Reserved, '.class'),
             (r'\.field%s' % _separator_lookahead, Keyword.Reserved,
              ('descriptor', 'field')),
             (r'(\.end|\.limit|use)%s' % _separator_lookahead,
@@ -1126,7 +1126,7 @@ class JasminLexer(RegexLexer):
             (r'\.method%s' % _separator_lookahead, Keyword.Reserved,
              'method'),
             (r'\.throws%s' % _separator_lookahead, Keyword.Reserved,
-             ('descriptor', 'exception')),
+             'exception'),
             (r'(from|offset|to|using)%s' % _separator_lookahead,
              Keyword.Reserved, 'label'),
             (r'is%s' % _separator_lookahead, Keyword.Reserved,
@@ -1167,14 +1167,15 @@ class JasminLexer(RegexLexer):
              r'invokestatic|invokevirtual)%s' % _separator_lookahead,
              Keyword.Reserved, 'invocation'),
             (r'(getfield|putfield)%s' % _separator_lookahead,
-             Keyword.Reserved, ('descriptor', 'field')),
+             Keyword.Reserved, ('descriptor/', 'field')),
             (r'(getstatic|putstatic)%s' % _separator_lookahead,
-             Keyword.Reserved, ('descriptor', 'static')),
+             Keyword.Reserved, ('descriptor/', 'static')),
             (r'(goto|goto_w|if_acmpeq|if_acmpne|if_icmpeq|if_icmpge|'
              r'if_icmpgt|if_icmple|if_icmplt|if_icmpne|ifeq|ifge|ifgt|ifle|'
              r'iflt|ifne|ifnonnull|ifnull|jsr|jsr_w)%s' %
              _separator_lookahead, Keyword.Reserved, 'label'),
-            (r'(ldc|ldc_w)\b', Keyword.Reserved, 'class?'),
+            (r'(ldc|ldc_w)%s' % _separator_lookahead,  # not ldc2_w
+             Keyword.Reserved, 'constant'),
             (r'(multianewarray|newarray)%s' % _separator_lookahead,
              Keyword.Reserved, 'descriptor'),
             (r'tableswitch%s' % _separator_lookahead, Keyword.Reserved,
@@ -1198,6 +1199,11 @@ class JasminLexer(RegexLexer):
              bygroups(Name.Label, Text, Punctuation)),
             (_name, Name)
         ],
+        '.class': [
+            include('default'),
+            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class), '#pop'),
+        ],
         'annotation': [
             include('default'),
             (_name, Name.Decorator, '#pop')
@@ -1207,25 +1213,37 @@ class JasminLexer(RegexLexer):
             (r'[e@]', Keyword.Type, ('#pop', 'descriptor')),
             (_name, Keyword.Type, '#pop')
         ],
-        'class': [
-            include('default'),
-            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
-             bygroups(Name.Namespace, Name.Class), '#pop')
-        ],
-        'class?': [
-            (r'[%s]+' % _whitespace, Text),
-            (r'(?!")((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
-             bygroups(Name.Namespace, Name.Class), '#pop'),
-            (r'', Text, '#pop')
-        ],
         'caught-exception': [
             (r'all%s' % _separator_lookahead, Keyword),
             include('exception')
+        ],
+        'class': [
+            include('default'),
+            (r'\[', Punctuation, ('#pop', 'descriptor')),
+            (r'(L(?=[^%s]*;))?((?:%s/)*)(%s)(;?)' %
+             (_separator, _unqualified_name, _name),
+             bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
+             '#pop')
+        ],
+        'constant': [
+            (r'[%s]+' % _whitespace, Text),
+            (r'(?!["0-9])((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class), '#pop'),
+            (r'', Text, '#pop')
         ],
         'descriptor': [
             include('default'),
             (r'\[', Punctuation),
             (r'(L)((?:%s[/.])*)(%s)(;)' % (_unqualified_name, _name),
+             bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
+             '#pop'),
+            (r'[^%s%s\[)L]*' % (_separator, _whitespace), Keyword.Type,
+             '#pop')
+        ],
+        'descriptor/': [
+            include('default'),
+            (r'\[', Punctuation),
+            (r'(L)((?:%s/)*)(%s)(;)' % (_unqualified_name, _name),
              bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
              '#pop'),
             (r'[^%s%s\[)L]*' % (_separator, _whitespace), Keyword.Type,
