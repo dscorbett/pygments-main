@@ -1106,14 +1106,12 @@ class JasminLexer(RegexLexer):
             (r':', Punctuation, 'label'),
 
             # Directives
-            (r'(\.annotation|\.bytecode|\.debug|\.deprecated|\.enclosing|'
-             r'\.interface|\.line|\.signature|\.stack|\.var|abstract|'
-             r'annotation|bridge|class|default|enum|field|final|fpstrict|'
-             r'interface|method|native|private|protected|public|signature|'
-             r'static|synchronized|synthetic|transient|varargs|volatile)%s' %
-             _separator_lookahead, Keyword.Reserved),
-            (r'\.attribute%s' % _separator_lookahead, Keyword.Reserved,
-             'attribute'),
+            (r'(\.attribute|\.annotation|\.bytecode|\.debug|\.deprecated|'
+             r'\.enclosing|\.interface|\.line|\.signature|\.stack|\.var|'
+             r'abstract|annotation|bridge|class|default|enum|field|final|'
+             r'fpstrict|interface|method|native|private|protected|public|'
+             r'signature|static|synchronized|synthetic|transient|varargs|'
+             r'volatile)%s' % _separator_lookahead, Keyword.Reserved),
             (r'\.catch%s' % _separator_lookahead, Keyword.Reserved,
              'caught-exception'),
             (r'(\.class|\.implements|\.inner|\.super|inner|invisible|'
@@ -1202,6 +1200,7 @@ class JasminLexer(RegexLexer):
             (_name, Name.Decorator, 'annotation-type')
         ],
         '.class': [
+            (r'\n', Text, '#pop'),
             include('default'),
             (r'(L(?=[^%s]*;))?((?:%s[/.])*)(%s)(;?)' %
              (_separator, _unqualified_name, _name),
@@ -1218,10 +1217,6 @@ class JasminLexer(RegexLexer):
             (_ws, Text),
             (r'\[?[e@]', Keyword.Type, ('#pop', 'annotation-exttype')),
             (_name, Keyword.Type, '#pop')
-        ],
-        'attribute': [
-            include('default'),
-            (_name, Name.Decorator, '#pop')
         ],
         'caught-exception': [
             (r'all%s' % _separator_lookahead, Keyword, '#pop'),
@@ -1278,6 +1273,7 @@ class JasminLexer(RegexLexer):
              '#pop')
         ],
         'filename': [
+            (r'\n', Text, '#pop'),
             include('default'),
             (_name, String.Other, '#pop')
         ],
