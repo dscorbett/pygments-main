@@ -1081,6 +1081,7 @@ class JasminLexer(RegexLexer):
     filenames = ['*.j']
 
     _whitespace = r' \n\t\r'
+    _ws = r'[%s]+' % _whitespace
     _separator = r'%s:=' % _whitespace
     _separator_lookahead = r'(?=[%s]|$)' % _separator
     _name = r'(?:[^%s]+)' % _separator
@@ -1098,22 +1099,20 @@ class JasminLexer(RegexLexer):
              _separator_lookahead, Number.Float),
             (r'\$%s' % _name, Name.Variable),
             (r'"', String.Double, 'string'),
-            (r"'", String.Single, ('#pop', 'quote')),
-            (r'[%s]+' % _whitespace, Text),
-            (r'=', Operator),
+            (r"'", String.Single, ('#pop', 'quote')), # TODO: check everywhere
+            (_ws, Text),
+            (r'=', Operator, 'item'),
             (r':', Punctuation, 'label'),
 
             # Directives
-            (r'(\.bytecode|\.debug|\.deprecated|\.enclosing|\.interface|'
-             r'\.line|\.signature|\.stack|\.var|abstract|annotation|bridge|'
-             r'class|default|enum|field|final|fpstrict|interface|method|'
-             r'native|private|protected|public|signature|static|synchronized|'
-             r'synthetic|transient|varargs|volatile)%s' %
+            (r'(\.annotation|\.bytecode|\.debug|\.deprecated|\.enclosing|'
+             r'\.interface|\.line|\.signature|\.stack|\.var|abstract|'
+             r'annotation|bridge|class|default|enum|field|final|fpstrict|'
+             r'interface|method|native|private|protected|public|signature|'
+             r'static|synchronized|synthetic|transient|varargs|volatile)%s' %
              _separator_lookahead, Keyword.Reserved),
-            (r'\.annotation%s' % _separator_lookahead, Keyword.Reserved,
-             ('annotation-type', 'annotation')),
             (r'\.attribute%s' % _separator_lookahead, Keyword.Reserved,
-             'annotation'),
+             'attribute'),
             (r'\.catch%s' % _separator_lookahead, Keyword.Reserved,
              'caught-exception'),
             (r'(\.class|\.implements|\.inner|\.super|inner|invisible|'
@@ -1197,24 +1196,32 @@ class JasminLexer(RegexLexer):
             include('default'),
             (r'(%s)([ \t\r]*)(:)' % _name,
              bygroups(Name.Label, Text, Punctuation)),
-            (_name, Name)
+            (r'(%s)([ \t\r]*)(=)' % _name,
+             bygroups(Keyword.Type, Text, Operator)),
+            (_name, Name.Decorator, 'annotation-type')
         ],
         '.class': [
             include('default'),
-            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
-             bygroups(Name.Namespace, Name.Class), '#pop'),
+            (r'(L(?=[^%s]*;))?((?:%s[/.])*)(%s)(;?)' %
+             (_separator, _unqualified_name, _name),
+             bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
+             '#pop')
         ],
-        'annotation': [
+        'annotation-exttype': [
             include('default'),
             (_name, Name.Decorator, '#pop')
         ],
         'annotation-type': [
-            include('default'),
-            (r'[e@]', Keyword.Type, ('#pop', 'descriptor')),
+            (_ws, Text),
+            (r'\[?[e@]', Keyword.Type, ('#pop', 'annotation-exttype')),
             (_name, Keyword.Type, '#pop')
         ],
+        'attribute': [
+            include('default'),
+            (_name, Name.Decorator, '#pop')
+        ],
         'caught-exception': [
-            (r'all%s' % _separator_lookahead, Keyword),
+            (r'all%s' % _separator_lookahead, Keyword, '#pop'),
             include('exception')
         ],
         'class': [
@@ -1226,7 +1233,7 @@ class JasminLexer(RegexLexer):
              '#pop')
         ],
         'constant': [
-            (r'[%s]+' % _whitespace, Text),
+            (_ws, Text),
             (r'(?!["0-9])((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
              bygroups(Name.Namespace, Name.Class), '#pop'),
             (r'', Text, '#pop')
@@ -1278,7 +1285,13 @@ class JasminLexer(RegexLexer):
              bygroups(Name.Namespace, Name.Class, Name.Function, Punctuation),
              ('#pop', 'descriptor', 'descriptors', 'descriptor'))
         ],
+        'item': [
+            (r'\n', Text, '#pop'),
+            include('default'),
+            (_name, Name)
+        ],
         'label': [
+            (r'(?=[$0-9])', Text, '#pop'),
             include('default'),
             (_name, Name.Label, '#pop')
         ],
