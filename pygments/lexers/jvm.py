@@ -1086,10 +1086,11 @@ class JasminLexer(RegexLexer):
     _separator_lookahead = r'(?=[%s]|$)' % _separator
     _name = r'(?:[^%s]+)' % _separator
     _unqualified_name = r'(?:[^%s.;\[/]+)' % _separator
+    _comment = r';.*'
 
     tokens = {
         'default': [
-            (r';.*', Comment.Single),
+            (_comment, Comment.Single),
             (r'(\$[-+])?0x[-+]?[\da-fA-F]+%s' % _separator_lookahead,
              Number.Hex),
             (r'(\$[-+]|\+)?[-+]?\d+%s' % _separator_lookahead,
@@ -1212,6 +1213,8 @@ class JasminLexer(RegexLexer):
             (_name, Name.Decorator, '#pop')
         ],
         'annotation-type': [
+            # Also used for .enclosing method
+            (_comment, Comment.Single, '#pop'),
             (_ws, Text),
             (r'\[?[e@]', Keyword.Type, ('#pop', 'annotation-exttype')),
             (_name, Keyword.Type, '#pop')
