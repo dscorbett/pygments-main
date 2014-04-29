@@ -1109,9 +1109,9 @@ class JasminLexer(RegexLexer):
             (r'(\.attribute|\.annotation|\.bytecode|\.debug|\.deprecated|'
              r'\.enclosing|\.interface|\.line|\.signature|\.stack|\.var|'
              r'abstract|annotation|bridge|class|default|enum|field|final|'
-             r'fpstrict|interface|method|native|private|protected|public|'
-             r'signature|static|synchronized|synthetic|transient|varargs|'
-             r'volatile)%s' % _separator_lookahead, Keyword.Reserved),
+             r'fpstrict|interface|native|private|protected|public|signature|'
+             r'static|synchronized|synthetic|transient|varargs|volatile)%s' %
+             _separator_lookahead, Keyword.Reserved),
             (r'\.catch%s' % _separator_lookahead, Keyword.Reserved,
              'caught-exception'),
             (r'(\.class|\.implements|\.inner|\.super|inner|invisible|'
@@ -1123,6 +1123,9 @@ class JasminLexer(RegexLexer):
              Keyword.Reserved, 'no-verification'),
             (r'\.method%s' % _separator_lookahead, Keyword.Reserved,
              'method'),
+            (r'\.set%s' % _separator_lookahead, Keyword.Reserved, 'var'),
+            (r'\.source%s' % _separator_lookahead, Keyword.Reserved,
+             'filename'),
             (r'\.throws%s' % _separator_lookahead, Keyword.Reserved,
              'exception'),
             (r'(from|offset|to|using)%s' % _separator_lookahead,
@@ -1131,9 +1134,8 @@ class JasminLexer(RegexLexer):
              ('descriptor', 'var')),
             (r'(locals|stack)%s' % _separator_lookahead, Keyword.Reserved,
              'verification'),
-            (r'\.set%s' % _separator_lookahead, Keyword.Reserved, 'var'),
-            (r'\.source%s' % _separator_lookahead, Keyword.Reserved,
-             'filename'),
+            (r'method%s' % _separator_lookahead, Keyword.Reserved,
+             'enclosing-method'),
 
             # Instructions
             (r'(aaload|aastore|aconst_null|aload|aload_0|aload_1|aload_2|'
@@ -1212,7 +1214,6 @@ class JasminLexer(RegexLexer):
             (_name, Name.Decorator, '#pop')
         ],
         'annotation-type': [
-            # Also used for .enclosing method
             (_comment, Comment.Single, '#pop'),
             (_ws, Text),
             (r'\[?[e@]', Keyword.Type, ('#pop', 'annotation-exttype')),
@@ -1257,6 +1258,11 @@ class JasminLexer(RegexLexer):
         'descriptors': [
             (r'\)', Punctuation, '#pop'),
             (r'', Text, 'descriptor')
+        ],
+        'enclosing-method': [
+            (_ws, Text),
+            (r'(?=[^%s]*\()' % _separator, Text, ('#pop', 'invocation')),
+            (r'', Text, ('#pop', '.class'))
         ],
         'exception': [
             include('default'),
