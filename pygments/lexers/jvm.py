@@ -1116,9 +1116,9 @@ class JasminLexer(RegexLexer):
              'caught-exception'),
             (r'(\.class|\.implements|\.inner|\.super|inner|invisible|'
              r'invisibleparam|outer|visible|visibleparam)%s' %
-             _separator_lookahead, Keyword.Reserved, '.class'),
+             _separator_lookahead, Keyword.Reserved, 'class/convert-dots'),
             (r'\.field%s' % _separator_lookahead, Keyword.Reserved,
-             ('descriptor', 'field')),
+             ('descriptor/convert-dots', 'field')),
             (r'(\.end|\.limit|use)%s' % _separator_lookahead,
              Keyword.Reserved, 'no-verification'),
             (r'\.method%s' % _separator_lookahead, Keyword.Reserved,
@@ -1131,7 +1131,7 @@ class JasminLexer(RegexLexer):
             (r'(from|offset|to|using)%s' % _separator_lookahead,
              Keyword.Reserved, 'label'),
             (r'is%s' % _separator_lookahead, Keyword.Reserved,
-             ('descriptor', 'var')),
+             ('descriptor/convert-dots', 'var')),
             (r'(locals|stack)%s' % _separator_lookahead, Keyword.Reserved,
              'verification'),
             (r'method%s' % _separator_lookahead, Keyword.Reserved,
@@ -1162,14 +1162,14 @@ class JasminLexer(RegexLexer):
              r'return|saload|sastore|sipush|swap)%s' % _separator_lookahead,
              Keyword.Reserved),
             (r'(anewarray|checkcast|instanceof|new)%s' % _separator_lookahead,
-             Keyword.Reserved, 'class'),
+             Keyword.Reserved, 'class/no-dots'),
             (r'(invokedynamic|invokeinterface|invokenonvirtual|invokespecial|'
              r'invokestatic|invokevirtual)%s' % _separator_lookahead,
              Keyword.Reserved, 'invocation'),
             (r'(getfield|putfield)%s' % _separator_lookahead,
-             Keyword.Reserved, ('descriptor/', 'field')),
+             Keyword.Reserved, ('descriptor/no-dots', 'field')),
             (r'(getstatic|putstatic)%s' % _separator_lookahead,
-             Keyword.Reserved, ('descriptor/', 'static')),
+             Keyword.Reserved, ('descriptor/no-dots', 'static')),
             (r'(goto|goto_w|if_acmpeq|if_acmpne|if_icmpeq|if_icmpge|'
              r'if_icmpgt|if_icmple|if_icmplt|if_icmpne|ifeq|ifge|ifgt|ifle|'
              r'iflt|ifne|ifnonnull|ifnull|jsr|jsr_w)%s' %
@@ -1177,7 +1177,7 @@ class JasminLexer(RegexLexer):
             (r'(ldc|ldc_w)%s' % _separator_lookahead,  # not ldc2_w
              Keyword.Reserved, 'constant'),
             (r'(multianewarray|newarray)%s' % _separator_lookahead,
-             Keyword.Reserved, 'descriptor'),
+             Keyword.Reserved, 'descriptor/convert-dots'),
             (r'tableswitch%s' % _separator_lookahead, Keyword.Reserved,
              'table')
         ],
@@ -1201,14 +1201,6 @@ class JasminLexer(RegexLexer):
              bygroups(Keyword.Type, Text, Operator)),
             (_name, Name.Decorator, 'annotation-type')
         ],
-        '.class': [
-            (r'\n', Text, '#pop'),
-            include('default'),
-            (r'(L(?=[^%s]*;))?((?:%s[/.])*)(%s)(;?)' %
-             (_separator, _unqualified_name, _name),
-             bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
-             '#pop')
-        ],
         'annotation-exttype': [
             include('default'),
             (_name, Name.Decorator, '#pop')
@@ -1223,9 +1215,17 @@ class JasminLexer(RegexLexer):
             (r'all%s' % _separator_lookahead, Keyword, '#pop'),
             include('exception')
         ],
-        'class': [
+        'class/convert-dots': [
+            (r'\n', Text, '#pop'),
             include('default'),
-            (r'\[', Punctuation, ('#pop', 'descriptor')),
+            (r'(L(?=[^%s]*;))?((?:%s[/.])*)(%s)(;?)' %
+             (_separator, _unqualified_name, _name),
+             bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
+             '#pop')
+        ],
+        'class/no-dots': [
+            include('default'),
+            (r'\[', Punctuation, ('#pop', 'descriptor/no-dots')),
             (r'(L(?=[^%s]*;))?((?:%s/)*)(%s)(;?)' %
              (_separator, _unqualified_name, _name),
              bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
@@ -1237,7 +1237,7 @@ class JasminLexer(RegexLexer):
              bygroups(Name.Namespace, Name.Class), '#pop'),
             (r'', Text, '#pop')
         ],
-        'descriptor': [
+        'descriptor/convert-dots': [
             include('default'),
             (r'\[', Punctuation),
             (r'(L)((?:%s[/.])*)(%s)(;)' % (_unqualified_name, _name),
@@ -1246,7 +1246,7 @@ class JasminLexer(RegexLexer):
             (r'[^%s%s\[)L]*' % (_separator, _whitespace), Keyword.Type,
              '#pop')
         ],
-        'descriptor/': [
+        'descriptor/no-dots': [
             include('default'),
             (r'\[', Punctuation),
             (r'(L)((?:%s/)*)(%s)(;)' % (_unqualified_name, _name),
@@ -1255,14 +1255,14 @@ class JasminLexer(RegexLexer):
             (r'[^%s%s\[)L]*' % (_separator, _whitespace), Keyword.Type,
              '#pop')
         ],
-        'descriptors': [
+        'descriptors/convert-dots': [
             (r'\)', Punctuation, '#pop'),
-            (r'', Text, 'descriptor')
+            (r'', Text, 'descriptor/convert-dots')
         ],
         'enclosing-method': [
             (_ws, Text),
             (r'(?=[^%s]*\()' % _separator, Text, ('#pop', 'invocation')),
-            (r'', Text, ('#pop', '.class'))
+            (r'', Text, ('#pop', 'class/convert-dots'))
         ],
         'exception': [
             include('default'),
@@ -1288,7 +1288,8 @@ class JasminLexer(RegexLexer):
             (r'((?:%s[/.](?=[^%s(]*[/.]))*)(%s[/.])?(%s)(\()' %
              (_unqualified_name, _separator, _unqualified_name, _name),
              bygroups(Name.Namespace, Name.Class, Name.Function, Punctuation),
-             ('#pop', 'descriptor', 'descriptors', 'descriptor'))
+             ('#pop', 'descriptor/convert-dots', 'descriptors/convert-dots',
+              'descriptor/convert-dots'))
         ],
         'item': [
             (r'\n', Text, '#pop'),
@@ -1303,7 +1304,8 @@ class JasminLexer(RegexLexer):
         'method': [
             include('default'),
             (r'(%s)(\()' % _name, bygroups(Name.Function, Punctuation),
-             ('#pop', 'descriptor', 'descriptors', 'descriptor'))
+             ('#pop', 'descriptor/convert-dots', 'descriptors/convert-dots',
+              'descriptor/convert-dots'))
         ],
         'no-verification': [
             (r'(annotation|field|locals|method|stack)%s' %
@@ -1331,7 +1333,7 @@ class JasminLexer(RegexLexer):
             (r'(Double|Float|Integer|Long|Null|Top|UninitializedThis)%s' %
              _separator_lookahead, Keyword, '#pop'),
             (r'Object%s' % _separator_lookahead, Keyword,
-             ('#pop', 'class')),
+             ('#pop', 'class/no-dots')),
             (r'Uninitialized%s' % _separator_lookahead, Keyword,
              ('#pop', 'label'))
         ]
