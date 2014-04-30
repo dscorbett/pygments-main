@@ -1100,7 +1100,7 @@ class JasminLexer(RegexLexer):
              _separator_lookahead, Number.Float),
             (r'\$%s' % _name, Name.Variable),
             (r'"', String.Double, 'string'),
-            (r"'", String.Single, ('#pop', 'quote')), # TODO: check everywhere
+            (r"'", String.Single, ('#pop', 'quote')),
             (_ws, Text),
             (r'=', Operator, 'item'),
             (r':', Punctuation, 'label'),
@@ -1296,7 +1296,7 @@ class JasminLexer(RegexLexer):
             (_name, Name)
         ],
         'label': [
-            (r'(?=[$0-9])', Text, '#pop'),
+            (r'(?=[\n$0-9])', Text, '#pop'),
             include('default'),
             (_name, Name.Label, '#pop')
         ],
