@@ -1183,13 +1183,13 @@ class JasminLexer(RegexLexer):
         ],
         'string': [
             (r'"', String.Double, '#pop'),
-            (r'\\([nrtfb"\'\\]|u[0-9a-fA-F]{4}|[0-3]?[0-7]{1,2})',
+            (r'\\([nrtfb"\'\\]|u[\da-fA-F]{4}|[0-3]?[0-7]{1,2})',
              String.Escape),
             (r'[^"\\]+', String.Double)
         ],
         'quote': [
             (r"'", String.Single, '#pop'),
-            (r'\\u[0-9a-fA-F]{4}', String.Escape),
+            (r'\\u[\da-fA-F]{4}', String.Escape),
             (r"[^'\\]+", String.Single)
         ],
         'root': [
@@ -1218,24 +1218,25 @@ class JasminLexer(RegexLexer):
         'class/convert-dots': [
             (r'\n', Text, '#pop'),
             include('default'),
-            (r'(L(?=[^%s]*;))?((?:%s[/.])*)(%s)(;?)' %
-             (_separator, _unqualified_name, _name),
+            (r'(L)((?:%s[/.])*)(%s)(;)' % (_unqualified_name, _name),
              bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
-             '#pop')
+             '#pop'),
+            (r'((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class), '#pop')
         ],
         'class/no-dots': [
             include('default'),
             (r'\[', Punctuation, ('#pop', 'descriptor/no-dots')),
-            (r'(L(?=[^%s]*;))?((?:%s/)*)(%s)(;?)' %
-             (_separator, _unqualified_name, _name),
+            (r'(L)((?:%s/)*)(%s)(;)' % (_unqualified_name, _name),
              bygroups(Keyword.Type, Name.Namespace, Name.Class, Punctuation),
-             '#pop')
+             '#pop'),
+            (r'((?:%s/)*)(%s)' % (_unqualified_name, _name),
+             bygroups(Name.Namespace, Name.Class), '#pop')
         ],
         'constant': [
             (_ws, Text),
-            (r'(?!["0-9])((?:%s[/.])*)(%s)' % (_unqualified_name, _name),
-             bygroups(Name.Namespace, Name.Class), '#pop'),
-            (r'', Text, '#pop')
+            (r'(?=["\d])', Text, '#pop'),
+            (r'', Text, ('#pop', 'class/no-dots'))
         ],
         'descriptor/convert-dots': [
             include('default'),
@@ -1297,7 +1298,7 @@ class JasminLexer(RegexLexer):
             (_name, Name)
         ],
         'label': [
-            (r'(?=[\n$0-9])', Text, '#pop'),
+            (r'(?=[\n$\d])', Text, '#pop'),
             include('default'),
             (_name, Name.Label, '#pop')
         ],
