@@ -1199,11 +1199,11 @@ class JasminLexer(RegexLexer):
              bygroups(Name.Label, Text, Punctuation)),
             (r'(%s)([ \t\r]*)(=)' % _name,
              bygroups(Keyword.Type, Text, Operator)),
-            (_name, Name.Decorator, 'annotation-type')
+            (_name, Name, 'annotation-type')
         ],
         'annotation-exttype': [
             include('default'),
-            (_name, Name.Decorator, '#pop')
+            (_name, Name, '#pop')
         ],
         'annotation-type': [
             (_comment, Comment.Single, '#pop'),
@@ -1294,6 +1294,7 @@ class JasminLexer(RegexLexer):
         ],
         'item': [
             (r'\n', Text, '#pop'),
+            (r"'", String.Single, 'quote'),
             include('default'),
             (_name, Name)
         ],
