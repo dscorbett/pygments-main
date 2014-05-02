@@ -1075,9 +1075,6 @@ class JasminLexer(RegexLexer):
 
     name = 'Jasmin'
     aliases = ['jasmin', 'jasminxt']
-    # TODO: Oolong: https://github.com/ymasory/programming-for-the-jvm/tree/master/src/main/java/COM/sootNsmoke/oolong
-    # TODO: Soot Jasmin: https://github.com/Sable/jasmin
-    # TODO: Dare Jasmin: https://github.com/dare-android/jasmin
     filenames = ['*.j']
 
     _whitespace = r' \n\t\r'
