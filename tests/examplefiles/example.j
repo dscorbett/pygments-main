@@ -183,7 +183,7 @@
     lookupswitch
         0: '/lookupswitch'
         0x6c: /lookupswitch
-        default: *2
+        default: *\u0032
 /lookupswitch:
     castore
 
@@ -222,12 +222,14 @@ j++:
     if_icmpgt i++
 
 <<\u00a0:
-    getstatic java/lang/System/out Ljava/io/PrintStream;
+    getstatic 'java/lang/System/out' Ljava/io/PrintStream;
     invokestatic HelloWorld/get"example()LHelloWorld;
     getfield HelloWorld/newline I
     invokevirtual java/io/PrintStream/print(C)V
 End:
+    goto $+0x4
     return
+    goto $+0x-1
 
 extra:
     astore 6
@@ -280,7 +282,7 @@ extra_l:
     dup
     astore_w 0
 try:
-    goto $+0x11
+    goto $-0x-11
 finally:
     astore_w 2
     putfield HelloWorld/newline I
@@ -320,7 +322,7 @@ catch:
     ldc 10
     jsr_w finally
     ret 1
-'single\u0020quoted\u0020label': ; Messes up [@ below if lexed sloppily
+'single-quoted\u0020label':
 .end method
 
 .method varargs private static int()I
@@ -373,7 +375,7 @@ catch:
     ishl
     imul
     ior
-    bipush -73
+    bipush 0x-49
     ixor
     isub
     dup
@@ -417,6 +419,15 @@ catch:
 .method static private fpstrict double()D
     .limit locals 7
     .limit stack 11
+    .annotation default
+        @ nested_annotation = .annotation
+            a @ nested_annotation = .annotation
+                s1 s = "s1"
+                s2 s = "s2"
+                s345 [s = "s3" "s4" "s5"
+            .end annotation
+        .end annotation
+    .end annotation
     dconst_1
     dconst_0
     dcmpg
@@ -530,7 +541,7 @@ catch:
     fsub
     fneg
     frem
-    ldc 70
+    ldc +70
     i2f
     fadd
     fadd
@@ -560,5 +571,5 @@ catch:
     breakpoint
 .end method
 
-.method native synchronized acc2()V
+.method native synchronized acc'2(BCDFIJSZLjava/lang/String;Ljava/lang/String;[[[Z)V
 .end method
