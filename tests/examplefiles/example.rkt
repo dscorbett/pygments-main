@@ -100,6 +100,14 @@ Multi-line comment style ...
  #x-f
  #xf
  
+ ;; booleans
+ #t
+ #T
+ #true
+ #f
+ #F
+ #false
+ 
  ;; string and byte string
  "string\
  \a.\b.\t.\n.\v.\f.\r.\e.\".\'.\\.\1.\123.\1234.\x9.\x30.\x303"

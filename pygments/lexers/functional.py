@@ -548,7 +548,7 @@ class RacketLexer(RegexLexer):
             (r'(?s)#[pr]x"(\\?.)+?"', String.Regex),
 
             # constants
-            (r'(#t|#f)', Name.Constant),
+            (r'#(true|false|[tTfF])', Name.Constant),
 
             # keyword argument names (e.g. #:keyword)
             (r'#:\S+', Keyword.Declaration),
