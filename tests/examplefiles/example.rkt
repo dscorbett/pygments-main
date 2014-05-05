@@ -28,6 +28,7 @@ comment
 #!/shebang \
 comment
 
+#reader racket
 (define (a-function x #:keyword [y 0])
   (define foo0 'symbol) ; ()
   [define foo1 'symbol] ; []

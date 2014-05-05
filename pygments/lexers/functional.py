@@ -553,8 +553,10 @@ class RacketLexer(RegexLexer):
             # keyword argument names (e.g. #:keyword)
             (r'#:%s' % _symbol, Keyword.Declaration),
 
-            # #lang
-            (r'#lang \S+', Keyword.Namespace),
+            # reader extensions
+            (r'(#lang |#!)(\S+)',
+             bygroups(Keyword.Namespace, Name.Namespace)),
+            (r'#reader', Keyword.Namespace),
 
             # special operators
             (r"(#?(,@|['`,])|#[s&]|#[cC][iIsS]|#hash(eqv?)?|#(?!%)|\.)",
