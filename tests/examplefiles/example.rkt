@@ -12,6 +12,12 @@ Multi-line comment style ...
 ... on multiple lines
 |#
 
+#;(s-expression comment (one line))
+
+#;
+(s-expression comment
+              (multiple lines))
+
 (define (a-function x #:keyword [y 0])
   (define foo0 'symbol) ; ()
   [define foo1 'symbol] ; []

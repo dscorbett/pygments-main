@@ -483,6 +483,7 @@ class RacketLexer(RegexLexer):
 
     tokens = {
         'root' : [
+            (r'#;', Comment),
             (r';.*$', Comment.Single),
             (r'#\|', Comment.Multiline, 'block-comment'),
 
