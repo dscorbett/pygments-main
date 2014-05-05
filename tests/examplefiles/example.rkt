@@ -18,6 +18,16 @@ Multi-line comment style ...
 (s-expression comment
               (multiple lines))
 
+#! shebang comment
+
+#!/shebang comment
+
+#! shebang \
+comment
+
+#!/shebang \
+comment
+
 (define (a-function x #:keyword [y 0])
   (define foo0 'symbol) ; ()
   [define foo1 'symbol] ; []

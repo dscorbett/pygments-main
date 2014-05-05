@@ -482,7 +482,7 @@ class RacketLexer(RegexLexer):
 
     tokens = {
         'root' : [
-            (r'#;', Comment),
+            (r'(?s)#;|#![ /]([^\\\n]|\\.)+', Comment),
             (r';.*$', Comment.Single),
             (r'#\|', Comment.Multiline, 'block-comment'),
 
