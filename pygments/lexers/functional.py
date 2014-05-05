@@ -543,7 +543,7 @@ class RacketLexer(RegexLexer):
             (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
             (r"'%s" % _symbol, String.Symbol),
             (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z\d]+)", String.Char),
-            (r'(?s)#[pr]x"(\\?.)+?"', String.Regex),
+            (r'(?s)#[pr]x#?"(\\?.)+?"', String.Regex),
 
             # constants
             (r'#(true|false|[tTfF])', Name.Constant),
@@ -555,7 +555,7 @@ class RacketLexer(RegexLexer):
             (r'#lang \S+', Keyword.Namespace),
 
             # special operators
-            (r"(#?(,@|['`,])|#[s&]|#hash(eqv?)?|[#.])", Operator),
+            (r"(#?(,@|['`,])|#[s&]|#[cC][iIsS]|#hash(eqv?)?|[#.])", Operator),
 
             # highlight the keywords
             ('(%s)' % '|'.join([

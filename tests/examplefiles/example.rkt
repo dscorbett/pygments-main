@@ -25,10 +25,12 @@ Multi-line comment style ...
   (and (append (car '(1 2 3))))
   (regexp-match? #rx"foobar" "foobar")
   (regexp-match? #px"\"foo\\(bar\\)?\"" "foobar")
+  (regexp-match? #rx#"foobar" "foobar")
+  (regexp-match? #px#"foobar" "foobar")
   (define a 1)
-  (let ([a|||b #true c
+  #Ci (let ([a|||b #true c
 \|ｄ "foo"])
-    (displayln \ab\ #true\ c\
+    (displayln #cS \ab\ #true\ c\
 \\ｄ||))
   (for/list ([x (in-list (list 1 2 (list 3 4)))])
     (cond
@@ -128,4 +130,7 @@ HERE STRING
  ;; other literals
  #(vector)
  #s[prefab-structure 1 2 3]
- #&{box})
+ #&{box}
+ #hash(("a" . 5))
+ #hasheq((a . 5) (b . 7))
+ #hasheqv((a . 5) (b . 7)))
