@@ -478,8 +478,7 @@ class RacketLexer(RegexLexer):
         'write-special-avail*', 'write-special-evt', 'write-string', 'zero?'
     ]
 
-    # From SchemeLexer
-    valid_name = r'[a-zA-Z\d!$%&*+,/:<=>?@^_~|-]+'
+    _symbol = r'(?u)(\|[^|]*\||\\(.|\n)|[^|\\()\[\]{}",\'`;\s]+)+'
 
     tokens = {
         'root' : [
@@ -542,7 +541,7 @@ class RacketLexer(RegexLexer):
             # strings, symbols and characters
             (r'#?"', String.Double, 'string'),
             (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
-            (r"'" + valid_name, String.Symbol),
+            (r"'%s" % _symbol, String.Symbol),
             (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z\d]+)", String.Char),
             (r'(?s)#[pr]x"(\\?.)+?"', String.Regex),
 
@@ -566,7 +565,7 @@ class RacketLexer(RegexLexer):
 
             # first variable in a quoted string like
             # '(this is syntactic sugar)
-            (r"((?<=['`#][(\[{])|(?<=#['`s&][(\[{]))%s" % valid_name,
+            (r"((?<=['`#][(\[{])|(?<=#['`s&][(\[{]))%s" % _symbol,
              Name.Variable),
 
             # highlight the builtins
@@ -575,11 +574,11 @@ class RacketLexer(RegexLexer):
                 Name.Builtin
             ),
 
-            # the remaining functions; handle both ( and [
-            (r'(?<=(\(|\[|\{))' + valid_name, Name.Function),
+            # the remaining functions; handle (, [, and {
+            (r'(?<=[([{])%s' % _symbol, Name.Function),
 
             # find the remaining variables
-            (valid_name, Name.Variable),
+            (_symbol, Name.Variable),
 
             # the famous parentheses!
             (r'(\(|\)|\[|\]|\{|\})', Punctuation),

@@ -26,8 +26,10 @@ Multi-line comment style ...
   (regexp-match? #rx"foobar" "foobar")
   (regexp-match? #px"\"foo\\(bar\\)?\"" "foobar")
   (define a 1)
-  (let ([b "foo"])
-    (displayln b))
+  (let ([a|||b #true c
+\|ｄ "foo"])
+    (displayln \ab\ #true\ c\
+\\ｄ||))
   (for/list ([x (in-list (list 1 2 (list 3 4)))])
     (cond
       [(pair? x) (car x)]
