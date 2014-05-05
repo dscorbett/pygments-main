@@ -108,7 +108,7 @@ Multi-line comment style ...
  #F
  #false
  
- ;; string and byte string
+ ;; strings and byte strings
  "string\
  \a.\b.\t.\n.\v.\f.\r.\e.\".\'.\\.\1.\123.\1234.\x9.\x30.\x303"
  "\u9.\u1234.\u12345.\U9.\U00100000.\U001000000"
@@ -122,4 +122,8 @@ HERE STRING
  #|
 HERE STRING
 |#
- )
+ 
+ ;; other literals
+ #(vector)
+ #s[prefab-structure 1 2 3]
+ #&{box})

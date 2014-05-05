@@ -479,7 +479,7 @@ class RacketLexer(RegexLexer):
     ]
 
     # From SchemeLexer
-    valid_name = r'[a-zA-Z0-9!$%&*+,/:<=>?@^_~|-]+'
+    valid_name = r'[a-zA-Z\d!$%&*+,/:<=>?@^_~|-]+'
 
     tokens = {
         'root' : [
@@ -498,53 +498,52 @@ class RacketLexer(RegexLexer):
             ## variable named "100-Continue".
 
             # #b
-            (r'#b[-+]?[01]+\.[01]+', Number.Float),
-            (r'#b[01]+e[-+]?[01]+', Number.Float),
-            (r'#b[-+]?[01]/[01]+', Number),
-            (r'#b[-+]?[01]+', Number.Integer),
-            (r'#b\S*', Error),
+            (r'#[bB][-+]?[01]+\.[01]+', Number.Float),
+            (r'#[bB][01]+[eE][-+]?[01]+', Number.Float),
+            (r'#[bB][-+]?[01]/[01]+', Number),
+            (r'#[bB][-+]?[01]+', Number.Integer),
+            (r'#[bB]\S*', Error),
 
             # #d OR no hash prefix
-            (r'(#d)?[-+]?\d+\.\d+', Number.Float),
-            (r'(#d)?\d+e[-+]?\d+', Number.Float),
-            (r'(#d)?[-+]?\d+/\d+', Number),
-            (r'(#d)?[-+]?\d+', Number.Integer),
-            (r'#d\S*', Error),
+            (r'(#[dD])?[-+]?\d+\.\d+', Number.Float),
+            (r'(#[dD])?\d+[eE][-+]?\d+', Number.Float),
+            (r'(#[dD])?[-+]?\d+/\d+', Number),
+            (r'(#[dD])?[-+]?\d+', Number.Integer),
+            (r'#[dD]\S*', Error),
 
             # #e
-            (r'#e[-+]?\d+\.\d+', Number.Float),
-            (r'#e\d+e[-+]?\d+', Number.Float),
-            (r'#e[-+]?\d+/\d+', Number),
-            (r'#e[-+]?\d+', Number),
-            (r'#e\S*', Error),
+            (r'#[eE][-+]?\d+\.\d+', Number.Float),
+            (r'#[eE]\d+[eE][-+]?\d+', Number.Float),
+            (r'#[eE][-+]?\d+/\d+', Number),
+            (r'#[eE][-+]?\d+', Number),
+            (r'#[eE]\S*', Error),
 
             # #i is always inexact-real, i.e. float
-            (r'#i[-+]?\d+\.\d+', Number.Float),
-            (r'#i\d+e[-+]?\d+', Number.Float),
-            (r'#i[-+]?\d+/\d+', Number.Float),
-            (r'#i[-+]?\d+', Number.Float),
-            (r'#i\S*', Error),
+            (r'#[iI][-+]?\d+\.\d+', Number.Float),
+            (r'#[iI]\d+[eE][-+]?\d+', Number.Float),
+            (r'#[iI][-+]?\d+/\d+', Number.Float),
+            (r'#[iI][-+]?\d+', Number.Float),
+            (r'#[iI]\S*', Error),
 
             # #o
-            (r'#o[-+]?[0-7]+\.[0-7]+', Number.Oct),
-            (r'#o[0-7]+e[-+]?[0-7]+', Number.Oct),
-            (r'#o[-+]?[0-7]+/[0-7]+', Number.Oct),
-            (r'#o[-+]?[0-7]+', Number.Oct),
-            (r'#o\S*', Error),
+            (r'#[oO][-+]?[0-7]+\.[0-7]+', Number.Oct),
+            (r'#[oO][0-7]+[eE][-+]?[0-7]+', Number.Oct),
+            (r'#[oO][-+]?[0-7]+/[0-7]+', Number.Oct),
+            (r'#[oO][-+]?[0-7]+', Number.Oct),
+            (r'#[oO]\S*', Error),
 
             # #x
-            (r'#x[-+]?[0-9a-fA-F]+\.[0-9a-fA-F]+', Number.Hex),
+            (r'#[xX][-+]?[\da-fA-F]+\.[\da-fA-F]+', Number.Hex),
             # the exponent variation (e.g. #x1e1) is N/A
-            (r'#x[-+]?[0-9a-fA-F]+/[0-9a-fA-F]+', Number.Hex),
-            (r'#x[-+]?[0-9a-fA-F]+', Number.Hex),
-            (r'#x\S*', Error),
-
+            (r'#[xX][-+]?[\da-fA-F]+/[\da-fA-F]+', Number.Hex),
+            (r'#[xX][-+]?[\da-fA-F]+', Number.Hex),
+            (r'#[xX]\S*', Error),
 
             # strings, symbols and characters
             (r'#?"', String.Double, 'string'),
             (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
             (r"'" + valid_name, String.Symbol),
-            (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z0-9]+)", String.Char),
+            (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z\d]+)", String.Char),
             (r'(?s)#[pr]x"(\\?.)+?"', String.Regex),
 
             # constants
@@ -557,7 +556,7 @@ class RacketLexer(RegexLexer):
             (r'#lang \S+', Keyword.Namespace),
 
             # special operators
-            (r"('|#|`|,@|,|\.)", Operator),
+            (r"('|`|,@|,|#s|#&|#'|#`|#,@|#,|#|\.)", Operator),
 
             # highlight the keywords
             ('(%s)' % '|'.join([
@@ -567,8 +566,8 @@ class RacketLexer(RegexLexer):
 
             # first variable in a quoted string like
             # '(this is syntactic sugar)
-            (r"(?<='\()" + valid_name, Name.Variable),
-            (r"(?<=#\()" + valid_name, Name.Variable),
+            (r"((?<=['`#][(\[{])|(?<=#['`s&][(\[{]))%s" % valid_name,
+             Name.Variable),
 
             # highlight the builtins
             ("(?<=\()(%s)" % '|'.join([
