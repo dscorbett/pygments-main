@@ -29,11 +29,11 @@ Multi-line comment style ...
   (let ([b "foo"])
     (displayln b))
   (for/list ([x (in-list (list 1 2 (list 3 4)))])
-      (cond
-       [(pair? x) (car x)]
-       [else x])))
+    (cond
+      [(pair? x) (car x)]
+      [else x])))
 
-;; Literal number examples
+;; Literals
 (values
  ;; #b
  #b1.1
@@ -53,7 +53,7 @@ Multi-line comment style ...
  #d-1/2
  #d1
  #d-1
-
+ 
  ;; No # reader prefix -- same as #d
  -1.23
  1.123
@@ -63,7 +63,7 @@ Multi-line comment style ...
  -1/2
  1
  -1
-
+ 
  ;; #e
  #e-1.23
  #e1.123
@@ -73,7 +73,7 @@ Multi-line comment style ...
  #e-1
  #e1/2
  #e-1/2
-
+ 
  ;; #i always float
  #i-1.23
  #i1.123
@@ -83,7 +83,7 @@ Multi-line comment style ...
  #i-1/2
  #i1
  #i-1
-
+ 
  ;; #o
  #o777.777
  #o-777.777
@@ -93,10 +93,15 @@ Multi-line comment style ...
  #o-3/7
  #o777
  #o-777
-
+ 
  ;; #x
  #x-f.f
  #xf.f
  #x-f
  #xf
- )
+ 
+ ;; string and byte string
+ "string\
+ \a.\b.\t.\n.\v.\f.\r.\e.\".\'.\\.\1.\123.\1234.\x9.\x30.\x303"
+ "\u9.\u1234.\u12345.\U9.\U00100000.\U001000000"
+ #"byte-string\7\xff\t")

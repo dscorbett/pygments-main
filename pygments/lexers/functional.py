@@ -541,7 +541,7 @@ class RacketLexer(RegexLexer):
 
 
             # strings, symbols and characters
-            (r'"(\\\\|\\"|[^"])*"', String),
+            (r'#?"', String.Double, 'string'),
             (r"'" + valid_name, String.Symbol),
             (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z0-9]+)", String.Char),
             (r'#rx".+"', String.Regex),
@@ -589,6 +589,12 @@ class RacketLexer(RegexLexer):
             (r'#\|', Comment.Multiline, '#push'),
             (r'\|#', Comment.Multiline, '#pop'),
             (r'[^#|]+|.', Comment.Multiline)
+        ],
+        'string': [
+            (r'"', String.Double, '#pop'),
+            (r'\\([0-7]{1,3}|x[\da-fA-F]{1,2}|u[\da-fA-F]{1,4}|'
+             r'U[\da-fA-F]{1,8}|.|\n)', String.Escape),
+            (r'[^\\"]+', String.Double),
         ]
     }
 
