@@ -104,4 +104,14 @@ Multi-line comment style ...
  "string\
  \a.\b.\t.\n.\v.\f.\r.\e.\".\'.\\.\1.\123.\1234.\x9.\x30.\x303"
  "\u9.\u1234.\u12345.\U9.\U00100000.\U001000000"
- #"byte-string\7\xff\t")
+ #"byte-string\7\xff\t"
+ #<<HERE STRING
+lorem ipsum
+dolor sit amet
+consectetur HERE STRING
+HERE STRING adipisicing elit
+HERE STRING
+ #|
+HERE STRING
+|#
+ )
