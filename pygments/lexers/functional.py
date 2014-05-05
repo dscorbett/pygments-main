@@ -542,7 +542,9 @@ class RacketLexer(RegexLexer):
             (r'#?"', String.Double, 'string'),
             (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
             (r"'%s" % _symbol, String.Symbol),
-            (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z\d]+)", String.Char),
+            (r'#\\(u[\da-fA-F]{1,4}|U[\da-fA-F]{1,8})', String.Char),
+            (r'(?is)#\\(backspace|linefeed|newline|null|nul|page|return|'
+             r'rubout|space|tab|vtab|[0-7]{3}|.)', String.Char),
             (r'(?s)#[pr]x#?"(\\?.)+?"', String.Regex),
 
             # constants
