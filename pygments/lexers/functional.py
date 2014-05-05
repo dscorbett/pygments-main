@@ -545,8 +545,7 @@ class RacketLexer(RegexLexer):
             (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
             (r"'" + valid_name, String.Symbol),
             (r"#\\([()/'\"._!§$%& ?=+-]{1}|[a-zA-Z0-9]+)", String.Char),
-            (r'#rx".+"', String.Regex),
-            (r'#px".+"', String.Regex),
+            (r'(?s)#[pr]x"(\\?.)+?"', String.Regex),
 
             # constants
             (r'(#t|#f)', Name.Constant),

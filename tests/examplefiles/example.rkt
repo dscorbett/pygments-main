@@ -24,7 +24,7 @@ Multi-line comment style ...
   {define foo2 'symbol} ; {}
   (and (append (car '(1 2 3))))
   (regexp-match? #rx"foobar" "foobar")
-  (regexp-match? #px"foobar" "foobar")
+  (regexp-match? #px"\"foo\\(bar\\)?\"" "foobar")
   (define a 1)
   (let ([b "foo"])
     (displayln b))
