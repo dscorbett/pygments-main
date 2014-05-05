@@ -549,13 +549,13 @@ class RacketLexer(RegexLexer):
             (r'#(true|false|[tTfF])', Name.Constant),
 
             # keyword argument names (e.g. #:keyword)
-            (r'#:\S+', Keyword.Declaration),
+            (r'#:%s' % _symbol, Keyword.Declaration),
 
             # #lang
             (r'#lang \S+', Keyword.Namespace),
 
             # special operators
-            (r"('|`|,@|,|#s|#&|#'|#`|#,@|#,|#|\.)", Operator),
+            (r"(#?(,@|['`,])|#[s&]|#hash(eqv?)?|[#.])", Operator),
 
             # highlight the keywords
             ('(%s)' % '|'.join([
