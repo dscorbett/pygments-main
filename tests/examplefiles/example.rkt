@@ -8,6 +8,7 @@
 
 #|
 Multi-line comment style ...
+#|### #| nested |#||| |#
 ... on multiple lines
 |#
 
@@ -18,7 +19,7 @@ Multi-line comment style ...
   (and (append (car '(1 2 3))))
   (regexp-match? #rx"foobar" "foobar")
   (regexp-match? #px"foobar" "foobar")
-  (define a 1))
+  (define a 1)
   (let ([b "foo"])
     (displayln b))
   (for/list ([x (in-list (list 1 2 (list 3 4)))])

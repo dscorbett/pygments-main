@@ -27,8 +27,8 @@ line_re = re.compile('.*?\n')
 
 class RacketLexer(RegexLexer):
     """
-    Lexer for `Racket <http://racket-lang.org/>`_ source code (formerly known as
-    PLT Scheme).
+    Lexer for `Racket <http://racket-lang.org/>`_ source code (formerly
+    known as PLT Scheme).
 
     .. versionadded:: 1.6
     """
@@ -484,7 +484,7 @@ class RacketLexer(RegexLexer):
     tokens = {
         'root' : [
             (r';.*$', Comment.Single),
-            (r'#\|[^|]+\|#', Comment.Multiline),
+            (r'#\|', Comment.Multiline, 'block-comment'),
 
             # whitespaces - usually not relevant
             (r'\s+', Text),
@@ -584,6 +584,11 @@ class RacketLexer(RegexLexer):
             # the famous parentheses!
             (r'(\(|\)|\[|\]|\{|\})', Punctuation),
         ],
+        'block-comment': [
+            (r'#\|', Comment.Multiline, '#push'),
+            (r'\|#', Comment.Multiline, '#pop'),
+            (r'[^#|]+|.', Comment.Multiline)
+        ]
     }
 
 
