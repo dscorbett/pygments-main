@@ -723,7 +723,7 @@ class CommonLispLexer(RegexLexer):
     .. versionadded:: 0.9
     """
     name = 'Common Lisp'
-    aliases = ['common-lisp', 'cl', 'lisp']
+    aliases = ['common-lisp', 'cl', 'lisp', 'elisp', 'emacs']
     filenames = ['*.cl', '*.lisp', '*.el']  # use for Elisp too
     mimetypes = ['text/x-common-lisp']
 
@@ -977,7 +977,7 @@ class HaskellLexer(RegexLexer):
             (r'\s+', Text),
             (r'[A-Z][a-zA-Z0-9_]*', Keyword.Type),
             (r'(_[\w\']+|[a-z][\w\']*)', Name.Function),
-            (r'--.*$', Comment.Single),
+            (r'--(?![!#$%&*+./<=>?@\^|_~:\\]).*?$', Comment.Single),
             (r'{-', Comment.Multiline, 'comment'),
             (r',', Punctuation),
             (r'[:!#$%&*+.\\/<=>?@^|~-]+', Operator),

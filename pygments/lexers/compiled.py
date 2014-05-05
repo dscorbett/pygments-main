@@ -56,8 +56,6 @@ class CFamilyLexer(RegexLexer):
              bygroups(using(this), Comment.Preproc), 'if0'),
             ('^(' + _ws1 + ')(#)',
              bygroups(using(this), Comment.Preproc), 'macro'),
-            (r'^(\s*)([a-zA-Z_][a-zA-Z0-9_]*:(?!:))',
-             bygroups(Text, Name.Label)),
             (r'\n', Text),
             (r'\s+', Text),
             (r'\\\n', Text), # line continuation
@@ -89,6 +87,7 @@ class CFamilyLexer(RegexLexer):
              r'declspec|finally|int64|try|leave|wchar_t|w64|unaligned|'
              r'raise|noop|identifier|forceinline|assume)\b', Keyword.Reserved),
             (r'(true|false|NULL)\b', Name.Builtin),
+            (r'([a-zA-Z_][a-zA-Z0-9_]*)(\s*)(:)(?!:)', bygroups(Name.Label, Text, Punctuation)),
             ('[a-zA-Z_][a-zA-Z0-9_]*', Name),
         ],
         'root': [
@@ -469,20 +468,23 @@ class DLexer(RegexLexer):
             (r'(abstract|alias|align|asm|assert|auto|body|break|case|cast'
              r'|catch|class|const|continue|debug|default|delegate|delete'
              r'|deprecated|do|else|enum|export|extern|finally|final'
-             r'|foreach_reverse|foreach|for|function|goto|if|import|inout'
-             r'|interface|invariant|in|is|lazy|mixin|module|new|nothrow|out'
+             r'|foreach_reverse|foreach|for|function|goto|if|immutable|import'
+             r'|interface|invariant|inout|in|is|lazy|mixin|module|new|nothrow|out'
              r'|override|package|pragma|private|protected|public|pure|ref|return'
-             r'|scope|static|struct|super|switch|synchronized|template|this'
+             r'|scope|shared|static|struct|super|switch|synchronized|template|this'
              r'|throw|try|typedef|typeid|typeof|union|unittest|version|volatile'
-             r'|while|with|__traits)\b', Keyword
+             r'|while|with|__gshared|__traits|__vector|__parameters)\b', Keyword
             ),
             (r'(bool|byte|cdouble|cent|cfloat|char|creal|dchar|double|float'
              r'|idouble|ifloat|int|ireal|long|real|short|ubyte|ucent|uint|ulong'
              r'|ushort|void|wchar)\b', Keyword.Type
             ),
             (r'(false|true|null)\b', Keyword.Constant),
+            (r'(__FILE__|__MODULE__|__LINE__|__FUNCTION__|__PRETTY_FUNCTION__'
+             r'|__DATE__|__EOF__|__TIME__|__TIMESTAMP__|__VENDOR__|__VERSION__)\b',
+             Keyword.Pseudo),
             (r'macro\b', Keyword.Reserved),
-            (r'(string|wstring|dstring)\b', Name.Builtin),
+            (r'(string|wstring|dstring|size_t|ptrdiff_t)\b', Name.Builtin),
             # FloatLiteral
             # -- HexFloat
             (r'0[xX]([0-9a-fA-F_]*\.[0-9a-fA-F_]+|[0-9a-fA-F_]+)'
@@ -528,6 +530,8 @@ class DLexer(RegexLexer):
             (r'q"(.).*?\1"', String),
             # -- TokenString
             (r'q{', String, 'token_string'),
+            # Attributes
+            (r'@([a-zA-Z_]\w*)?', Name.Decorator),
             # Tokens
             (r'(~=|\^=|%=|\*=|==|!>=|!<=|!<>=|!<>|!<|!>|!=|>>>=|>>>|>>=|>>|>='
              r'|<>=|<>|<<=|<<|<=|\+\+|\+=|--|-=|\|\||\|=|&&|&=|\.\.\.|\.\.|/=)'
@@ -535,6 +539,8 @@ class DLexer(RegexLexer):
             ),
             # Identifier
             (r'[a-zA-Z_]\w*', Name),
+            # Line
+            (r'#line\s.*\n', Comment.Special),
         ],
         'nested_comment': [
             (r'[^+/]+', Comment.Multiline),
@@ -1377,23 +1383,30 @@ def objective(baselexer):
         tokens = {
             'statements': [
                 (r'@"', String, 'string'),
+                (r'@(YES|NO)', Number),
                 (r"@'(\\.|\\[0-7]{1,3}|\\x[a-fA-F0-9]{1,2}|[^\\\'\n])'", String.Char),
                 (r'@(\d+\.\d*|\.\d+|\d+)[eE][+-]?\d+[lL]?', Number.Float),
                 (r'@(\d+\.\d*|\.\d+|\d+[fF])[fF]?', Number.Float),
                 (r'@0x[0-9a-fA-F]+[Ll]?', Number.Hex),
                 (r'@0[0-7]+[Ll]?', Number.Oct),
                 (r'@\d+[Ll]?', Number.Integer),
-                (r'@\([^()]+\)', Number),
+                (r'@\(', Literal, 'literal_number'),
+                (r'@\[', Literal, 'literal_array'),
+                (r'@\{', Literal, 'literal_dictionary'),
                 (r'(@selector|@private|@protected|@public|@encode|'
                  r'@synchronized|@try|@throw|@catch|@finally|@end|@property|'
                  r'__bridge|__bridge_transfer|__autoreleasing|__block|__weak|__strong|'
-                 r'weak|strong|retain|assign|unsafe_unretained|nonatomic|'
-                 r'readonly|readwrite|setter|getter|typeof|in|out|inout|'
+                 r'weak|strong|copy|retain|assign|unsafe_unretained|atomic|nonatomic|'
+                 r'readonly|readwrite|setter|getter|typeof|in|out|inout|release|class|'
                  r'@synthesize|@dynamic|@optional|@required|@autoreleasepool)\b', Keyword),
                 (r'(id|instancetype|Class|IMP|SEL|BOOL|IBOutlet|IBAction|unichar)\b',
                  Keyword.Type),
                 (r'@(true|false|YES|NO)\n', Name.Builtin),
                 (r'(YES|NO|nil|self|super)\b', Name.Builtin),
+                # Carbon types
+                (r'(Boolean|UInt8|SInt8|UInt16|SInt16|UInt32|SInt32)\b', Keyword.Type),
+                # Carbon built-ins
+                (r'(TRUE|FALSE)\b', Name.Builtin),
                 (r'(@interface|@implementation)(\s+)', bygroups(Keyword, Text),
                  ('#pop', 'oc_classname')),
                 (r'(@class|@protocol)(\s+)', bygroups(Keyword, Text),
@@ -1404,12 +1417,18 @@ def objective(baselexer):
             ],
             'oc_classname' : [
                 # interface definition that inherits
+                ('([a-zA-Z$_][a-zA-Z0-9$_]*)(\s*:\s*)([a-zA-Z$_][a-zA-Z0-9$_]*)?(\s*)({)',
+                 bygroups(Name.Class, Text, Name.Class, Text, Punctuation), ('#pop', 'oc_ivars')),
                 ('([a-zA-Z$_][a-zA-Z0-9$_]*)(\s*:\s*)([a-zA-Z$_][a-zA-Z0-9$_]*)?',
                  bygroups(Name.Class, Text, Name.Class), '#pop'),
                 # interface definition for a category
+                ('([a-zA-Z$_][a-zA-Z0-9$_]*)(\s*)(\([a-zA-Z$_][a-zA-Z0-9$_]*\))(\s*)({)',
+                 bygroups(Name.Class, Text, Name.Label, Text, Punctuation), ('#pop', 'oc_ivars')),
                 ('([a-zA-Z$_][a-zA-Z0-9$_]*)(\s*)(\([a-zA-Z$_][a-zA-Z0-9$_]*\))',
                  bygroups(Name.Class, Text, Name.Label), '#pop'),
                 # simple interface / implementation
+                ('([a-zA-Z$_][a-zA-Z0-9$_]*)(\s*)({)',
+                 bygroups(Name.Class, Text, Punctuation), ('#pop', 'oc_ivars')),
                 ('([a-zA-Z$_][a-zA-Z0-9$_]*)', Name.Class, '#pop')
             ],
             'oc_forward_classname' : [
@@ -1418,12 +1437,19 @@ def objective(baselexer):
               ('([a-zA-Z$_][a-zA-Z0-9$_]*)(\s*;?)',
                bygroups(Name.Class, Text), '#pop')
             ],
+            'oc_ivars' : [
+              include('whitespace'),
+              include('statements'),
+              (';', Punctuation),
+              ('{', Punctuation, '#push'),
+              ('}', Punctuation, '#pop'),
+            ],
             'root': [
               # methods
               (r'^([-+])(\s*)'                         # method marker
                r'(\(.*?\))?(\s*)'                      # return type
                r'([a-zA-Z$_][a-zA-Z0-9$_]*:?)',        # begin of method name
-               bygroups(Keyword, Text, using(this),
+               bygroups(Punctuation, Text, using(this),
                         Text, Name.Function),
                'method'),
               inherit,
@@ -1434,12 +1460,36 @@ def objective(baselexer):
                 # discussion in Issue 789
                 (r',', Punctuation),
                 (r'\.\.\.', Punctuation),
-                (r'(\(.*?\))([a-zA-Z$_][a-zA-Z0-9$_]*)', bygroups(using(this),
-                                                                  Name.Variable)),
+                (r'(\(.*?\))(\s*)([a-zA-Z$_][a-zA-Z0-9$_]*)',
+                 bygroups(using(this), Text, Name.Variable)),
                 (r'[a-zA-Z$_][a-zA-Z0-9$_]*:', Name.Function),
                 (';', Punctuation, '#pop'),
                 ('{', Punctuation, 'function'),
                 ('', Text, '#pop'),
+            ],
+            'literal_number': [
+                (r'\(', Punctuation, 'literal_number_inner'),
+                (r'\)', Literal, '#pop'),
+                include('statement'),
+            ],
+            'literal_number_inner': [
+                (r'\(', Punctuation, '#push'),
+                (r'\)', Punctuation, '#pop'),
+                include('statement'),
+            ],
+            'literal_array': [
+                (r'\[', Punctuation, 'literal_array_inner'),
+                (r'\]', Literal, '#pop'),
+                include('statement'),
+            ],
+            'literal_array_inner': [
+                (r'\[', Punctuation, '#push'),
+                (r'\]', Punctuation, '#pop'),
+                include('statement'),
+            ],
+            'literal_dictionary': [
+                (r'\}', Literal, '#pop'),
+                include('statement'),
             ],
         }
 
@@ -1460,7 +1510,7 @@ def objective(baselexer):
 
             for index, token, value in \
                 baselexer.get_tokens_unprocessed(self, text):
-                if token is Name:
+                if token is Name or token is Name.Class:
                     if value in COCOA_INTERFACES or value in COCOA_PROTOCOLS \
                        or value in COCOA_PRIMITIVES:
                         token = Name.Builtin.Pseudo
@@ -1602,9 +1652,9 @@ class FortranLexer(RegexLexer):
         ],
 
         'nums': [
-            (r'\d+(?![.Ee])', Number.Integer),
-            (r'[+-]?\d*\.\d+([eE][-+]?\d+)?', Number.Float),
-            (r'[+-]?\d+\.\d*([eE][-+]?\d+)?', Number.Float),
+            (r'\d+(?![.Ee])(_[a-z][a-z0-9_]+)?', Number.Integer),
+            (r'[+-]?\d*\.\d+([eE][-+]?\d+)?(_[a-z][a-z0-9_]+)?', Number.Float),
+            (r'[+-]?\d+\.\d*([eE][-+]?\d+)?(_[a-z][a-z0-9_]+)?', Number.Float),
         ],
     }
 
