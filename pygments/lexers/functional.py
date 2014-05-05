@@ -478,7 +478,7 @@ class RacketLexer(RegexLexer):
         'write-special-avail*', 'write-special-evt', 'write-string', 'zero?'
     ]
 
-    _symbol = r'(?u)(\|[^|]*\||\\(.|\n)|[^|\\()\[\]{}",\'`;\s]+)+'
+    _symbol = r'(?u)(#%)?(\|[^|]*\||\\(.|\n)|[^|\\()\[\]{}",\'`;\s]+)+'
 
     tokens = {
         'root' : [
@@ -487,7 +487,7 @@ class RacketLexer(RegexLexer):
             (r'#\|', Comment.Multiline, 'block-comment'),
 
             # whitespaces - usually not relevant
-            (r'\s+', Text),
+            (r'(?u)\s+', Text),
 
             ## numbers: Keep in mind Racket reader hash prefixes,
             ## which can denote the base or the type. These don't map
@@ -557,7 +557,8 @@ class RacketLexer(RegexLexer):
             (r'#lang \S+', Keyword.Namespace),
 
             # special operators
-            (r"(#?(,@|['`,])|#[s&]|#[cC][iIsS]|#hash(eqv?)?|[#.])", Operator),
+            (r"(#?(,@|['`,])|#[s&]|#[cC][iIsS]|#hash(eqv?)?|#(?!%)|\.)",
+             Operator),
 
             # highlight the keywords
             ('(%s)' % '|'.join([

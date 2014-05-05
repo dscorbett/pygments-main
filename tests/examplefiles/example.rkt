@@ -28,9 +28,9 @@ Multi-line comment style ...
   (regexp-match? #rx#"foobar" "foobar")
   (regexp-match? #px#"foobar" "foobar")
   (define a 1)
-  #Ci (let ([a|||b #true c
+  #Ci (let ([#%A|||b #true C
 \|ｄ "foo"])
-    (displayln #cS \ab\ #true\ c\
+    (displayln #cS #%\ab\ #true\ C\
 \\ｄ||))
   (for/list ([x (in-list (list 1 2 (list 3 4)))])
     (cond
