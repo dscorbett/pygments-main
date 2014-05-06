@@ -479,7 +479,17 @@ class RacketLexer(RegexLexer):
     ]
 
     _delimiters = r'()[\]{}",\'`;\s'
-    _symbol = r'(?u)(#%%)?(\|[^|]*\||\\(.|\n)|[^|\\%s]+)+' % _delimiters
+    _symbol = r'(?u)(?:#%%)?(?:\|[^|]*\||\\(?:.|\n)|[^|\\%s]+)+' % _delimiters
+    _number_prefix = r'(?:#e)?(?:#b|(?:#d)?)(?:#e)?'
+    _unsigned_rational = (r'(?:(?:\d+(?:/\d+|\.\d*)?|\.\d+)'
+                          r'(?:[defsl][-+]?\d+)?)')
+    _inexact_normal = (r'(?:%s|(?:\d+#+(?:\.#*|/\d+#*)?|\.\d+#+|'
+                       r'\d+(?:\.\d*#+|/\d+#+))(?:[defsl][-+]?\d+)?)' %
+                       _unsigned_rational)
+    _inexact_special = r'(?:(?:inf|nan)\.[0f])'
+    _inexact_real = r'(?:[-+]?%s|[-+]%s)' % (_inexact_normal,
+                                             _inexact_special)
+    _inexact_unsigned = r'(?:%s|%s)' % (_inexact_normal, _inexact_special)
 
     tokens = {
         'root' : [
@@ -493,51 +503,30 @@ class RacketLexer(RegexLexer):
             ## numbers: Keep in mind Racket reader hash prefixes,
             ## which can denote the base or the type. These don't map
             ## neatly onto pygments token types; some judgment calls
-            ## here.  Note that none of these regexps attempt to
-            ## exclude identifiers that start with a number, such as a
-            ## variable named "100-Continue".
+            ## here.
 
-            # #b
-            (r'#[bB][-+]?[01]+\.[01]+', Number.Float),
-            (r'#[bB][01]+[eE][-+]?[01]+', Number.Float),
-            (r'#[bB][-+]?[01]/[01]+', Number),
-            (r'#[bB][-+]?[01]+', Number.Integer),
-            (r'#[bB]\S*', Error),
+            # #b or #d or no prefix
+            (r'(?i)%s[-+]?\d+(?=[%s])' % (_number_prefix, _delimiters),
+             Number.Integer),
+            (r'(?i)%s[-+]?(\d+(\.\d*)?|\.\d+)([defsl][-+]?\d+)?(?=[%s])' %
+             (_number_prefix, _delimiters), Number.Float),
+            (r'(?i)%s[-+]?(%s([-+]%s?i)?|[-+]%s?i)(?=[%s])' %
+             (_number_prefix, _unsigned_rational, _unsigned_rational,
+              _unsigned_rational, _delimiters), Number),
 
-            # #d OR no hash prefix
-            (r'(#[dD])?[-+]?\d+\.\d+', Number.Float),
-            (r'(#[dD])?\d+[eE][-+]?\d+', Number.Float),
-            (r'(#[dD])?[-+]?\d+/\d+', Number),
-            (r'(#[dD])?[-+]?\d+', Number.Integer),
-            (r'#[dD]\S*', Error),
-
-            # #e
-            (r'#[eE][-+]?\d+\.\d+', Number.Float),
-            (r'#[eE]\d+[eE][-+]?\d+', Number.Float),
-            (r'#[eE][-+]?\d+/\d+', Number),
-            (r'#[eE][-+]?\d+', Number),
-            (r'#[eE]\S*', Error),
-
-            # #i is always inexact-real, i.e. float
-            (r'#[iI][-+]?\d+\.\d+', Number.Float),
-            (r'#[iI]\d+[eE][-+]?\d+', Number.Float),
-            (r'#[iI][-+]?\d+/\d+', Number.Float),
-            (r'#[iI][-+]?\d+', Number.Float),
-            (r'#[iI]\S*', Error),
+            # inexact without explicit #i
+            (r'(?i)(#[bd])?(%s([-+]%s?i)?|[-+]%s?i|%s@%s)(?=[%s])' %
+             (_inexact_real, _inexact_unsigned, _inexact_unsigned,
+              _inexact_real, _inexact_real, _delimiters), Number.Float),
 
             # #o
-            (r'#[oO][-+]?[0-7]+\.[0-7]+', Number.Oct),
-            (r'#[oO][0-7]+[eE][-+]?[0-7]+', Number.Oct),
-            (r'#[oO][-+]?[0-7]+/[0-7]+', Number.Oct),
-            (r'#[oO][-+]?[0-7]+', Number.Oct),
-            (r'#[oO]\S*', Error),
+            (r'(?i)(#[ei])?#o%s' % _symbol, Number.Oct),
 
             # #x
-            (r'#[xX][-+]?[\da-fA-F]+\.[\da-fA-F]+', Number.Hex),
-            # the exponent variation (e.g. #x1e1) is N/A
-            (r'#[xX][-+]?[\da-fA-F]+/[\da-fA-F]+', Number.Hex),
-            (r'#[xX][-+]?[\da-fA-F]+', Number.Hex),
-            (r'#[xX]\S*', Error),
+            (r'(?i)(#[ei])?#x%s' % _symbol, Number.Hex),
+
+            # #i is always inexact, i.e. float
+            (r'(?i)(#[bd])?#i%s' % _symbol, Number.Float),
 
             # strings, symbols and characters
             (r'#?"', String.Double, 'string'),
