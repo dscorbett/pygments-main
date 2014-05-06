@@ -575,8 +575,8 @@ class RacketLexer(RegexLexer):
              Name.Variable),
 
             # highlight the builtins
-            ("(?<=\()(%s)" % '|'.join([
-                re.escape(entry) + ' ' for entry in builtins]),
+            ('(?u)(%s)(?=[%s])' % ('|'.join(
+                [re.escape(entry) for entry in builtins]), _delimiters),
                 Name.Builtin
             ),
 
