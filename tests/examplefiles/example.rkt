@@ -29,16 +29,16 @@ comment
 comment
 
 #reader racket
-(define (a-function x #:keyword [y 0])
+(define(a-function x #:keyword [y 0])
   (define foo0 'symbol) ; ()
   [define foo1 'symbol] ; []
   {define foo2 'symbol} ; {}
-  (and (append (car '(1 2 3))))
+  (and (append (car'(1 2 3))))
   (regexp-match? #rx"foobar" "foobar")
   (regexp-match? #px"\"foo\\(bar\\)?\"" "foobar")
   (regexp-match? #rx#"foobar" "foobar")
   (regexp-match? #px#"foobar" "foobar")
-  (define a 1)
+  (define #csa 1)
   #Ci (let ([#%A|||b #true C
 \|ｄ "foo"])
     (displayln #cS #%\ab\ #true\ C\

@@ -478,7 +478,8 @@ class RacketLexer(RegexLexer):
         'write-special-avail*', 'write-special-evt', 'write-string', 'zero?'
     ]
 
-    _symbol = r'(?u)(#%)?(\|[^|]*\||\\(.|\n)|[^|\\()\[\]{}",\'`;\s]+)+'
+    _delimiters = r'()[\]{}",\'`;\s'
+    _symbol = r'(?u)(#%%)?(\|[^|]*\||\\(.|\n)|[^|\\%s]+)+' % _delimiters
 
     tokens = {
         'root' : [
@@ -563,14 +564,14 @@ class RacketLexer(RegexLexer):
              Operator),
 
             # highlight the keywords
-            ('(%s)' % '|'.join([
-                re.escape(entry) + ' ' for entry in keywords]),
+            ('(?u)(%s)(?=[%s])' % ('|'.join(
+                [re.escape(entry) for entry in keywords]), _delimiters),
                 Keyword
             ),
 
             # first variable in a quoted string like
             # '(this is syntactic sugar)
-            (r"((?<=['`#][(\[{])|(?<=#['`s&][(\[{]))%s" % _symbol,
+            (r"((?<=['`#][([{])|(?<=#['`s&][([{]))%s" % _symbol,
              Name.Variable),
 
             # highlight the builtins
