@@ -231,6 +231,20 @@ comment
  #d+1/2e3+1/2e3i
  #d-1/2e3+1/2e3i
  
+ ;; Extflonums
+ +nan.t
+ 1t3
+ +1t3
+ -1t3
+ .1t3
+ 1.t3
+ 1.2t3
+ +1.2t3
+ -1.2t3
+ 1/2t3
+ +1/2t3
+ -1/2t3
+ 
  ;; No # reader prefix -- same as #d
  -1.23
  1.123

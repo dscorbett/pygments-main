@@ -508,7 +508,7 @@ class RacketLexer(RegexLexer):
             # #b or #d or no prefix
             (r'(?i)%s[-+]?\d+(?=[%s])' % (_number_prefix, _delimiters),
              Number.Integer),
-            (r'(?i)%s[-+]?(\d+(\.\d*)?|\.\d+)([defsl][-+]?\d+)?(?=[%s])' %
+            (r'(?i)%s[-+]?(\d+(\.\d*)?|\.\d+)([defstl][-+]?\d+)?(?=[%s])' %
              (_number_prefix, _delimiters), Number.Float),
             (r'(?i)%s[-+]?(%s([-+]%s?i)?|[-+]%s?i)(?=[%s])' %
              (_number_prefix, _unsigned_rational, _unsigned_rational,
@@ -518,6 +518,10 @@ class RacketLexer(RegexLexer):
             (r'(?i)(#[bd])?(%s([-+]%s?i)?|[-+]%s?i|%s@%s)(?=[%s])' %
              (_inexact_real, _inexact_unsigned, _inexact_unsigned,
               _inexact_real, _inexact_real, _delimiters), Number.Float),
+
+            # the remaining extflonums
+            (r'(([-+]?(\d+(/\d+|\.\d*)?|\.\d+)(t[-+]?\d+))|[-+](inf|nan)\.t)'
+             r'(?=[%s])' % _delimiters, Number.Float),
 
             # #o
             (r'(?i)(#[ei])?#o%s' % _symbol, Number.Oct),
