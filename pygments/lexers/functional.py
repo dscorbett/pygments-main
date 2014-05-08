@@ -840,19 +840,11 @@ class RacketLexer(RegexLexer):
                 Keyword
             ),
 
-            # first variable in a quoted string like
-            # '(this is syntactic sugar)
-            (r"((?<=['`#][([{])|(?<=#['`s&][([{]))%s" % _symbol,
-             Name.Variable),
-
             # highlight the builtins
             ('(?u)(%s)(?=[%s])' % ('|'.join(
                 [re.escape(entry) for entry in _builtins]), _delimiters),
                 Name.Builtin
             ),
-
-            # the remaining functions; handle (, [, and {
-            (r'(?<=[([{])%s' % _symbol, Name.Function),
 
             # find the remaining variables
             (_symbol, Name.Variable),
