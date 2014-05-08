@@ -846,8 +846,8 @@ class RacketLexer(RegexLexer):
                 Name.Builtin
             ),
 
-            # find the remaining variables
-            (_symbol, Name.Variable),
+            # find the remaining identifiers
+            (_symbol, Name),
 
             # the famous parentheses!
             (r'(\(|\)|\[|\]|\{|\})', Punctuation),
