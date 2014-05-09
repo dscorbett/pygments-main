@@ -781,87 +781,107 @@ class RacketLexer(RegexLexer):
     _inexact_unsigned = r'(?:%s|%s)' % (_inexact_normal, _inexact_special)
 
     tokens = {
-        'root' : [
+        'root': [
+            (r'(?!\Z)', Text, 'unquoted-datum')
+        ],
+        'datum' : [
             (r'(?s)#;|#![ /]([^\\\n]|\\.)+', Comment),
             (r';.*$', Comment.Single),
             (r'#\|', Comment.Multiline, 'block-comment'),
 
-            # whitespaces - usually not relevant
+            # Whitespaces
             (r'(?u)\s+', Text),
 
-            ## numbers: Keep in mind Racket reader hash prefixes,
+            ## Numbers: Keep in mind Racket reader hash prefixes,
             ## which can denote the base or the type. These don't map
-            ## neatly onto pygments token types; some judgment calls
+            ## neatly onto Pygments token types; some judgment calls
             ## here.
 
             # #b or #d or no prefix
             (r'(?i)%s[-+]?\d+(?=[%s])' % (_number_prefix, _delimiters),
-             Number.Integer),
+             Number.Integer, '#pop'),
             (r'(?i)%s[-+]?(\d+(\.\d*)?|\.\d+)([deflst][-+]?\d+)?(?=[%s])' %
-             (_number_prefix, _delimiters), Number.Float),
+             (_number_prefix, _delimiters), Number.Float, '#pop'),
             (r'(?i)%s[-+]?(%s([-+]%s?i)?|[-+]%s?i)(?=[%s])' %
              (_number_prefix, _unsigned_rational, _unsigned_rational,
-              _unsigned_rational, _delimiters), Number),
+              _unsigned_rational, _delimiters), Number, '#pop'),
 
-            # inexact without explicit #i
+            # Inexact without explicit #i
             (r'(?i)(#[bd])?(%s([-+]%s?i)?|[-+]%s?i|%s@%s)(?=[%s])' %
              (_inexact_real, _inexact_unsigned, _inexact_unsigned,
-              _inexact_real, _inexact_real, _delimiters), Number.Float),
+              _inexact_real, _inexact_real, _delimiters), Number.Float,
+             '#pop'),
 
-            # the remaining extflonums
+            # The remaining extflonums
             (r'(([-+]?(\d+(/\d+|\.\d*)?|\.\d+)(t[-+]?\d+))|[-+](inf|nan)\.t)'
-             r'(?=[%s])' % _delimiters, Number.Float),
+             r'(?=[%s])' % _delimiters, Number.Float, '#pop'),
 
             # #o
-            (r'(?i)(#[ei])?#o%s' % _symbol, Number.Oct),
+            (r'(?i)(#[ei])?#o%s' % _symbol, Number.Oct, '#pop'),
 
             # #x
-            (r'(?i)(#[ei])?#x%s' % _symbol, Number.Hex),
+            (r'(?i)(#[ei])?#x%s' % _symbol, Number.Hex, '#pop'),
 
             # #i is always inexact, i.e. float
-            (r'(?i)(#[bd])?#i%s' % _symbol, Number.Float),
+            (r'(?i)(#[bd])?#i%s' % _symbol, Number.Float, '#pop'),
 
-            # strings, symbols and characters
-            (r'#?"', String.Double, 'string'),
+            # Strings and characters
+            (r'#?"', String.Double, ('#pop', 'string')),
             (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
-            (r"'%s" % _symbol, String.Symbol),
             (r'#\\(u[\da-fA-F]{1,4}|U[\da-fA-F]{1,8})', String.Char),
             (r'(?is)#\\(backspace|linefeed|newline|null|nul|page|return|'
-             r'rubout|space|tab|vtab|[0-7]{3}|.)', String.Char),
-            (r'(?s)#[pr]x#?"(\\?.)+?"', String.Regex),
+             r'rubout|space|tab|vtab|[0-7]{3}|.)', String.Char, '#pop'),
+            (r'(?s)#[pr]x#?"(\\?.)+?"', String.Regex, '#pop'),
 
-            # constants
-            (r'#(true|false|[tTfF])', Name.Constant),
+            # Constants
+            (r'#(true|false|[tTfF])', Name.Constant, '#pop'),
 
-            # keyword argument names (e.g. #:keyword)
-            (r'#:%s' % _symbol, Keyword.Declaration),
+            # Keyword argument names (e.g. #:keyword)
+            (r'#:%s' % _symbol, Keyword.Declaration, '#pop'),
 
-            # reader extensions
+            # Reader extensions
             (r'(#lang |#!)(\S+)',
              bygroups(Keyword.Namespace, Name.Namespace)),
             (r'#reader', Keyword.Namespace),
+            # TODO: '#reader racket xyz
 
-            # special operators
-            (r"#?(,@|['`,])|#[s&]|#[cC][iIsS]|#hash(eqv?)?|#(?!%%)|"
-             r'\.(?=[%s])' % _delimiters, Operator),
+            # Other syntax
+            (r'(?i)\.(?=[%s])|#c[is]' % _delimiters, Operator),
+            (r"#?['`]|#[s&]|#hash(eqv?)?|#(?!%)\d*", Operator,
+             ('#pop', 'quoted-datum')),
+            (r'#?,@?', Operator, ('#pop', 'unquoted-datum'))
+        ],
+        'unquoted-datum': [
+            include('datum'),
 
-            # highlight the keywords
-            ('(?u)(%s)(?=[%s])' % ('|'.join(
+            # Parentheses
+            (r'[([{]', Punctuation, ('#pop', 'unquoted-list')),
+
+            # Keywords
+            (r'(?u)(%s)(?=[%s])' % ('|'.join(
                 [re.escape(entry) for entry in _keywords]), _delimiters),
-                Keyword
-            ),
+             Keyword, '#pop'),
 
-            # highlight the builtins
-            ('(?u)(%s)(?=[%s])' % ('|'.join(
+            # Built-ins
+            (r'(?u)(%s)(?=[%s])' % ('|'.join(
                 [re.escape(entry) for entry in _builtins]), _delimiters),
-                Name.Builtin
-            ),
+             Name.Builtin, '#pop'),
 
-            # find the remaining identifiers
-            (_symbol, Name),
-
-            # the famous parentheses!
-            (r'(\(|\)|\[|\]|\{|\})', Punctuation),
+            # The remaining identifiers
+            (_symbol, Name, '#pop')
+        ],
+        'unquoted-list': [
+            (r'[)\]}]', Punctuation, '#pop'),
+            include('root')
+        ],
+        'quoted-datum': [
+            include('datum'),
+            (r'[([{]', Punctuation, ('#pop', 'quoted-list')),
+            (_symbol, String.Symbol, '#pop')
+        ],
+        'quoted-list': [
+            (r'[)\]}]', Punctuation, '#pop'),
+            (r'(?!\Z)', Text, 'quoted-datum')
         ],
         'block-comment': [
             (r'#\|', Comment.Multiline, '#push'),
