@@ -856,7 +856,11 @@ class RacketLexer(RegexLexer):
         ],
         'unquoted-datum': [
             include('datum'),
+            (r'quote(?=[%s])' % _delimiters, Keyword,
+             ('#pop', 'quoted-datum')),
             (r'`', Operator, ('#pop', 'quasiquoted-datum')),
+            (r'quasiquote(?=[%s])' % _delimiters, Keyword,
+             ('#pop', 'quasiquoted-datum')),
             (r',@?', Operator),
             (_opening_parentheses, Punctuation, ('#pop', 'unquoted-list')),
             (r'(?u)(%s)(?=[%s])' % ('|'.join(
@@ -876,6 +880,8 @@ class RacketLexer(RegexLexer):
             include('datum'),
             (r'`', Operator),
             (r',@?', Operator, ('#pop', 'unquoted-datum')),
+            (r'unquote(-splicing)?(?=[%s])' % _delimiters, Keyword,
+             ('#pop', 'unquoted-datum')),
             (_opening_parentheses, Punctuation, ('#pop', 'quasiquoted-list')),
             (_symbol, String.Symbol, '#pop'),
             (r'', Text, '#pop')
