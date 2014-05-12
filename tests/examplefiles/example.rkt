@@ -142,7 +142,6 @@ comment
  #b1/10e11+1/10e11i
  #b+1/10e11+1/10e11i
  #b-1/10e11+1/10e11i
- 
  ;; #d
  #d1
  #d+1
@@ -232,7 +231,6 @@ comment
  #d1/2e3+1/2e3i
  #d+1/2e3+1/2e3i
  #d-1/2e3+1/2e3i
- 
  ;; Extflonums
  +nan.t
  1t3
@@ -246,7 +244,6 @@ comment
  1/2t3
  +1/2t3
  -1/2t3
- 
  ;; No # reader prefix -- same as #d
  -1.23
  1.123
@@ -256,7 +253,6 @@ comment
  -1/2
  1
  -1
- 
  ;; #e
  #e-1.23
  #e1.123
@@ -266,7 +262,6 @@ comment
  #e-1
  #e1/2
  #e-1/2
- 
  ;; #d#e
  #d#e-1.23
  #d#e1.123
@@ -276,7 +271,6 @@ comment
  #d#e-1
  #d#e1/2
  #d#e-1/2
- 
  ;; #e#d
  #e#d-1.23
  #e#d1.123
@@ -286,7 +280,6 @@ comment
  #e#d-1
  #e#d1/2
  #e#d-1/2
- 
  ;; #i always float
  #i-1.23
  #i1.123
@@ -296,7 +289,6 @@ comment
  #i-1/2
  #i1
  #i-1
- 
  ;; Implicitly inexact numbers
  +nan.0
  1#
@@ -417,7 +409,6 @@ comment
  1#/2#e3@1#/2e3
  1#/2#e3@1/2#e3
  1#/2#e3@1#/2#e3
- 
  ;; #o
  #o777.777
  #o-777.777
@@ -443,7 +434,6 @@ comment
  #i#o-3/7
  #i#o777
  #i#o-777
- 
  ;; #x
  #x-f.f
  #xf.f
@@ -469,7 +459,6 @@ comment
  #i#x-7/f
  #i#x-f
  #i#xf
- 
  ;; booleans
  #t
  #T
@@ -477,7 +466,6 @@ comment
  #f
  #F
  #false
- 
  ;; characters, strings, and byte strings
  #\
  #\Null9
@@ -502,14 +490,44 @@ HERE STRING
  #|
 HERE STRING
 |#
- 
  ;; other literals
  #(vector)
  #s[prefab-structure 1 2 3]
  #&{box}
  #hash(("a" . 5))
  #hasheq((a . 5) (b . 7))
- #hasheqv((a . 5) (b . 7)))
+ #hasheqv((a . 5) (b . 7))
+ ;; quote, quasiquote, and unquote
+ 'pi
+ ' pi
+ ''pi
+ '`pi
+ '`,pi
+ ',pi
+ `pi
+ ` pi
+ `'pi
+ ``pi
+ `,pi
+ ` , pi
+ `,'pi
+ `,`pi
+ `,`,pi
+ '(+)
+ ' (+)
+ ''(+)
+ '`(+)
+ ',(+)
+ `(+)
+ ` (+)
+ `'(+)
+ ``(+)
+ `,(+)
+ ` , (+)
+ `,'(+)
+ `,`(+)
+ `,`,(+)
+ )
 
 ;; Use the following to generate lists of built-ins and keywords.
 ;; Run

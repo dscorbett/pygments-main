@@ -767,6 +767,7 @@ class RacketLexer(RegexLexer):
         '~s', '~v'
     ]
 
+    _opening_parentheses = r'[([{]'
     _delimiters = r'()[\]{}",\'`;\s'
     _symbol = r'(?u)(?:#%%)?(?:\|[^|]*\||\\(?:.|\n)|[^|\\%s]+)+' % _delimiters
     _number_prefix = r'(?:#e)?(?:#b|(?:#d)?)(?:#e)?'
@@ -846,41 +847,52 @@ class RacketLexer(RegexLexer):
             # TODO: '#reader racket xyz
 
             # Other syntax
-            (r'(?i)\.(?=[%s])|#c[is]' % _delimiters, Operator),
-            (r"#?['`]|#[s&]|#hash(eqv?)?|#(?!%)\d*", Operator,
-             ('#pop', 'quoted-datum')),
-            (r'#?,@?', Operator, ('#pop', 'unquoted-datum'))
+            (r"(?i)\.(?=[%s])|#c[is]|#['`]|#,@?" % _delimiters, Operator),
+            (r"'|#[s&]|#hash(eqv?)?|#\d*(?=%s)" % _opening_parentheses,
+             Operator, ('#pop', 'quoted-datum'))
+        ],
+        'list': [
+            (r'[)\]}]', Punctuation, '#pop')
         ],
         'unquoted-datum': [
             include('datum'),
-
-            # Parentheses
-            (r'[([{]', Punctuation, ('#pop', 'unquoted-list')),
-
-            # Keywords
+            (r'`', Operator, ('#pop', 'quasiquoted-datum')),
+            (r',@?', Operator),
+            (_opening_parentheses, Punctuation, ('#pop', 'unquoted-list')),
             (r'(?u)(%s)(?=[%s])' % ('|'.join(
                 [re.escape(entry) for entry in _keywords]), _delimiters),
              Keyword, '#pop'),
-
-            # Built-ins
             (r'(?u)(%s)(?=[%s])' % ('|'.join(
                 [re.escape(entry) for entry in _builtins]), _delimiters),
              Name.Builtin, '#pop'),
-
-            # The remaining identifiers
-            (_symbol, Name, '#pop')
+            (_symbol, Name, '#pop'),
+            (r'', Text, '#pop')
         ],
         'unquoted-list': [
-            (r'[)\]}]', Punctuation, '#pop'),
+            include('list'),
             include('root')
+        ],
+        'quasiquoted-datum': [
+            include('datum'),
+            (r'`', Operator),
+            (r',@?', Operator, ('#pop', 'unquoted-datum')),
+            (_opening_parentheses, Punctuation, ('#pop', 'quasiquoted-list')),
+            (_symbol, String.Symbol, '#pop'),
+            (r'', Text, '#pop')
+        ],
+        'quasiquoted-list': [
+            include('list'),
+            (r'(?!\Z)', Text, 'quasiquoted-datum')
         ],
         'quoted-datum': [
             include('datum'),
-            (r'[([{]', Punctuation, ('#pop', 'quoted-list')),
-            (_symbol, String.Symbol, '#pop')
+            (r'`|,@?', Operator),
+            (_opening_parentheses, Punctuation, ('#pop', 'quoted-list')),
+            (_symbol, String.Symbol, '#pop'),
+            (r'', Text, '#pop')
         ],
         'quoted-list': [
-            (r'[)\]}]', Punctuation, '#pop'),
+            include('list'),
             (r'(?!\Z)', Text, 'quoted-datum')
         ],
         'block-comment': [
