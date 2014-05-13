@@ -843,8 +843,7 @@ class RacketLexer(RegexLexer):
             # Reader extensions
             (r'(#lang |#!)(\S+)',
              bygroups(Keyword.Namespace, Name.Namespace)),
-            (r'#reader', Keyword.Namespace),
-            # TODO: '#reader racket xyz
+            (r'#reader', Keyword.Namespace, 'quoted-datum'),
 
             # Other syntax
             (r"(?i)\.(?=[%s])|#c[is]|#['`]|#,@?" % _delimiters, Operator),

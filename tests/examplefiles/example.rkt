@@ -527,6 +527,28 @@ HERE STRING
  `,'(+)
  `,`(+)
  `,`,(+)
+ #readerracket/base'pi.f
+ '#readerracket/base pi.f
+ #readerracket/base`pi.f
+ `#readerracket/base pi.f
+ #readerracket/base`,pi.f
+ `#readerracket/base,pi.f
+ `,#readerracket/base pi.f
+ #readerracket/base'`,pi.f
+ '#readerracket/base`,pi.f
+ '`#readerracket/base,pi.f
+ '`,#readerracket/base pi.f
+ #readerracket/base'(*)
+ '#readerracket/base(*)
+ #readerracket/base`(*)
+ `#readerracket/base(*)
+ #readerracket/base`,(*)
+ `#readerracket/base,(*)
+ `,#readerracket/base(*)
+ #readerracket/base'`,(*)
+ '#readerracket/base`,(*)
+ '`#readerracket/base,(*)
+ '`,#readerracket/base(*)
  (quote pi)
  (quote (quote pi))
  (quote (quasiquote pi))
@@ -550,6 +572,28 @@ HERE STRING
  (quasiquote (unquote (quote (+))))
  (quasiquote (unquote (quasiquote (+))))
  (quasiquote (unquote (quasiquote (unquote (+)))))
+ #reader racket/base (quote pi.f)
+ (quote #reader racket/base pi.f)
+ #reader racket/base (quasiquote pi.f)
+ (quasiquote #reader racket/base pi.f)
+ #reader racket/base (quasiquote (unquote pi.f))
+ (quasiquote #reader racket/base (unquote pi.f))
+ (quasiquote (unquote #reader racket/base pi.f))
+ #reader racket/base (quote (quasiquote (unquote pi.f)))
+ (quote #reader racket/base (quasiquote (unquote pi.f)))
+ (quote (quasiquote #reader racket/base (unquote pi.f)))
+ (quote (quasiquote (unquote #reader racket/base pi.f)))
+ #reader racket/base (quote (*))
+ (quote #reader racket/base (*))
+ #reader racket/base (quasiquote (*))
+ (quasiquote #reader racket/base (*))
+ #reader racket/base (quasiquote (unquote (*)))
+ (quasiquote #reader racket/base (unquote (*)))
+ (quasiquote (unquote #reader racket/base (*)))
+ #reader racket/base (quote (quasiquote (unquote (*))))
+ (quote #reader racket/base (quasiquote (unquote (*))))
+ (quote (quasiquote #reader racket/base (unquote (*))))
+ (quote (quasiquote (unquote #reader racket/base (*))))
  )
 
 ;; Use the following to generate lists of built-ins and keywords.
