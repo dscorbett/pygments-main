@@ -30,6 +30,11 @@ comment
 #!/shebang \
 comment
 
+;; Uncommented numbers after single-line comments
+;; NEL133
+;; LS 8232
+;; PS 8233
+
 #reader racket
 (define(a-function x #:keyword [y 0])
   (define foo0 'symbol) ; ()

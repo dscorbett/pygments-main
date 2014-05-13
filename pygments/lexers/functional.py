@@ -787,7 +787,7 @@ class RacketLexer(RegexLexer):
         ],
         'datum' : [
             (r'(?s)#;|#![ /]([^\\\n]|\\.)+', Comment),
-            (r';.*$', Comment.Single),
+            (u';[^\\n\\r\x85\u2028\u2029]*', Comment.Single),
             (r'#\|', Comment.Multiline, 'block-comment'),
 
             # Whitespaces
