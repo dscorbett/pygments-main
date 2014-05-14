@@ -767,9 +767,10 @@ class RacketLexer(RegexLexer):
         '~s', '~v'
     ]
 
-    _opening_parentheses = r'[([{]'
+    _opening_parenthesis = r'[([{]'
+    _closing_parenthesis = r'[)\]}]'
     _delimiters = r'()[\]{}",\'`;\s'
-    _symbol = r'(?u)(?:#%%)?(?:\|[^|]*\||\\(?:.|\n)|[^|\\%s]+)+' % _delimiters
+    _symbol = r'(?u)(?:\|[^|]*\||\\[\w\W]|[^|\\%s]+)+' % _delimiters
     _number_prefix = r'(?:#e)?(?:#b|(?:#d)?)(?:#e)?'
     _unsigned_rational = (r'(?:(?:\d+(?:/\d+|\.\d*)?|\.\d+)'
                           r'(?:[defls][-+]?\d+)?)')
@@ -783,9 +784,10 @@ class RacketLexer(RegexLexer):
 
     tokens = {
         'root': [
+            (_closing_parenthesis, Error),
             (r'(?!\Z)', Text, 'unquoted-datum')
         ],
-        'datum' : [
+        'datum': [
             (r'(?s)#;|#![ /]([^\\\n]|\\.)+', Comment),
             (u';[^\\n\\r\x85\u2028\u2029]*', Comment.Single),
             (r'#\|', Comment.Multiline, 'block-comment'),
@@ -847,11 +849,17 @@ class RacketLexer(RegexLexer):
 
             # Other syntax
             (r"(?i)\.(?=[%s])|#c[is]|#['`]|#,@?" % _delimiters, Operator),
-            (r"'|#[s&]|#hash(eqv?)?|#\d*(?=%s)" % _opening_parentheses,
+            (r"'|#[s&]|#hash(eqv?)?|#\d*(?=%s)" % _opening_parenthesis,
              Operator, ('#pop', 'quoted-datum'))
         ],
+        'datum*': [
+            (r'`|,@?', Operator),
+            (_symbol, String.Symbol, '#pop'),
+            (r'[|\\]', Error),
+            (r'', Text, '#pop')
+        ],
         'list': [
-            (r'[)\]}]', Punctuation, '#pop')
+            (_closing_parenthesis, Punctuation, '#pop')
         ],
         'unquoted-datum': [
             include('datum'),
@@ -860,8 +868,7 @@ class RacketLexer(RegexLexer):
             (r'`', Operator, ('#pop', 'quasiquoted-datum')),
             (r'quasiquote(?=[%s])' % _delimiters, Keyword,
              ('#pop', 'quasiquoted-datum')),
-            (r',@?', Operator),
-            (_opening_parentheses, Punctuation, ('#pop', 'unquoted-list')),
+            (_opening_parenthesis, Punctuation, ('#pop', 'unquoted-list')),
             (r'(?u)(%s)(?=[%s])' % ('|'.join(
                 [re.escape(entry) for entry in _keywords]), _delimiters),
              Keyword, '#pop'),
@@ -869,21 +876,19 @@ class RacketLexer(RegexLexer):
                 [re.escape(entry) for entry in _builtins]), _delimiters),
              Name.Builtin, '#pop'),
             (_symbol, Name, '#pop'),
-            (r'', Text, '#pop')
+            include('datum*')
         ],
         'unquoted-list': [
             include('list'),
-            include('root')
+            (r'(?!\Z)', Text, 'unquoted-datum')
         ],
         'quasiquoted-datum': [
             include('datum'),
-            (r'`', Operator),
             (r',@?', Operator, ('#pop', 'unquoted-datum')),
             (r'unquote(-splicing)?(?=[%s])' % _delimiters, Keyword,
              ('#pop', 'unquoted-datum')),
-            (_opening_parentheses, Punctuation, ('#pop', 'quasiquoted-list')),
-            (_symbol, String.Symbol, '#pop'),
-            (r'', Text, '#pop')
+            (_opening_parenthesis, Punctuation, ('#pop', 'quasiquoted-list')),
+            include('datum*')
         ],
         'quasiquoted-list': [
             include('list'),
@@ -891,10 +896,8 @@ class RacketLexer(RegexLexer):
         ],
         'quoted-datum': [
             include('datum'),
-            (r'`|,@?', Operator),
-            (_opening_parentheses, Punctuation, ('#pop', 'quoted-list')),
-            (_symbol, String.Symbol, '#pop'),
-            (r'', Text, '#pop')
+            (_opening_parenthesis, Punctuation, ('#pop', 'quoted-list')),
+            include('datum*')
         ],
         'quoted-list': [
             include('list'),
@@ -907,8 +910,8 @@ class RacketLexer(RegexLexer):
         ],
         'string': [
             (r'"', String.Double, '#pop'),
-            (r'\\([0-7]{1,3}|x[\da-fA-F]{1,2}|u[\da-fA-F]{1,4}|'
-             r'U[\da-fA-F]{1,8}|.|\n)', String.Escape),
+            (r'(?s)\\([0-7]{1,3}|x[\da-fA-F]{1,2}|u[\da-fA-F]{1,4}|'
+             r'U[\da-fA-F]{1,8}|.)', String.Escape),
             (r'[^\\"]+', String.Double),
         ]
     }
