@@ -772,11 +772,13 @@ class RacketLexer(RegexLexer):
     _delimiters = r'()[\]{}",\'`;\s'
     _symbol = r'(?u)(?:\|[^|]*\||\\[\w\W]|[^|\\%s]+)+' % _delimiters
     _number_prefix = r'(?:#e)?(?:#b|(?:#d)?)(?:#e)?'
-    _unsigned_rational = (r'(?:(?:\d+(?:/\d+|\.\d*)?|\.\d+)'
-                          r'(?:[defls][-+]?\d+)?)')
-    _inexact_normal = (r'(?:%s|(?:\d+#+(?:\.#*|/\d+#*)?|\.\d+#+|'
-                       r'\d+(?:\.\d*#+|/\d+#+))(?:[defls][-+]?\d+)?)' %
-                       _unsigned_rational)
+    _exponent = r'(?:[defls][-+]?\d+)'
+    _inexact_simple_no_hashes = r'(?:\d+(?:/\d+|\.\d*)?|\.\d+)'
+    _inexact_simple = (r'(?:%s|(?:\d+#+(?:\.#*|/\d+#*)?|\.\d+#+|'
+                       r'\d+(?:\.\d*#+|/\d+#+)))' % _inexact_simple_no_hashes)
+    _inexact_normal_no_hashes = r'(?:%s%s?)' % (_inexact_simple_no_hashes,
+                                                _exponent)
+    _inexact_normal = r'(?:%s%s?)' % (_inexact_simple, _exponent)
     _inexact_special = r'(?:(?:inf|nan)\.[0f])'
     _inexact_real = r'(?:[-+]?%s|[-+]%s)' % (_inexact_normal,
                                              _inexact_special)
@@ -806,8 +808,9 @@ class RacketLexer(RegexLexer):
             (r'(?i)%s[-+]?(\d+(\.\d*)?|\.\d+)([deflst][-+]?\d+)?(?=[%s])' %
              (_number_prefix, _delimiters), Number.Float, '#pop'),
             (r'(?i)%s[-+]?(%s([-+]%s?i)?|[-+]%s?i)(?=[%s])' %
-             (_number_prefix, _unsigned_rational, _unsigned_rational,
-              _unsigned_rational, _delimiters), Number, '#pop'),
+             (_number_prefix, _inexact_normal_no_hashes,
+              _inexact_normal_no_hashes, _inexact_normal_no_hashes,
+              _delimiters), Number, '#pop'),
 
             # Inexact without explicit #i
             (r'(?i)(#[bd])?(%s([-+]%s?i)?|[-+]%s?i|%s@%s)(?=[%s])' %
@@ -816,8 +819,8 @@ class RacketLexer(RegexLexer):
              '#pop'),
 
             # The remaining extflonums
-            (r'(([-+]?(\d+(/\d+|\.\d*)?|\.\d+)(t[-+]?\d+))|[-+](inf|nan)\.t)'
-             r'(?=[%s])' % _delimiters, Number.Float, '#pop'),
+            (r'(?i)(([-+]?%st[-+]?\d+)|[-+](inf|nan)\.t)(?=[%s])' %
+             (_inexact_simple, _delimiters), Number.Float, '#pop'),
 
             # #o
             (r'(?i)(#[ei])?#o%s' % _symbol, Number.Oct, '#pop'),

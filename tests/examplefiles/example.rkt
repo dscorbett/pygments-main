@@ -249,6 +249,20 @@ comment
  1/2t3
  +1/2t3
  -1/2t3
+ 1#t0
+ 1.#t0
+ .2#t0
+ 1.2#t0
+ 1#/2t0
+ 1/2#t0
+ 1#/2#t0
+ 1#t3
+ 1.#t3
+ .2#t3
+ 1.2#t3
+ 1#/2t3
+ 1/2#t3
+ 1#/2#t3
  ;; No # reader prefix -- same as #d
  -1.23
  1.123
@@ -464,14 +478,55 @@ comment
  #i#x-7/f
  #i#x-f
  #i#xf
- ;; booleans
+ ;; Not numbers
+ '-1.23x
+ '1.123x
+ '1e3x
+ '1e-22x
+ '1/2x
+ '-1/2x
+ '1x
+ '-1x
+ '/
+ '1/
+ '/2
+ '1//2
+ '1e3.
+ '1e
+ 'e3
+ '.i
+ '1.2.3
+ '1..2
+ '.1.
+ '@
+ '1@
+ '@2
+ '1@@2
+ '1@2@3
+ '1@2i
+ '1+-2i
+ '1i+2
+ '1i+2i
+ '1+2i+3i
+ '-
+ '--1
+ '+
+ '++1
+ '1/2.3
+ '1#2
+ '1#.2
+ '1.#2
+ '.#2
+ '+nan.t+nan.ti
+ '+nan.t@nan.t
+ ;; Booleans
  #t
  #T
  #true
  #f
  #F
  #false
- ;; characters, strings, and byte strings
+ ;; Characters, strings, and byte strings
  #\
  #\Null9
  #\n9
@@ -495,7 +550,7 @@ HERE STRING
  #|
 HERE STRING
 |#
- ;; other literals
+ ;; Other literals
  #(vector)
  #s[prefab-structure 1 2 3]
  #&{box}
@@ -612,13 +667,13 @@ HERE STRING
 ;; with commas and spaces between them, wrapping at 80 characters, with an
 ;; indentation of 8 spaces.
 (define (wrap-lines lst)
-  (define INDENTATION "        ")
-  (define WIDTH 80)
+  (define INDENTATION '"        ")
+  (define WIDTH '80)
   (define (wrap-lines* lst done-lines current-line)
     (if (null? lst)
         (string-append (foldr string-append "" done-lines) current-line)
         (let* ([str (first lst)]
-               [wrapped-str (if (regexp-match-exact? #px"[[:ascii:]]+" str)
+               [wrapped-str (if (regexp-match-exact? '#px"[[:ascii:]]+" str)
                                 (string-append "'" str "',")
                                 (string-append "u'" str "',"))]
                [new-line (string-append current-line " " wrapped-str)])
