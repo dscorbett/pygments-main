@@ -552,11 +552,14 @@ HERE STRING
 |#
  ;; Other literals
  #(vector)
+ #20()
  #s[prefab-structure 1 2 3]
  #&{box}
  #hash(("a" . 5))
  #hasheq((a . 5) (b . 7))
  #hasheqv((a . 5) (b . 7))
+ #'(define x 1)
+ #`(define x #,pi)
  ;; quote, quasiquote, and unquote
  'pi
  ' pi
@@ -654,6 +657,37 @@ HERE STRING
  (quote #reader racket/base (quasiquote (unquote (*))))
  (quote (quasiquote #reader racket/base (unquote (*))))
  (quote (quasiquote (unquote #reader racket/base (*))))
+ ;; Make sure non-identifiers work with quotes
+ ' "" pi
+ ' #t pi
+ ' #() pi
+ ' #s(s) pi
+ ' #\u3BB pi
+ ' #\U000003BB pi
+ ' #\space pi
+ ' #\. pi
+ ' #"" pi
+ ' #:kw pi
+ ' #&b pi
+ ' #'(define x 1) pi
+ ' #`(define x #,pi) pi
+ ' #I0 pi
+ ' #E0 pi
+ ' #X0 pi
+ ' #O0 pi
+ ' #D0 pi
+ ' #B0 pi
+ ' #<<EOF
+EOF
+ pi
+ ' #rx"" pi
+ ' #rx#"" pi
+ ' #px"" pi
+ ' #px#"" pi
+ ' #hash() pi
+ ' #hasheq[] pi
+ ' #hasheqv{} pi
+ ' #1(v) pi
  )
 
 ;; Use the following to generate lists of built-ins and keywords.

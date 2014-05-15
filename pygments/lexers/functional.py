@@ -790,17 +790,16 @@ class RacketLexer(RegexLexer):
             (r'(?!\Z)', Text, 'unquoted-datum')
         ],
         'datum': [
-            (r'(?s)#;|#![ /]([^\\\n]|\\.)+', Comment),
+            (r'(?s)#;|#![ /]([^\\\n]|\\.)*', Comment),
             (u';[^\\n\\r\x85\u2028\u2029]*', Comment.Single),
             (r'#\|', Comment.Multiline, 'block-comment'),
 
             # Whitespaces
             (r'(?u)\s+', Text),
 
-            ## Numbers: Keep in mind Racket reader hash prefixes,
-            ## which can denote the base or the type. These don't map
-            ## neatly onto Pygments token types; some judgment calls
-            ## here.
+            # Numbers: Keep in mind Racket reader hash prefixes, which
+            # can denote the base or the type. These don't map neatly
+            # onto Pygments token types; some judgment calls here.
 
             # #b or #d or no prefix
             (r'(?i)%s[-+]?\d+(?=[%s])' % (_number_prefix, _delimiters),
@@ -833,11 +832,10 @@ class RacketLexer(RegexLexer):
 
             # Strings and characters
             (r'#?"', String.Double, ('#pop', 'string')),
-            (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc),
-            (r'#\\(u[\da-fA-F]{1,4}|U[\da-fA-F]{1,8})', String.Char),
-            (r'(?is)#\\(backspace|linefeed|newline|null|nul|page|return|'
-             r'rubout|space|tab|vtab|[0-7]{3}|.)', String.Char, '#pop'),
-            (r'(?s)#[pr]x#?"(\\?.)+?"', String.Regex, '#pop'),
+            (r'#<<(.+)\n(^(?!\1$).*$\n)*^\1$', String.Heredoc, '#pop'),
+            (r'#\\(u[\da-fA-F]{1,4}|U[\da-fA-F]{1,8})', String.Char, '#pop'),
+            (r'(?is)#\\([0-7]{3}|[a-z]+|.)', String.Char, '#pop'),
+            (r'(?s)#[pr]x#?"(\\?.)*?"', String.Regex, '#pop'),
 
             # Constants
             (r'#(true|false|[tTfF])', Name.Constant, '#pop'),
@@ -915,7 +913,7 @@ class RacketLexer(RegexLexer):
             (r'"', String.Double, '#pop'),
             (r'(?s)\\([0-7]{1,3}|x[\da-fA-F]{1,2}|u[\da-fA-F]{1,4}|'
              r'U[\da-fA-F]{1,8}|.)', String.Escape),
-            (r'[^\\"]+', String.Double),
+            (r'[^\\"]+', String.Double)
         ]
     }
 
