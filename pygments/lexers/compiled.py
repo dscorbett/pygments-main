@@ -5181,7 +5181,6 @@ class Tads3Lexer(RegexLexer):
         'main/basic': [
             include('whitespace'),
 
-            (r'\+\+|--|[&!~+-]', Operator), # TODO: needed?
             (r'(case|extern|if|intrinsic|return|static|while)\b',
              Keyword.Reserved),
             (r'export\b', Keyword.Reserved, ('#pop', 'main')),
