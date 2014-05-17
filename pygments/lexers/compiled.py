@@ -5381,10 +5381,10 @@ class Tads3Lexer(RegexLexer):
         'grammar-rules': [
             include('string'),
             include('whitespace'),
-            (r'->|%s|[()\]]' % _operator, Punctuation),
             (r'(\[)(%s*)(badness)' % _ws,
              bygroups(Punctuation, using(this, state='whitespace'), Keyword),
              'main'),
+            (r'->|%s|[()\]]' % _operator, Punctuation),
             (_name, Name.Constant),
             (r'', Text, '#pop:2')
         ],
