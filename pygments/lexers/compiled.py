@@ -5127,10 +5127,6 @@ class Tads3Lexer(RegexLexer):
         ],
         'main/root': [
             include('main/basic'),
-            (r'(%s)(%s*)(:)' % (_name, _ws),
-             bygroups(Name.Constant, using(this, state='whitespace'),
-                      Punctuation),
-             ('#pop', 'object-body-no-braces', 'classes', 'class')),
             (r'', Text, ('#pop', 'object-body-no-braces', 'classes', 'class'))
         ],
         'object-body-no-braces': [
@@ -5152,7 +5148,7 @@ class Tads3Lexer(RegexLexer):
                       Punctuation),
              'block'),
             (r'(%s)(%s*)(:)' % (_name, _ws),
-             bygroups(Name.Variable.Instance, using(this, state='whitespace'),
+             bygroups(Name.Variable, using(this, state='whitespace'),
                       Punctuation), ('classes', 'class')),
             include('whitespace'),
             (r'->|%s' % _operator, Punctuation, 'main'),
@@ -5161,7 +5157,7 @@ class Tads3Lexer(RegexLexer):
         'main/object-body': [
             include('main/basic'),
             (r'(%s)(%s*)(=?)' % (_name, _ws),
-             bygroups(Name.Variable.Instance, using(this, state='whitespace'),
+             bygroups(Name.Variable, using(this, state='whitespace'),
                       Punctuation), ('#pop', 'more', 'main')),
             (r'', Text, '#pop:2')
         ],
@@ -5238,7 +5234,6 @@ class Tads3Lexer(RegexLexer):
             (r'inherited\b', Keyword.Reserved, ('#pop', 'inherited')),
             (r'local\b', Keyword.Reserved,
              ('#pop', 'more/local', 'main/local')),
-            # TODO: 'modify' works on both objects and classes.
             (r'(modify|propertyset|replace|switch|throw|transient)\b',
              Keyword.Reserved, '#pop'),
             (r'new\b', Keyword.Reserved, ('#pop', 'class')),
@@ -5372,7 +5367,7 @@ class Tads3Lexer(RegexLexer):
             (r'\)', Punctuation),
             (r'\(', Punctuation, 'grammar-tag'),
             (r':', Punctuation, 'grammar-rules'),
-            (_name, Name.Constant),
+            (_name, Name.Class),
             include('whitespace')
         ],
         'grammar-tag': [
