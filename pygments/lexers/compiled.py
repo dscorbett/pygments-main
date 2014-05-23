@@ -5102,7 +5102,7 @@ class Tads3Lexer(RegexLexer):
 
     flags = re.DOTALL | re.MULTILINE
 
-    _comment_single = r'//(?:[^\\\n]|\\\n)*$'
+    _comment_single = r'//(?:[^\\\n]|\\[\w\W])*$'
     _comment_multiline = r'/\*(?:[^*]|\*[^/])*\*/'
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
@@ -5113,6 +5113,7 @@ class Tads3Lexer(RegexLexer):
     def _make_string_state(triple, double):
         char = r'"' if double else r"'"
         token = String.Double if double else String.Single
+        escaped_quotes = r'+|%s(?!%s{2})' % (char, char) if triple else r''
         state = []
         if triple:
             state += [
@@ -5126,9 +5127,9 @@ class Tads3Lexer(RegexLexer):
             include('s'),
             (r'[^\\<&{%s]+' % char, token),
             (r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
-             (char, char, r'+|%s(?!%s{2})' % (char, char) if triple else r''),
-             String.Interpol),
-            (r'<(?:[^\s<>]|<(?!<))*', Name.Tag,
+             (char, char, escaped_quotes), String.Interpol),
+            (r'<(?:[^\s<>%s]|<(?!<)|(?<=\\)(%s%s))*' %
+             (char, char, escaped_quotes), Name.Tag,
              '%s%sqt' % ('t' if triple else '', 'd' if double else 's')),
             (r'[\\&{]', String.Double)
         ]
@@ -5262,12 +5263,11 @@ class Tads3Lexer(RegexLexer):
             (r'\*', Punctuation, '#pop'),  # propertyset and LookupTable
             (r'\.{3}', Punctuation, '#pop'),
             (r'#', Punctuation, ('#pop', 'debugger-type')),
-            (r'0[xX][\da-fA-F]+', Number.Hex, '#pop'),
+            (r'(?i)0x[\da-f]+', Number.Hex, '#pop'),
             (r'(\d+\.(?!\.)\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+',
              Number.Float, '#pop'),
             (r'0[0-7]+', Number.Oct, '#pop'),
             (r'\d+', Number.Integer, '#pop'),
-            # TODO: include('string'),
             (r'"""', String.Double, ('#pop', 'tdqs')),
             (r"'''", String.Single, ('#pop', 'tsqs')),
             (r'"', String.Double, ('#pop', 'dqs')),
@@ -5561,7 +5561,7 @@ class Tads3Lexer(RegexLexer):
             (r'<<(%([_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.|'
              r'\s*((else|otherwise)\s+)?(if|unless)\b)?', String.Interpol,
              ('more/embed', 'main')),
-            (r'&(#([xX][\da-fA-F]+|\d+)|[\da-zA-Z]+);?', Name.Entity)
+            (r'(?i)&(#(x[\da-f]+|\d+)|[\da-z]+);?', Name.Entity)
         ],
         'tdqs': _make_string_state(True, True),
         'tsqs': _make_string_state(True, False),
