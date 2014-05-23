@@ -5107,11 +5107,81 @@ class Tads3Lexer(RegexLexer):
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
-    _tag = r'<[^\s>]*'
+    _unquoted_string_terminator = r'(?=[\s"\'<>])'
     _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
 
-    # TODO: {} interpolation in attribute?
-    # TODO: '<font color=red>xyz</<<font>>>'
+    def _make_string_state(triple, double):
+        char = r'"' if double else r"'"
+        token = String.Double if double else String.Single
+        state = []
+        if triple:
+            state += [
+                (r'%s{3,}' % char, token, '#pop'),
+                (r'\\%s+' % char, String.Escape),
+                (char, token)
+            ]
+        else:
+            state.append((char, token, '#pop'))
+        state += [
+            include('s'),
+            (r'[^\\<&{%s]+' % char, token),
+            (r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
+             (char, char, r'+|%s(?!%s{2})' % (char, char) if triple else r''),
+             String.Interpol),
+            (r'<(?:[^\s<>]|<(?!<))*', Name.Tag,
+             '%s%sqt' % ('t' if triple else '', 'd' if double else 's')),
+            (r'[\\&{]', String.Double)
+        ]
+        return state
+
+    def _make_tag_state(triple, double):
+        char = r'"' if double else r"'"
+        #other_char = r"'" if double else r'"'
+        #escaped_quotes = r'+|%s(?!%s{2})' % (char, char) if triple else r''
+        quantifier = r'{3,}' if triple else r''
+        state_name = '%s%sqt' % ('t' if triple else '', 'd' if double else 's')
+        token = String.Double if double else String.Single
+        #other_token = String.Single if double else String.Double
+        return [
+            (r'%s%s' % (char, quantifier), token, '#pop:2'),
+            (r'(\s|\\\n)+', Text),
+            #(r'\\?%s.*?(\\%s%s|\\.|(?=%s%s|<<))' %
+            # (char, char, escaped_quotes, char, quantifier), token),
+            #(r'\\?%s([^"\'<]|\\%s%s|\\.|<(?!<))*(%s|(?=%s%s|<<))' %
+            # (other_char, char, escaped_quotes, other_char, char, quantifier),
+            # other_token),
+            (r'(=?)(\\?")', bygroups(Punctuation, String.Double),
+             'dqs/%s' % state_name),
+            (r"(=?)(\\?')", bygroups(Punctuation, String.Double),
+             'sqs/%s' % state_name),
+            (r'=', Punctuation, 'uqs/%s' % state_name),
+            (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop'),
+            (r'([^"\'=\s<>{}\\&]|<(?!<)|}(?!}))+', Name.Attribute),
+            include('s'),
+            (r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
+             (char, char, r'+|%s(?!%s{2})' % (char, char) if triple else r''),
+             String.Interpol),
+            (r'[\\{}&]', Name.Attribute)
+        ]
+
+    def _make_attribute_value_state(terminator, host_triple, host_double):
+        token = (String.Double if terminator == r'"' else
+                 String.Single if terminator == r"'" else String.Other)
+        host_char = r'"' if host_double else r"'"
+        host_quantifier = r'{3,}' if host_triple else r''
+        host_token = String.Double if host_double else String.Single
+        return [
+            (r'%s%s' % (host_char, host_quantifier), host_token, '#pop:3'),
+            (r'\\?%s' % terminator, token, '#pop'),
+            include('s'),
+            (r'{([^}<]|<(?!<)|(?<=\\)<)*}' if token is String.Other else
+             r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
+             (terminator, terminator, r'+|%s(?!%s{2})' %
+              (terminator, terminator) if host_triple else r''),
+             String.Interpol),
+            (r'([^\s"\'<>{}\\&]|<(?!<)|}(?!}))+', token),
+            (r'[\s"\'\\{}&]', token)
+        ]
 
     tokens = {
         'root': [
@@ -5492,87 +5562,34 @@ class Tads3Lexer(RegexLexer):
              ('more/embed', 'main')),
             (r'&(#([xX][\da-fA-F]+|\d+)|[\da-zA-Z]+);?', Name.Entity)
         ],
-        'tdqs': [
-            include('s'),
-            (r'[^\\<&{"]+', String.Double),
-            (r'"{3,}', String.Double, '#pop'),
-            (r'\\"+', String.Escape),
-            (r'"', String.Double),
-            (r'{([^}<"]|<(?!<)|(?<=\\)"+|"(?!""))*}', String.Interpol),
-            (_tag, Name.Tag, 'tdqt'),
-            (r'[\\&{]', String.Double)
-        ],
-        'tsqs': [
-            include('s'),
-            (r"[^\\<&{']+", String.Single),
-            (r"'{3,}", String.Single, '#pop'),
-            (r"\\'+", String.Escape),
-            (r"'", String.Single),
-            (r"{([^}<']|<(?!<)|(?<=\\)'+|'(?!''))*}", String.Interpol),
-            (_tag, Name.Tag, 'tsqt'),
-            (r'[\\&{]', String.Single)
-        ],
-        'dqs': [
-            include('s'),
-            (r'[^\\<&{"]+', String.Double),
-            (r'"', String.Double, '#pop'),
-            (r'{([^}<"]|<(?!<)|(?<=\\)")*}', String.Interpol),
-            (_tag, Name.Tag, 'dqt'),
-            (r'[\\&{]', String.Double)
-        ],
-        'sqs': [
-            include('s'),
-            (r"[^\\<&{']+", String.Single),
-            (r"'", String.Single, '#pop'),
-            (r"{([^}<']|<(?!<)|(?<=\\)')*}", String.Interpol),
-            (_tag, Name.Tag, 'sqt'),
-            (r'[\\&{]', String.Single)
-        ],
+        'tdqs': _make_string_state(True, True),
+        'tsqs': _make_string_state(True, False),
+        'dqs': _make_string_state(False, True),
+        'sqs': _make_string_state(False, False),
 
         # Tags
-        'tag': [
-            (r'=', Punctuation),
-            (r'(\s|\\\n)+', Text),
-            (r'(?=<<)', Text, '#pop'),
-            (r'((?:[^=\s"\'<>]|<(?!<))*)(=)'
-             r'((?!\\?["\'])(?:[^\s"\'<>]|<(?!<))+)',
-             bygroups(Name.Attribute, Punctuation, String.Other)),
-            (r'([^=\s"\'<>]|<(?!<))+', Name.Attribute),
-            (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop')
-        ],
-        'tdqt': [
-            (r'"{3,}', String.Double, '#pop:2'),
-            (r'\\?".*?(\\"|"(?!"")|(?="""|<<))', String.Double),
-            (r'\\?\'([^"\'<]|\\"+|"(?!"")|<(?!<))*(\'|(?="""|<<))',
-             String.Single),
-            include('tag'),
-            (r'.', String.Double)
-        ],
-        'tsqt': [
-            (r"'{3,}", String.Single, '#pop:2'),
-            (r'\\?"([^"\'<]|\\\'|\'(?!\'\')|<(?!<))*("|(?=\'\'\'|<<))',
-             String.Double),
-            (r"\\?'.*?(\\'+|'(?!'')|(?='''|<<))", String.Single),
-            include('tag'),
-            (r'.', String.Single)
-        ],
-        'dqt': [
-            (r'"', String.Double, '#pop:2'),
-            (r'\\".*?(\\"|(?="|<<))', String.Double),
-            (r'\\?\'([^"\'<]|\\"|<(?!<))*(\'|(?="|<<))', String.Single),
-            include('tag'),
-            (r'.', String.Double)
-        ],
-        'sqt': [
-            (r"'", String.Single, '#pop:2'),
-            (r'\\?"([^"\'<]|\\\'|<(?!<))*("|(?=\'|<<))', String.Double),
-            (r"\\'.*?(\\'|(?='|<<))", String.Single),
-            include('tag'),
-            (r'.', String.Single)
-        ],
+        'tdqt': _make_tag_state(True, True),
+        'tsqt': _make_tag_state(True, False),
+        'dqt': _make_tag_state(False, True),
+        'sqt': _make_tag_state(False, False),
+        'dqs/tdqt': _make_attribute_value_state(r'"', True, True),
+        'dqs/tsqt': _make_attribute_value_state(r'"', True, False),
+        'dqs/dqt': _make_attribute_value_state(r'"', False, True),
+        'dqs/sqt': _make_attribute_value_state(r'"', False, False),
+        'sqs/tdqt': _make_attribute_value_state(r"'", True, True),
+        'sqs/tsqt': _make_attribute_value_state(r"'", True, False),
+        'sqs/dqt': _make_attribute_value_state(r"'", False, True),
+        'sqs/sqt': _make_attribute_value_state(r"'", False, False),
+        'uqs/tdqt': _make_attribute_value_state(_unquoted_string_terminator,
+                                                True, True),
+        'uqs/tsqt': _make_attribute_value_state(_unquoted_string_terminator,
+                                                True, False),
+        'uqs/dqt': _make_attribute_value_state(_unquoted_string_terminator,
+                                               False, True),
+        'uqs/sqt': _make_attribute_value_state(_unquoted_string_terminator,
+                                               False, False),
 
         # Regular expressions
-        # TODO: interpolations
         'tdqr': [
             (r'[^\\"]+', String.Regex),
             (r'\\"*', String.Regex),
