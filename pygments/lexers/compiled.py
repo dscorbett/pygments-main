@@ -5314,8 +5314,9 @@ class Tads3Lexer(RegexLexer):
             (r'(__objref|defined)(%s*)(\()' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
                       Operator), ('#pop', '__objref')),
-            (r'((Con|De)structor|(Last|ObjectCall)Prop)\b', Name.Builtin,
-             '#pop') # TODO: Are these really built in?
+            (r'(construct|finalize|grammarInfo|grammarTag|lexicalParent|'
+             r'miscVocab|sourceTextGroup|sourceTextGroupName|'
+             r'sourceTextGroupOrder|sourceTextOrder)\b', Name.Builtin, '#pop')
         ],
         'main': [
             include('main/basic'),
