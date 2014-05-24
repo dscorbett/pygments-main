@@ -5137,20 +5137,12 @@ class Tads3Lexer(RegexLexer):
 
     def _make_tag_state(triple, double):
         char = r'"' if double else r"'"
-        #other_char = r"'" if double else r'"'
-        #escaped_quotes = r'+|%s(?!%s{2})' % (char, char) if triple else r''
         quantifier = r'{3,}' if triple else r''
         state_name = '%s%sqt' % ('t' if triple else '', 'd' if double else 's')
         token = String.Double if double else String.Single
-        #other_token = String.Single if double else String.Double
         return [
             (r'%s%s' % (char, quantifier), token, '#pop:2'),
             (r'(\s|\\\n)+', Text),
-            #(r'\\?%s.*?(\\%s%s|\\.|(?=%s%s|<<))' %
-            # (char, char, escaped_quotes, char, quantifier), token),
-            #(r'\\?%s([^"\'<]|\\%s%s|\\.|<(?!<))*(%s|(?=%s%s|<<))' %
-            # (other_char, char, escaped_quotes, other_char, char, quantifier),
-            # other_token),
             (r'(=?)(\\?")', bygroups(Punctuation, String.Double),
              'dqs/%s' % state_name),
             (r"(=?)(\\?')", bygroups(Punctuation, String.Double),
@@ -5525,7 +5517,7 @@ class Tads3Lexer(RegexLexer):
 
         # Whitespace and comments
         'whitespace': [
-            (r'(\s|\\\n)+', Text),
+            (r'[\s\\]+', Text),
             (_comment_single, Comment.Single),
             (_comment_multiline, Comment.Multiline),
             (r'^\s*#if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
