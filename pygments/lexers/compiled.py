@@ -5229,7 +5229,7 @@ class Tads3Lexer(RegexLexer):
             include('whitespace'),
             (r'', Text, '#pop')
         ],
-        'block': [
+        'block/basic': [
             (r'[;:]', Punctuation),
             (r'{', Punctuation, '#push'),
             (r'}', Punctuation, '#pop'),
@@ -5237,8 +5237,16 @@ class Tads3Lexer(RegexLexer):
             (r'(%s)(%s*)(:)' % (_name, _ws),
              bygroups(Name.Label, using(this, state='whitespace'),
                       Punctuation)),
-            include('whitespace'),
+            include('whitespace')
+        ],
+        'block': [
+            include('block/basic'),
             (r'(?!\Z)', Text, ('more', 'main'))
+        ],
+        'block/embed': [
+            (r'>>', String.Interpol, '#pop'),
+            include('block/basic'),
+            (r'(?!\Z)', Text, ('more/embed', 'main'))
         ],
 
         'main/basic': [
@@ -5338,9 +5346,8 @@ class Tads3Lexer(RegexLexer):
         ],
         # Embedded expressions
         'more/embed': [
-            (r'>>', String.Interpol, '#pop'),
-            include('more/basic'),
-            (r'', Text, 'main')
+            (r'>>', String.Interpol, '#pop:2'),
+            include('more')
         ],
         # For or foreach loop
         'main/for': [
@@ -5552,7 +5559,7 @@ class Tads3Lexer(RegexLexer):
              r'(then\s+)?(half\s+)?shuffled|\|\|)\s*>>', String.Interpol),
             (r'<<(%([_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.|'
              r'\s*((else|otherwise)\s+)?(if|unless)\b)?', String.Interpol,
-             ('more/embed', 'main')),
+             ('block/embed', 'more/embed', 'main')),
             (r'(?i)&(#(x[\da-f]+|\d+)|[\da-z]+);?', Name.Entity)
         ],
         'tdqs': _make_string_state(True, True),
