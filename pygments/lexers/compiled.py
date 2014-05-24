@@ -5486,7 +5486,7 @@ class Tads3Lexer(RegexLexer):
             include('string'),
             (r'inherited\b', Keyword.Reserved),
             include('whitespace'),
-            (r'->|%s' % _operator, Punctuation),
+            (r'->|\?|%s' % _operator, Punctuation),
             (_name, Name.Variable)
         ],
 
