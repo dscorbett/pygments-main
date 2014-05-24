@@ -5313,7 +5313,7 @@ class Tads3Lexer(RegexLexer):
 
             (r'(__objref|defined)(%s*)(\()' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
-                      Operator), ('#pop', '__objref')),
+                      Operator), ('#pop', 'more/__objref', 'main')),
             (r'(construct|finalize|grammarInfo|grammarTag|lexicalParent|'
              r'miscVocab|sourceTextGroup|sourceTextGroupName|'
              r'sourceTextGroupOrder|sourceTextOrder)\b', Name.Builtin, '#pop')
@@ -5387,11 +5387,13 @@ class Tads3Lexer(RegexLexer):
         # Parameter list
         'main/parameters': [
             (r'(%s)(%s*)(?=:)' % (_name, _ws),
-             bygroups(Name, using(this, state='whitespace')), '#pop'),
+             bygroups(Name.Variable, using(this, state='whitespace')), '#pop'),
             (r'(%s)(%s+)(%s)' % (_name, _ws, _name),
              bygroups(Name.Class, using(this, state='whitespace'),
                       Name.Variable), '#pop'),
-            include('main')
+            include('main/basic'),
+            (_name, Name.Variable, '#pop'),
+            (r'', Text, '#pop')
         ],
         'more/parameters': [
             (r'(:)(%s*(?=[?=,:)]))' % _ws,
@@ -5413,9 +5415,9 @@ class Tads3Lexer(RegexLexer):
         ],
 
         # Statements and expressions
-        '__objref': [
+        'more/__objref': [
             (r',', Punctuation, 'mode'),
-            include('main/parameters')
+            include('more')
         ],
         'mode': [
             (r'(error|warn)\b', Keyword, '#pop'),
