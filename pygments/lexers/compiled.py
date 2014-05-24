@@ -5108,7 +5108,7 @@ class Tads3Lexer(RegexLexer):
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
     _unquoted_string_terminator = r'(?=[\s"\'<>])'
-    _ws = r'(?:\s+|%s|%s)' % (_comment_single, _comment_multiline)
+    _ws = r'(?:\s|%s|%s)' % (_comment_single, _comment_multiline)
 
     def _make_string_state(triple, double):
         char = r'"' if double else r"'"
