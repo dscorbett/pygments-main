@@ -5258,8 +5258,8 @@ class Tads3Lexer(RegexLexer):
 
             (r'\(', Punctuation, ('#pop', 'more', 'main')),
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
-            (r'{', Punctuation,
-             ('#pop', 'more/lambda', 'main/lambda', 'variables')),
+            (r'{', Punctuation, ('#pop', 'more/lambda', 'main/lambda',
+                                 'more/parameters', 'main/parameters')),
             (r'\*', Punctuation, '#pop'),  # propertyset and LookupTable
             (r'\.{3}', Punctuation, '#pop'),
             (r'#', Punctuation, ('#pop', 'debugger-type')),
@@ -5386,16 +5386,18 @@ class Tads3Lexer(RegexLexer):
         ],
         # Parameter list
         'main/parameters': [
-            (r'(%s)(%s*)(:)' % (_name, _ws),
-             bygroups(Name, using(this, state='whitespace'), Punctuation)),
+            (r'(%s)(%s*)(?=:)' % (_name, _ws),
+             bygroups(Name, using(this, state='whitespace')), '#pop'),
             (r'(%s)(%s+)(%s)' % (_name, _ws, _name),
              bygroups(Name.Class, using(this, state='whitespace'),
                       Name.Variable), '#pop'),
             include('main')
         ],
         'more/parameters': [
-            (r'[:?]', Punctuation),
-            (r'\)', Punctuation, ('#pop', 'multimethod?')),
+            (r'(:)(%s*(?=[?=,:)]))' % _ws,
+             bygroups(Punctuation, using(this, state='whitespace'))),
+            (r'\?', Punctuation),
+            (r'[:)]', Punctuation, ('#pop', 'multimethod?')),
             (r',', Punctuation, 'main/parameters'),
             (r'=', Punctuation, ('more/parameter', 'main')),
             include('more')
@@ -5517,7 +5519,7 @@ class Tads3Lexer(RegexLexer):
         ],
         'variables': [
             (r',', Punctuation),
-            (r'[:)]', Punctuation, '#pop'),
+            (r'\)', Punctuation, '#pop'),
             include('whitespace'),
             (_name, Name.Variable)
         ],
