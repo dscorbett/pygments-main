@@ -5524,12 +5524,12 @@ class Tads3Lexer(RegexLexer):
 
         # Whitespace and comments
         'whitespace': [
-            (r'[\s\\]+', Text),
             (_comment_single, Comment.Single),
             (_comment_multiline, Comment.Multiline),
             (r'^\s*#if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
              'if0'),
-            (r'^\s*#.*?(?<!\\)$', Comment.Preproc)
+            (r'^\s*#.*?(?<!\\)$', Comment.Preproc),
+            (r'([^\S\n]|\\)+|\n+', Text)
         ],
         'if0': [
             (r'^\s*#if.*?(?<!\\)\n', Comment.Preproc, 'if0/inner'),
