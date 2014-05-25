@@ -5178,6 +5178,7 @@ class Tads3Lexer(RegexLexer):
 
     tokens = {
         'root': [
+            (u'\ufeff', Text),
             (r'{', Punctuation, 'object-body'),
             (r';', Punctuation),
             (r'(%s)(%s*)(\()' % (_name, _ws),
@@ -5537,20 +5538,20 @@ class Tads3Lexer(RegexLexer):
         'whitespace': [
             (_comment_single, Comment.Single),
             (_comment_multiline, Comment.Multiline),
-            (r'^\s*#if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
+            (r'^\s*#\s*if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
              'if0'),
             (r'^\s*#.*?(?<!\\)$', Comment.Preproc),
             (r'([^\S\n]|\\)+|\n+', Text)
         ],
         'if0': [
-            (r'^\s*#if.*?(?<!\\)\n', Comment.Preproc, 'if0/inner'),
-            (r'^\s*#el(se|if).*?\n', Comment.Preproc, '#pop'),
-            (r'^\s*#endif.*?(?<!\\)\n', Comment.Preproc, '#pop'),
+            (r'^\s*#\s*if.*?(?<!\\)\n', Comment.Preproc, 'if0/inner'),
+            (r'^\s*#\s*el(se|if).*?\n', Comment.Preproc, '#pop'),
+            (r'^\s*#\s*endif.*?(?<!\\)\n', Comment.Preproc, '#pop'),
             (r'\n+|.*?$', Comment)
         ],
         'if0/inner': [
-            (r'^\s*#if.*?(?<!\\)\n?', Comment.Preproc, '#push'),
-            (r'^\s*#endif.*?(?<!\\)\n?', Comment.Preproc, '#pop'),
+            (r'^\s*#\s*if.*?(?<!\\)\n?', Comment.Preproc, '#push'),
+            (r'^\s*#\s*endif.*?(?<!\\)\n?', Comment.Preproc, '#pop'),
             (r'\n+|.*?$', Comment)
         ],
 
