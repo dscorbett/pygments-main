@@ -5103,7 +5103,7 @@ class Tads3Lexer(RegexLexer):
     flags = re.DOTALL | re.MULTILINE
 
     _comment_single = r'//(?:[^\\\n]|\\[\w\W])*$'
-    _comment_multiline = r'/\*(?:[^*]|\*[^/])*\*/'
+    _comment_multiline = r'/\*(?:[^*]|\*(?!/))*\*/'
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
@@ -5391,6 +5391,7 @@ class Tads3Lexer(RegexLexer):
             (r'(%s)(%s+)(%s)' % (_name, _ws, _name),
              bygroups(Name.Class, using(this, state='whitespace'),
                       Name.Variable), '#pop'),
+            (r'\[', Punctuation),
             include('main/basic'),
             (_name, Name.Variable, '#pop'),
             (r'', Text, '#pop')
@@ -5398,7 +5399,7 @@ class Tads3Lexer(RegexLexer):
         'more/parameters': [
             (r'(:)(%s*(?=[?=,:)]))' % _ws,
              bygroups(Punctuation, using(this, state='whitespace'))),
-            (r'\?', Punctuation),
+            (r'[?\]]', Punctuation),
             (r'[:)]', Punctuation, ('#pop', 'multimethod?')),
             (r',', Punctuation, 'main/parameters'),
             (r'=', Punctuation, ('more/parameter', 'main')),
