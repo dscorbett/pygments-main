@@ -5102,13 +5102,13 @@ class Tads3Lexer(RegexLexer):
 
     flags = re.DOTALL | re.MULTILINE
 
-    _comment_single = r'//(?:[^\\\n]|\\[\w\W])*$'
-    _comment_multiline = r'/\*(?:[^*]|\*(?!/))*\*/'
+    _comment_single = r'(?://(?:[^\\\n]|\\[\w\W])*$)'
+    _comment_multiline = r'(?:/\*(?:[^*]|\*(?!/))*\*/)'
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
     _unquoted_string_terminator = r'(?=[\s"\'<>])'
-    _ws = r'(?:\s|%s|%s)' % (_comment_single, _comment_multiline)
+    _ws = r'(?:\\|\s|%s|%s)' % (_comment_single, _comment_multiline)
 
     def _make_string_state(triple, double):
         char = r'"' if double else r"'"
@@ -5534,7 +5534,8 @@ class Tads3Lexer(RegexLexer):
         'whitespace': [
             (_comment_single, Comment.Single),
             (_comment_multiline, Comment.Multiline),
-            (r'^\s*#\s*if([^\S\n]|\\\n)+0\s*((?=//)|\n?)', Comment.Preproc,
+            (r'^\s*#([^\S\n]|\\\n)*if([^\S\n]|\\\n)+(0|nil)(\\|[^\S\n]|%s|%s)*'
+             r'\n' % (_comment_single, _comment_multiline), Comment.Preproc,
              'if0'),
             (r'^\s*#.*?(?<!\\)$', Comment.Preproc),
             (r'([^\S\n]|\\)+|\n+', Text)
@@ -5543,12 +5544,12 @@ class Tads3Lexer(RegexLexer):
             (r'^\s*#\s*if.*?(?<!\\)\n', Comment.Preproc, 'if0/inner'),
             (r'^\s*#\s*el(se|if).*?\n', Comment.Preproc, '#pop'),
             (r'^\s*#\s*endif.*?(?<!\\)\n', Comment.Preproc, '#pop'),
-            (r'\n+|.*?$', Comment)
+            (r'\n+|.+?$', Comment)
         ],
         'if0/inner': [
             (r'^\s*#\s*if.*?(?<!\\)\n?', Comment.Preproc, '#push'),
             (r'^\s*#\s*endif.*?(?<!\\)\n?', Comment.Preproc, '#pop'),
-            (r'\n+|.*?$', Comment)
+            (r'\n+|.+?$', Comment)
         ],
 
         # Strings
