@@ -5547,8 +5547,8 @@ class Tads3Lexer(RegexLexer):
             (r'^\s*#([^\S\n]|\\\n)*if([^\S\n]|\\\n)+(0|nil)'
              r'(\\\n|[^\S\n]|%s|%s)*\n' %
              (_comment_single, _comment_multiline), Comment.Preproc, 'if0'),
-            (r'^\s*#([^\n/]|(?<=\\)\n|/(?![*/]))*(\\\n|[^\S\n]|%s|%s)*\n?' %
-             (_comment_single, _comment_multiline), Comment.Preproc),
+            (r'^\s*#(%s|[^\n]|(?<=\\)\n)*' % _comment_multiline,
+             Comment.Preproc),
             (r'([^\S\n]|\\)+|\n+', Text)
         ],
         'if0': [
