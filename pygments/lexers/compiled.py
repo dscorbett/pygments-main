@@ -5261,8 +5261,7 @@ class Tads3Lexer(RegexLexer):
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
             (r'{', Punctuation, ('#pop', 'more/lambda', 'main/lambda',
                                  'more/parameters', 'main/parameters')),
-            (r'\*', Punctuation, '#pop'),  # propertyset and LookupTable
-            (r'\.{3}', Punctuation, '#pop'),
+            (r'\*|\.{3}', Punctuation, '#pop'),
             (r'#', Punctuation, ('#pop', 'debugger-type')),
             (r'(?i)0x[\da-f]+', Number.Hex, '#pop'),
             (r'(\d+\.(?!\.)\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+',
@@ -5474,14 +5473,9 @@ class Tads3Lexer(RegexLexer):
             (r':', Punctuation, '#pop')
         ],
         'inherited': [
-            (r'<', Punctuation, 'type-list'),
+            (r'<', Punctuation, ('#pop', 'classes', 'class')),
             include('whitespace'),
             (r'%s?' % _name, Name.Class, '#pop'),
-        ],
-        'type-list': [
-            (r'>', Punctuation, '#pop'),
-            (r'\*', Punctuation),
-            include('main')
         ],
         'operator': [
             (r'negate\b', Operator.Word, '#pop'),
@@ -5505,15 +5499,17 @@ class Tads3Lexer(RegexLexer):
 
         # Identifiers
         'class': [
+            (r'\*|\.{3}', Punctuation, '#pop'),
             (r'object\b', Keyword.Reserved, '#pop'),
             (r'transient\b', Keyword.Reserved),
             (_name, Name.Class, '#pop'),
-            include('whitespace')
+            include('whitespace'),
+            (r'(?=>)', Text, '#pop')
         ],
         'classes': [
             (r'[:,]', Punctuation, 'class'),
             include('whitespace'),
-            (r'', Text, '#pop')
+            (r'>?', Punctuation, '#pop')
         ],
         'constants': [
             (r',', Punctuation),
