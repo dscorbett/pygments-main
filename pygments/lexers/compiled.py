@@ -5345,7 +5345,7 @@ class Tads3Lexer(RegexLexer):
             (r'(is|not)(%s+)(in\b)' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
                       Operator.Word)),
-            (r'[^ -#%-_a-~]+', Error)
+            (r'[^\s!"#%-_a-~]+', Error)  # Averts an infinite loop
         ],
         'more': [
             include('more/basic'),
@@ -5458,11 +5458,14 @@ class Tads3Lexer(RegexLexer):
         ],
         'grammar-tag': [
             include('whitespace'),
-            (r'R?"""([^\\"<]|""?(?!")|\\"+|\\.|<(?!<))+("{3,}|<<)|'
-             r"R?'''([^\\'<]|''?(?!')|\\'+|\\.|<(?!<))+('{3,}|<<)|"
-             r'R?"([^\\"<]|\\.|<(?!<))+("|<<)|'
-             r"R?'([^\\'<]|\\.|<(?!<))+('|<<)|([^)\"'\s\\/]|[\\/](?!%s))+|\)" %
-             _ws, String.Other, '#pop')
+            (r'"""([^\\"<]|""?(?!")|\\"+|\\.|<(?!<))+("{3,}|<<)|'
+             r'R"""([^\\"]|""?(?!")|\\"+|\\.)+"{3,}|'
+             r"'''([^\\'<]|''?(?!')|\\'+|\\.|<(?!<))+('{3,}|<<)|"
+             r"R'''([^\\']|''?(?!')|\\'+|\\.)+'{3,}|"
+             r'"([^\\"<]|\\.|<(?!<))+("|<<)|R"([^\\"]|\\.)+"|'
+             r"'([^\\'<]|\\.|<(?!<))+('|<<)|R'([^\\']|\\.)+'|"
+             r"([^)\s\\/]|/(?![/*]))+|\)",
+             String.Other, '#pop')
         ],
         'grammar-rules': [
             include('string'),
@@ -5470,7 +5473,7 @@ class Tads3Lexer(RegexLexer):
             (r'(\[)(%s*)(badness)' % _ws,
              bygroups(Punctuation, using(this, state='whitespace'), Keyword),
              'main'),
-            (r'->|%s|[()\]]' % _operator, Punctuation),
+            (r'->|%s|[()]' % _operator, Punctuation),
             (_name, Name.Constant),
             (r'', Text, '#pop:2')
         ],
