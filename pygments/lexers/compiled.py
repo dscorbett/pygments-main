@@ -5374,11 +5374,12 @@ class Tads3Lexer(RegexLexer):
         ],
         # Short-form anonymous function
         'main/lambda': [
-            (r'local\b', Keyword.Reserved, ('more', 'main/local')),
+            (r'local\b', Keyword.Reserved, ('#pop', 'main/local')),
             include('main')
         ],
         'more/lambda': [
             (r'}', Punctuation, '#pop'),
+            (r',', Punctuation, 'main/lambda'),
             include('more')
         ],
         # Local
