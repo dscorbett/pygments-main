@@ -5216,7 +5216,8 @@ class Tads3Lexer(RegexLexer):
                       Punctuation), 'block'),
             (r'(%s)(%s*)(:)' % (_name, _ws),
              bygroups(Name.Variable, using(this, state='whitespace'),
-                      Punctuation), ('classes', 'class')),
+                      Punctuation),
+             ('object-body-no-braces', 'classes', 'class')),
             include('whitespace'),
             (r'->|%s' % _operator, Punctuation, 'main'),
             (r'', Text, 'main/object-body')
