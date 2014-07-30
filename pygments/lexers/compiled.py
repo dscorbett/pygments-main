@@ -5281,7 +5281,8 @@ class Tads3Lexer(RegexLexer):
             (r"R'", String.Regex, ('#pop', 'sqr')),
             (r'(modify)(%s+)(grammar\b)' % _ws,
              bygroups(Keyword.Reserved, using(this, state='whitespace'),
-                      Keyword.Reserved), ('#pop', ':', 'grammar')),
+                      Keyword.Reserved),
+             ('#pop', 'object-body-no-braces', ':', 'grammar')),
             (r'(object)(%s+)(template\b)' % _ws,
              bygroups(Keyword.Reserved, using(this, state='whitespace'),
                       Keyword.Reserved), ('#pop', 'template')),
@@ -5514,7 +5515,7 @@ class Tads3Lexer(RegexLexer):
             (r'transient\b', Keyword.Reserved),
             (_name, Name.Class, '#pop'),
             include('whitespace'),
-            (r'(?=>)', Text, '#pop')
+            (r'(?=>|;)', Text, '#pop')
         ],
         'classes': [
             (r'[:,]', Punctuation, 'class'),
