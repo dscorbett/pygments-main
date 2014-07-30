@@ -5102,7 +5102,7 @@ class Tads3Lexer(RegexLexer):
 
     flags = re.DOTALL | re.MULTILINE
 
-    _comment_single = r'(?://(?:[^\\\n]|\\[\w\W])*$)'
+    _comment_single = r'(?://(?:[^\\\n]|\\+[\w\W])*$)'
     _comment_multiline = r'(?:/\*(?:[^*]|\*(?!/))*\*/)'
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
