@@ -5265,7 +5265,6 @@ class Tads3Lexer(RegexLexer):
             (r'{', Punctuation, ('#pop', 'more/lambda', 'main/lambda',
                                  'more/parameters', 'main/parameters')),
             (r'\*|\.{3}', Punctuation, '#pop'),
-            (r'#', Punctuation, ('#pop', 'debugger-type')),
             (r'(?i)0x[\da-f]+', Number.Hex, '#pop'),
             (r'(\d+\.(?!\.)\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+',
              Number.Float, '#pop'),
@@ -5439,10 +5438,6 @@ class Tads3Lexer(RegexLexer):
         'catch': [
             (r'\(', Punctuation),
             (_name, Name.Exception, ('#pop', 'variables')),
-            include('whitespace')
-        ],
-        'debugger-type': [
-            (_name, Keyword.Type, '#pop'),
             include('whitespace')
         ],
         'enum': [
