@@ -5125,13 +5125,13 @@ class Tads3Lexer(RegexLexer):
             state.append((char, token, '#pop'))
         state += [
             include('s'),
-            (r'[^\\<&{%s]+' % char, token),
-            (r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
+            (r'[^\\<&{}%s]+' % char, token),
+            (r'{([^}<%s]|<(?!<)|(?<=\\)<|((?<=\\)%s%s))*}' %
              (char, char, escaped_quotes), String.Interpol),
-            (r'<(?:[^\s<>%s]|<(?!<)|(?<=\\)(%s%s))*' %
+            (r'<(?:[^\s<>%s]|<(?!<)|((?<=\\)%s%s))*' %
              (char, char, escaped_quotes), Name.Tag,
              '%s%sqt' % ('t' if triple else '', 'd' if double else 's')),
-            (r'[\\&{]', String.Double)
+            (r'[\\&{}]', token)
         ]
         return state
 
@@ -5145,7 +5145,7 @@ class Tads3Lexer(RegexLexer):
             (r'(\s|\\\n)+', Text),
             (r'(=?)(\\?")', bygroups(Punctuation, String.Double),
              'dqs/%s' % state_name),
-            (r"(=?)(\\?')", bygroups(Punctuation, String.Double),
+            (r"(=?)(\\?')", bygroups(Punctuation, String.Single),
              'sqs/%s' % state_name),
             (r'=', Punctuation, 'uqs/%s' % state_name),
             (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop'),
