@@ -5279,18 +5279,25 @@ class Tads3Lexer(RegexLexer):
             (r"R'''", String.Regex, ('#pop', 'tsqr')),
             (r'R"', String.Regex, ('#pop', 'dqr')),
             (r"R'", String.Regex, ('#pop', 'sqr')),
+            (r'(function|method)(%s*)(\()' % _ws,
+             bygroups(Keyword.Reserved, using(this, state='whitespace'),
+                      Punctuation),
+             ('#pop', 'block?', 'more/parameters', 'main/parameters')),
             (r'(modify)(%s+)(grammar\b)' % _ws,
              bygroups(Keyword.Reserved, using(this, state='whitespace'),
                       Keyword.Reserved),
              ('#pop', 'object-body-no-braces', ':', 'grammar')),
+            (r'(new)(%s+(?=(?:function|method)\b))' % _ws,
+             bygroups(Keyword.Reserved, using(this, state='whitespace'))),
             (r'(object)(%s+)(template\b)' % _ws,
              bygroups(Keyword.Reserved, using(this, state='whitespace'),
                       Keyword.Reserved), ('#pop', 'template')),
             (r'(string)(%s+)(template\b)' % _ws,
              bygroups(Keyword, using(this, state='whitespace'),
-                      Keyword.Reserved), ('#pop', 'string-template')),
-            (r'(argcount|definingobj|delegated|invokee|replaced|self|'
-             r'targetobj|targetprop)\b', Name.Builtin.Pseudo, '#pop'),
+                      Keyword.Reserved), ('#pop', 'function-name')),
+
+            (r'(argcount|definingobj|invokee|replaced|targetobj|targetprop)\b',
+             Name.Builtin, '#pop'),
             (r'(break|continue|goto)\b', Keyword.Reserved, ('#pop', 'label')),
             (r'catch\b', Keyword.Reserved, ('#pop', 'catch')),
             (r'class\b', Keyword.Reserved,
@@ -5299,17 +5306,11 @@ class Tads3Lexer(RegexLexer):
             (r'(dictionary|property)\b', Keyword.Reserved,
              ('#pop', 'constants')),
             (r'enum\b', Keyword.Reserved, ('#pop', 'enum')),
-            (r'(extern)(%s*)(function|method)' % _ws,
-             bygroups(Keyword.Reserved, using(this, state='whitespace'),
-                      Keyword.Reserved),
-             'string-template'),
+            (r'export\b', Keyword.Reserved, ('#pop', 'main')),
             (r'(for|foreach)\b', Keyword.Reserved,
              ('#pop', 'more/for', 'main/for')),
-            (r'(function|method)(%s*)(\()' % _ws,
-             bygroups(Keyword.Reserved, using(this, state='whitespace'),
-                      Punctuation),
-             ('#pop', 'block?', 'more/parameters', 'main/parameters')),
-            (r'(function|method)\b', Keyword.Reserved, ('#pop', 'block?')),
+            (r'(function|method)\b', Keyword.Reserved,
+             ('#pop', 'block?', 'function-name')),
             (r'grammar\b', Keyword.Reserved,
              ('#pop', 'object-body-no-braces', 'grammar')),
             (r'inherited\b', Keyword.Reserved, ('#pop', 'inherited')),
@@ -5317,19 +5318,21 @@ class Tads3Lexer(RegexLexer):
              ('#pop', 'more/local', 'main/local')),
             (r'(modify|replace|switch|throw|transient)\b', Keyword.Reserved,
              '#pop'),
-            (r'(new)(%s+(?=(?:function|method)\b))' % _ws,
-             bygroups(Keyword.Reserved, using(this, state='whitespace'))),
             (r'new\b', Keyword.Reserved, ('#pop', 'class')),
             (r'(nil|true)\b', Keyword.Constant, '#pop'),
             (r'object\b', Keyword.Reserved, ('#pop', 'object-body-no-braces')),
             (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
             (r'propertyset\b', Keyword.Reserved,
              ('#pop', 'propertyset', 'main')),
+            (r'self', Name.Builtin.Pseudo, '#pop'),
             (r'template\b', Keyword.Reserved, ('#pop', 'template')),
 
+            (r'delegated\b', Operator.Word),
+            (r'(extern)(%s+)(object\b)' % _ws,
+             bygroups(Keyword.Reserved, using(this, state='whitespace'),
+                      Keyword.Reserved)),
             (r'(case|extern|if|intrinsic|return|static|while)\b',
              Keyword.Reserved),
-            (r'export\b', Keyword.Reserved, ('#pop', 'main')),
 
             (r'(__objref|defined)(%s*)(\()' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
@@ -5441,6 +5444,7 @@ class Tads3Lexer(RegexLexer):
         # Statements and expressions
         'more/__objref': [
             (r',', Punctuation, 'mode'),
+            (r'\)', Operator, '#pop'),
             include('more')
         ],
         'mode': [
@@ -5487,6 +5491,12 @@ class Tads3Lexer(RegexLexer):
         ':': [
             (r':', Punctuation, '#pop')
         ],
+        'function-name': [
+            (r'<<([^>]|>>>|>(?!>))*>>', String.Other),
+            (r'(?=%s?%s*[({])' % (_name, _ws), Text, '#pop'),
+            (_name, Name.Function, '#pop'),
+            include('whitespace')
+        ],
         'inherited': [
             (r'<', Punctuation, ('#pop', 'classes', 'class')),
             include('whitespace'),
@@ -5501,11 +5511,6 @@ class Tads3Lexer(RegexLexer):
         'propertyset': [
             (r'\(', Punctuation, ('more/parameters', 'main/parameters')),
             (r'{', Punctuation, ('#pop', 'object-body')),
-            include('whitespace')
-        ],
-        'string-template': [
-            (r'<<([^>]|>>>|>(?!>))*>>', String.Other),
-            (_name, Name.Function, '#pop'),
             include('whitespace')
         ],
         'template': [
