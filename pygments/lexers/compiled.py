@@ -5104,6 +5104,8 @@ class Tads3Lexer(RegexLexer):
 
     _comment_single = r'(?://(?:[^\\\n]|\\+[\w\W])*$)'
     _comment_multiline = r'(?:/\*(?:[^*]|\*(?!/))*\*/)'
+    _escape = (r'(?:\\(?:[\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
+               r'[0-3]?[0-7]{1,2}))')
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
@@ -5586,15 +5588,14 @@ class Tads3Lexer(RegexLexer):
             (r"'", String.Single, 'sqs')
         ],
         's': [
-            (r'{{|}}|\\([\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
-             r'[0-3]?[0-7]{1,2})', String.Escape),
+            (r'{{|}}|%s' % _escape, String.Escape),
             (r'<<\s*(as\s+decreasingly\s+likely\s+outcomes|cycling|else|end|'
              r'first\s+time|one\s+of|only|or|otherwise|'
              r'(sticky|(then\s+)?(purely\s+)?at)\s+random|stopping|'
              r'(then\s+)?(half\s+)?shuffled|\|\|)\s*>>', String.Interpol),
-            (r'<<(%([_\-+ ,#]|\[\d*\]?)*\d*\.?\d*.|'
-             r'\s*((else|otherwise)\s+)?(if|unless)\b)?', String.Interpol,
-             ('block/embed', 'more/embed', 'main')),
+            (r'<<(%%(_(%s|\\?.)|[\-+ ,#]|\[\d*\]?)*\d*\.?\d*(%s|\\?.)|'
+             r'\s*((else|otherwise)\s+)?(if|unless)\b)?' % (_escape, _escape),
+             String.Interpol, ('block/embed', 'more/embed', 'main')),
             (r'(?i)&(#(x[\da-f]+|\d+)|[\da-z]+);?', Name.Entity)
         ],
         'tdqs': _make_string_state(True, True),
