@@ -5441,7 +5441,10 @@ class Tads3Lexer(RegexLexer):
             (r'(__objref|defined)(%s*)(\()' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
                       Operator), ('#pop', 'more/__objref', 'main')),
-            (r'(construct|finalize|grammarInfo|grammarTag|lexicalParent|'
+            (r'(__DATE__|__DEBUG|__LINE__|__FILE__|'
+             r'__TADS_MACRO_FORMAT_VERSION|__TADS_SYS_\w*|__TADS_SYSTEM_NAME|'
+             r'__TADS_VERSION_MAJOR|__TADS_VERSION_MINOR|__TADS3|__TIME__|'
+             r'construct|finalize|grammarInfo|grammarTag|lexicalParent|'
              r'miscVocab|sourceTextGroup|sourceTextGroupName|'
              r'sourceTextGroupOrder|sourceTextOrder)\b', Name.Builtin, '#pop')
         ],
