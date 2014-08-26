@@ -51,7 +51,7 @@ from pygments.lexers._postgres_builtins import KEYWORDS, DATATYPES, \
 
 
 __all__ = ['PostgresLexer', 'PlPgsqlLexer', 'PostgresConsoleLexer',
-           'SqlLexer', 'MySqlLexer', 'SqliteConsoleLexer']
+           'SqlLexer', 'MySqlLexer', 'SqliteConsoleLexer', 'RqlLexer']
 
 line_re  = re.compile('.*?\n')
 
@@ -150,10 +150,10 @@ class PostgresLexer(PostgresBase, RegexLexer):
             (r"(E|U&)?'(''|[^'])*'", String.Single),
             (r'(U&)?"(""|[^"])*"', String.Name), # quoted identifier
             (r'(?s)(\$[^\$]*\$)(.*?)(\1)', language_callback),
-            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name),
+            (r'[a-z_]\w*', Name),
 
             # psql variable in SQL
-            (r""":(['"]?)[a-z][a-z0-9_]*\b\1""", Name.Variable),
+            (r""":(['"]?)[a-z]\w*\b\1""", Name.Variable),
 
             (r'[;:()\[\]\{\},\.]', Punctuation),
         ],
@@ -192,10 +192,10 @@ class PlPgsqlLexer(PostgresBase, RegexLexer):
 
     # Add specific PL/pgSQL rules (before the SQL ones)
     tokens['root'][:0] = [
-        (r'\%[a-z][a-z0-9_]*\b', Name.Builtin),     # actually, a datatype
+        (r'\%[a-z]\w*\b', Name.Builtin),     # actually, a datatype
         (r':=', Operator),
-        (r'\<\<[a-z][a-z0-9_]*\>\>', Name.Label),
-        (r'\#[a-z][a-z0-9_]*\b', Keyword.Pseudo),   # #variable_conflict
+        (r'\<\<[a-z]\w*\>\>', Name.Label),
+        (r'\#[a-z]\w*\b', Keyword.Pseudo),   # #variable_conflict
     ]
 
 
@@ -219,7 +219,7 @@ class PsqlRegexLexer(PostgresBase, RegexLexer):
         (r'\n', Text, 'root'),
         (r'\s+', Text),
         (r'\\[^\s]+', Keyword.Pseudo),
-        (r""":(['"]?)[a-z][a-z0-9_]*\b\1""", Name.Variable),
+        (r""":(['"]?)[a-z]\w*\b\1""", Name.Variable),
         (r"'(''|[^'])*'", String.Single),
         (r"`([^`])*`", String.Backtick),
         (r"[^\s]+", String.Symbol),
@@ -435,7 +435,7 @@ class SqlLexer(RegexLexer):
             # TODO: Backslash escapes?
             (r"'(''|[^'])*'", String.Single),
             (r'"(""|[^"])*"', String.Symbol), # not a real string literal in ANSI SQL
-            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name),
+            (r'[a-z_]\w*', Name),
             (r'[;:()\[\],\.]', Punctuation)
         ],
         'multiline-comments': [
@@ -506,10 +506,10 @@ class MySqlLexer(RegexLexer):
             # TODO: this list is not complete
             (r'\b(auto_increment|engine|charset|tables)\b', Keyword.Pseudo),
             (r'(true|false|null)', Name.Constant),
-            (r'([a-zA-Z_][a-zA-Z0-9_]*)(\s*)(\()',
+            (r'([a-z_]\w*)(\s*)(\()',
              bygroups(Name.Function, Text, Punctuation)),
-            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name),
-            (r'@[A-Za-z0-9]*[._]*[A-Za-z0-9]*', Name.Variable),
+            (r'[a-z_]\w*', Name),
+            (r'@[a-z0-9]*[._]*[a-z0-9]*', Name.Variable),
             (r'[;:()\[\],\.]', Punctuation)
         ],
         'multiline-comments': [
@@ -559,3 +559,34 @@ class SqliteConsoleLexer(Lexer):
             for item in do_insertions(insertions,
                                       sql.get_tokens_unprocessed(curcode)):
                 yield item
+
+
+class RqlLexer(RegexLexer):
+    """
+    Lexer for Relation Query Language.
+
+    `RQL <http://www.logilab.org/project/rql>`_
+
+    .. versionadded:: 2.0
+    """
+    name = 'RQL'
+    aliases = ['rql']
+    filenames = ['*.rql']
+    mimetypes = ['text/x-rql']
+
+    flags = re.IGNORECASE
+    tokens = {
+        'root': [
+            (r'\s+', Text),
+            (r'(DELETE|SET|INSERT|UNION|DISTINCT|WITH|WHERE|BEING|OR'
+             r'|AND|NOT|GROUPBY|HAVING|ORDERBY|ASC|DESC|LIMIT|OFFSET'
+             r'|TODAY|NOW|TRUE|FALSE|NULL|EXISTS)\b', Keyword),
+            (r'[+*/<>=%-]', Operator),
+            (r'(Any|is|instance_of|CWEType|CWRelation)\b', Name.Builtin),
+            (r'[0-9]+', Number.Integer),
+            (r'[A-Z_]\w*\??', Name),
+            (r"'(''|[^'])*'", String.Single),
+            (r'"(""|[^"])*"', String.Single),
+            (r'[;:()\[\],\.]', Punctuation)
+        ],
+    }

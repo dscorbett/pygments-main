@@ -102,46 +102,46 @@ def _objdump_lexer_tokens(asm_lexer):
     """
     hex_re = r'[0-9A-Za-z]'
     return {
-	'root': [
-	    # File name & format:
-	    ('(.*?)(:)( +file format )(.*?)$',
-		bygroups(Name.Label, Punctuation, Text, String)),
-	    # Section header
-	    ('(Disassembly of section )(.*?)(:)$',
-		bygroups(Text, Name.Label, Punctuation)),
-	    # Function labels
-	    # (With offset)
-	    ('('+hex_re+'+)( )(<)(.*?)([-+])(0[xX][A-Za-z0-9]+)(>:)$',
-		bygroups(Number.Hex, Text, Punctuation, Name.Function,
-			 Punctuation, Number.Hex, Punctuation)),
-	    # (Without offset)
-	    ('('+hex_re+'+)( )(<)(.*?)(>:)$',
-		bygroups(Number.Hex, Text, Punctuation, Name.Function,
-			 Punctuation)),
-	    # Code line with disassembled instructions
-	    ('( *)('+hex_re+r'+:)(\t)((?:'+hex_re+hex_re+' )+)( *\t)([a-zA-Z].*?)$',
-		bygroups(Text, Name.Label, Text, Number.Hex, Text,
-			 using(asm_lexer))),
-	    # Code line with ascii
-	    ('( *)('+hex_re+r'+:)(\t)((?:'+hex_re+hex_re+' )+)( *)(.*?)$',
-		bygroups(Text, Name.Label, Text, Number.Hex, Text, String)),
-	    # Continued code line, only raw opcodes without disassembled
-	    # instruction
-	    ('( *)('+hex_re+r'+:)(\t)((?:'+hex_re+hex_re+' )+)$',
-		bygroups(Text, Name.Label, Text, Number.Hex)),
-	    # Skipped a few bytes
-	    (r'\t\.\.\.$', Text),
-	    # Relocation line
-	    # (With offset)
-	    (r'(\t\t\t)('+hex_re+r'+:)( )([^\t]+)(\t)(.*?)([-+])(0x'+hex_re+'+)$',
-		bygroups(Text, Name.Label, Text, Name.Property, Text,
-			 Name.Constant, Punctuation, Number.Hex)),
-	    # (Without offset)
-	    (r'(\t\t\t)('+hex_re+r'+:)( )([^\t]+)(\t)(.*?)$',
-		bygroups(Text, Name.Label, Text, Name.Property, Text,
-			 Name.Constant)),
-	    (r'[^\n]+\n', Other)
-	]
+        'root': [
+            # File name & format:
+            ('(.*?)(:)( +file format )(.*?)$',
+                bygroups(Name.Label, Punctuation, Text, String)),
+            # Section header
+            ('(Disassembly of section )(.*?)(:)$',
+                bygroups(Text, Name.Label, Punctuation)),
+            # Function labels
+            # (With offset)
+            ('('+hex_re+'+)( )(<)(.*?)([-+])(0[xX][A-Za-z0-9]+)(>:)$',
+                bygroups(Number.Hex, Text, Punctuation, Name.Function,
+                         Punctuation, Number.Hex, Punctuation)),
+            # (Without offset)
+            ('('+hex_re+'+)( )(<)(.*?)(>:)$',
+                bygroups(Number.Hex, Text, Punctuation, Name.Function,
+                         Punctuation)),
+            # Code line with disassembled instructions
+            ('( *)('+hex_re+r'+:)(\t)((?:'+hex_re+hex_re+' )+)( *\t)([a-zA-Z].*?)$',
+                bygroups(Text, Name.Label, Text, Number.Hex, Text,
+                         using(asm_lexer))),
+            # Code line with ascii
+            ('( *)('+hex_re+r'+:)(\t)((?:'+hex_re+hex_re+' )+)( *)(.*?)$',
+                bygroups(Text, Name.Label, Text, Number.Hex, Text, String)),
+            # Continued code line, only raw opcodes without disassembled
+            # instruction
+            ('( *)('+hex_re+r'+:)(\t)((?:'+hex_re+hex_re+' )+)$',
+                bygroups(Text, Name.Label, Text, Number.Hex)),
+            # Skipped a few bytes
+            (r'\t\.\.\.$', Text),
+            # Relocation line
+            # (With offset)
+            (r'(\t\t\t)('+hex_re+r'+:)( )([^\t]+)(\t)(.*?)([-+])(0x'+hex_re+'+)$',
+                bygroups(Text, Name.Label, Text, Name.Property, Text,
+                         Name.Constant, Punctuation, Number.Hex)),
+            # (Without offset)
+            (r'(\t\t\t)('+hex_re+r'+:)( )([^\t]+)(\t)(.*?)$',
+                bygroups(Text, Name.Label, Text, Name.Property, Text,
+                         Name.Constant)),
+            (r'[^\n]+\n', Other)
+        ]
     }
 
 
@@ -318,8 +318,8 @@ class NasmLexer(RegexLexer):
     filenames = ['*.asm', '*.ASM']
     mimetypes = ['text/x-nasm']
 
-    identifier = r'[a-zA-Z$._?][a-zA-Z0-9$._?#@~]*'
-    hexn = r'(?:0[xX][0-9a-fA-F]+|$0[0-9a-fA-F]*|[0-9]+[0-9a-fA-F]*h)'
+    identifier = r'[a-z$._?][\w$.?#@~]*'
+    hexn = r'(?:0[xX][0-9a-f]+|$0[0-9a-f]*|[0-9]+[0-9a-f]*h)'
     octn = r'[0-7]+q'
     binn = r'[01]+b'
     decn = r'[0-9]+'
@@ -353,7 +353,7 @@ class NasmLexer(RegexLexer):
             (string, String),
             (hexn, Number.Hex),
             (octn, Number.Oct),
-            (binn, Number),
+            (binn, Number.Bin),
             (floatn, Number.Float),
             (decn, Number.Integer),
             include('punctuation'),
@@ -417,12 +417,13 @@ class Ca65Lexer(RegexLexer):
              r'|cl[cvdi]|se[cdi]|jmp|jsr|bne|beq|bpl|bmi|bvc|bvs|bcc|bcs'
              r'|p[lh][ap]|rt[is]|brk|nop|ta[xy]|t[xy]a|txs|tsx|and|ora|eor'
              r'|bit)\b', Keyword),
-            (r'\.[a-z0-9_]+', Keyword.Pseudo),
+            (r'\.\w+', Keyword.Pseudo),
             (r'[-+~*/^&|!<>=]', Operator),
             (r'"[^"\n]*.', String),
             (r"'[^'\n]*.", String.Char),
             (r'\$[0-9a-f]+|[0-9a-f]+h\b', Number.Hex),
-            (r'\d+|%[01]+', Number.Integer),
+            (r'\d+', Number.Integer),
+            (r'%[01]+', Number.Bin),
             (r'[#,.:()=]', Punctuation),
             (r'[a-z_.@$][\w.@$]*', Name),
         ]

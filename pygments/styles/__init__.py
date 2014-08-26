@@ -36,6 +36,8 @@ STYLE_MAP = {
     'rrt':      'rrt::RrtStyle',
     'xcode':    'xcode::XcodeStyle',
     'igor':     'igor::IgorStyle',
+    'paraiso-light': 'paraiso_light::ParaisoLightStyle',
+    'paraiso-dark': 'paraiso_dark::ParaisoDarkStyle',
 }
 
 

@@ -13,10 +13,11 @@ import re
 from bisect import bisect
 
 from pygments.lexer import Lexer, LexerContext, RegexLexer, ExtendedRegexLexer, \
-     bygroups, include, using, this, do_insertions
+     bygroups, include, using, this, do_insertions, default
 from pygments.token import Punctuation, Text, Comment, Keyword, Name, String, \
      Generic, Operator, Number, Whitespace, Literal
 from pygments.util import get_bool_opt, ClassNotFound
+from pygments.lexers.agile import PythonLexer
 from pygments.lexers.other import BashLexer
 
 __all__ = ['IniLexer', 'PropertiesLexer', 'SourcesListLexer', 'BaseMakefileLexer',
@@ -25,7 +26,8 @@ __all__ = ['IniLexer', 'PropertiesLexer', 'SourcesListLexer', 'BaseMakefileLexer
            'RstLexer', 'VimLexer', 'GettextLexer', 'SquidConfLexer',
            'DebianControlLexer', 'DarcsPatchLexer', 'YamlLexer',
            'LighttpdConfLexer', 'NginxConfLexer', 'CMakeLexer', 'HttpLexer',
-           'PyPyLogLexer', 'RegeditLexer', 'HxmlLexer', 'EbnfLexer']
+           'PyPyLogLexer', 'RegeditLexer', 'HxmlLexer', 'EbnfLexer',
+           'TodotxtLexer', 'DockerLexer']
 
 
 class IniLexer(RegexLexer):
@@ -233,11 +235,11 @@ class BaseMakefileLexer(RegexLexer):
             (r'\$[<@$+%?|*]', Keyword),
             (r'\s+', Text),
             (r'#.*?\n', Comment),
-            (r'(export)(\s+)(?=[a-zA-Z0-9_${}\t -]+\n)',
+            (r'(export)(\s+)(?=[\w${}\t -]+\n)',
              bygroups(Keyword, Text), 'export'),
             (r'export\s+', Keyword),
             # assignment
-            (r'([a-zA-Z0-9_${}.-]+)(\s*)([!?:+]?=)([ \t]*)((?:.*\\\n)+|.*\n)',
+            (r'([\w${}.-]+)(\s*)([!?:+]?=)([ \t]*)((?:.*\\\n)+|.*\n)',
              bygroups(Name.Variable, Text, Operator, Text, using(BashLexer))),
             # strings
             (r'(?s)"(\\\\|\\.|[^"\\])*"', String.Double),
@@ -256,7 +258,7 @@ class BaseMakefileLexer(RegexLexer):
             (r'\)', Keyword, '#pop'),
         ],
         'export': [
-            (r'[a-zA-Z0-9_${}-]+', Name.Variable),
+            (r'[\w${}-]+', Name.Variable),
             (r'\n', Text, '#pop'),
             (r'\s+', Text),
         ],
@@ -501,7 +503,7 @@ class TexLexer(RegexLexer):
         'command': [
             (r'\[.*?\]', Name.Attribute),
             (r'\*', Keyword),
-            (r'', Text, '#pop'),
+            default('#pop'),
         ],
     }
 
@@ -587,7 +589,7 @@ class ApacheConfLexer(RegexLexer):
             (r'(#.*?)$', Comment),
             (r'(<[^\s>]+)(?:(\s+)(.*?))?(>)',
              bygroups(Name.Tag, Text, String, Name.Tag)),
-            (r'([a-zA-Z][a-zA-Z0-9_]*)(\s+)',
+            (r'([a-z]\w*)(\s+)',
              bygroups(Name.Builtin, Text), 'value'),
             (r'\.+', Text),
         ],
@@ -596,7 +598,7 @@ class ApacheConfLexer(RegexLexer):
             (r'[^\S\n]+', Text),
             (r'\d+\.\d+\.\d+\.\d+(?:/\d+)?', Number),
             (r'\d+', Number),
-            (r'/([a-zA-Z0-9][a-zA-Z0-9_./-]+)', String.Other),
+            (r'/([a-z0-9][\w./-]+)', String.Other),
             (r'(on|off|none|any|all|double|email|dns|min|minimal|'
              r'os|productonly|full|emerg|alert|crit|error|warn|'
              r'notice|info|debug|registry|script|inetd|standalone|'
@@ -774,7 +776,7 @@ class RstLexer(RegexLexer):
             (r'^( *)(:.*?:)([ \t]+)(.*?)$',
              bygroups(Text, Name.Class, Text, Name.Function)),
             # Definition list
-            (r'^([^\s].*(?<!::)\n)((?:(?: +.*)\n)+)',
+            (r'^(\S.*(?<!::)\n)((?:(?: +.*)\n)+)',
              bygroups(using(this, state='inline'), using(this, state='inline'))),
             # Code blocks
             (r'(::)(\n[ \t]*\n)([ \t]+)(.*)(\n)((?:(?:\3.*|)\n)+)',
@@ -834,8 +836,16 @@ class VimLexer(RegexLexer):
     mimetypes = ['text/x-vim']
     flags = re.MULTILINE
 
+    _python = r'py(?:t(?:h(?:o(?:n)?)?)?)?'
+
     tokens = {
         'root': [
+            (r'^([ \t:]*)(' + _python + r')([ \t]*)(<<)([ \t]*)(.*)((?:\n|.)*)(\6)',
+             bygroups(using(this), Keyword, Text, Operator, Text, Text,
+                      using(PythonLexer), Text)), 
+            (r'^([ \t:]*)(' + _python + r')([ \t])(.*)',
+             bygroups(using(this), Keyword, Text, using(PythonLexer))),
+
             (r'^\s*".*', Comment),
 
             (r'[ \t]+', Text),
@@ -1680,6 +1690,12 @@ class CMakeLexer(RegexLexer):
         ]
     }
 
+    def analyse_text(text):
+        exp = r'^ *CMAKE_MINIMUM_REQUIRED *\( *VERSION *\d(\.\d)* *( FATAL_ERROR)? *\) *$'
+        if re.search(exp, text, flags=re.MULTILINE | re.IGNORECASE):
+            return 0.8
+        return 0.0
+
 
 class HttpLexer(RegexLexer):
     """
@@ -1910,4 +1926,130 @@ class EbnfLexer(RegexLexer):
         'identifier': [
             (r'([a-zA-Z][a-zA-Z0-9 \-]*)', Keyword),
           ],
+    }
+
+class TodotxtLexer(RegexLexer):
+    """
+    Lexer for `Todo.txt <http://todotxt.com/>`_ todo list format.
+
+    .. versionadded:: 2.0
+    """
+
+    name = 'Todotxt'
+    aliases = ['todotxt']
+    # *.todotxt is not a standard extension for Todo.txt files; including it
+    # makes testing easier, and also makes autodetecting file type easier.
+    filenames = ['todo.txt', '*.todotxt']
+    mimetypes = ['text/x-todo']
+
+    ## Aliases mapping standard token types of Todo.txt format concepts
+    CompleteTaskText = Operator # Chosen to de-emphasize complete tasks
+    IncompleteTaskText = Text # Incomplete tasks should look like plain text
+
+    # Priority should have most emphasis to indicate importance of tasks
+    Priority = Generic.Heading
+    # Dates should have next most emphasis because time is important
+    Date = Generic.Subheading
+
+    # Project and context should have equal weight, and be in different colors
+    Project = Generic.Error
+    Context = String
+
+    # If tag functionality is added, it should have the same weight as Project
+    # and Context, and a different color. Generic.Traceback would work well.
+
+    # Regex patterns for building up rules; dates, priorities, projects, and
+    # contexts are all atomic
+    # TODO: Make date regex more ISO 8601 compliant
+    date_regex = r'\d{4,}-\d{2}-\d{2}'
+    priority_regex = r'\([A-Z]\)'
+    project_regex = r'\+\S+'
+    context_regex = r'@\S+'
+
+    # Compound regex expressions
+    complete_one_date_regex = r'(x )(' + date_regex + r')'
+    complete_two_date_regex = (complete_one_date_regex + r'( )(' +
+                                date_regex + r')')
+    priority_date_regex = r'(' + priority_regex + r')( )(' + date_regex + r')'
+
+    tokens = {
+        # Should parse starting at beginning of line; each line is a task
+        'root': [
+            ## Complete task entry points: two total:
+            # 1. Complete task with two dates
+            (complete_two_date_regex, bygroups(CompleteTaskText, Date,
+                                               CompleteTaskText, Date),
+             'complete'),
+            # 2. Complete task with one date
+            (complete_one_date_regex, bygroups(CompleteTaskText, Date),
+             'complete'),
+
+            ## Incomplete task entry points: six total:
+            # 1. Priority plus date
+            (priority_date_regex, bygroups(Priority, IncompleteTaskText, Date),
+             'incomplete'),
+            # 2. Priority only
+            (priority_regex, Priority, 'incomplete'),
+            # 3. Leading date
+            (date_regex, Date, 'incomplete'),
+            # 4. Leading context
+            (context_regex, Context, 'incomplete'),
+            # 5. Leading project
+            (project_regex, Project, 'incomplete'),
+            # 6. Non-whitespace catch-all
+            ('\S+', IncompleteTaskText, 'incomplete'),
+        ],
+
+        # Parse a complete task
+        'complete': [
+            # Newline indicates end of task, should return to root
+            (r'\s*\n', CompleteTaskText, '#pop'),
+            # Tokenize contexts and projects
+            (context_regex, Context),
+            (project_regex, Project),
+            # Tokenize non-whitespace text
+            ('\S+', CompleteTaskText),
+            # Tokenize whitespace not containing a newline
+            ('\s+', CompleteTaskText),
+        ],
+
+        # Parse an incomplete task
+        'incomplete': [
+            # Newline indicates end of task, should return to root
+            (r'\s*\n', IncompleteTaskText, '#pop'),
+            # Tokenize contexts and projects
+            (context_regex, Context),
+            (project_regex, Project),
+            # Tokenize non-whitespace text
+            ('\S+', IncompleteTaskText),
+            # Tokenize whitespace not containing a newline
+            ('\s+', IncompleteTaskText),
+        ],
+    }
+
+
+class DockerLexer(RegexLexer):
+    """
+    Lexer for `Docker <http://docker.io>`_ configuration files.
+
+    .. versionadded:: 2.0
+    """
+    name = 'Docker'
+    aliases = ['docker', 'dockerfile']
+    filenames = ['Dockerfile', '*.docker']
+    mimetypes = ['text/x-dockerfile-config']
+
+    _keywords = (r'(?:FROM|MAINTAINER|RUN|CMD|EXPOSE|ENV|ADD|ENTRYPOINT|'
+                 r'VOLUME|WORKDIR)')
+
+    flags = re.IGNORECASE | re.MULTILINE
+
+    tokens = {
+        'root': [
+            (r'^(ONBUILD)(\s+)(%s)\b' % (_keywords,),
+             bygroups(Name.Keyword, Whitespace, Keyword)),
+            (_keywords + r'\b', Keyword),
+            (r'#.*', Comment),
+            (r'.+', using(BashLexer)),
+        ],
     }
