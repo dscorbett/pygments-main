@@ -5295,7 +5295,7 @@ class Tads3Lexer(RegexLexer):
         ],
         'main/root': [
             include('main/basic'),
-            (r'', Text, ('#pop', 'object-body-no-braces', 'classes', 'class'))
+            default(('#pop', 'object-body-no-braces', 'classes', 'class'))
         ],
         'object-body-no-braces': [
            (r';', Punctuation, '#pop'),
@@ -5320,27 +5320,27 @@ class Tads3Lexer(RegexLexer):
              ('object-body-no-braces', 'classes', 'class')),
             include('whitespace'),
             (r'->|%s' % _operator, Punctuation, 'main'),
-            (r'', Text, 'main/object-body')
+            default('main/object-body')
         ],
         'main/object-body': [
             include('main/basic'),
             (r'(%s)(%s*)(=?)' % (_name, _ws),
              bygroups(Name.Variable, using(this, state='whitespace'),
                       Punctuation), ('#pop', 'more', 'main')),
-            (r'', Text, '#pop:2')
+            default('#pop:2')
         ],
         'block?/root': [
             (r'{', Punctuation, ('#pop', 'block')),
             include('whitespace'),
             (r'(?=[[\'"<(:])', Text,  # It might be a VerbRule macro.
              ('#pop', 'object-body-no-braces', 'grammar', 'grammar-rules')),
-            (r'', Text,  # It might be a macro like DefineAction.
-             ('#pop', 'object-body-no-braces'))
+            # It might be a macro like DefineAction.
+            default(('#pop', 'object-body-no-braces'))
         ],
         'block?': [
             (r'{', Punctuation, ('#pop', 'block')),
             include('whitespace'),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
         'block/basic': [
             (r'[;:]', Punctuation),
@@ -5448,7 +5448,7 @@ class Tads3Lexer(RegexLexer):
         'main': [
             include('main/basic'),
             (_name, Name, '#pop'),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
         'more/basic': [
             (r'\(', Punctuation, ('more/list', 'main')),
@@ -5466,7 +5466,7 @@ class Tads3Lexer(RegexLexer):
         ],
         'more': [
             include('more/basic'),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
         # Then expression (conditional operator)
         'more/conditional': [
@@ -5524,7 +5524,7 @@ class Tads3Lexer(RegexLexer):
             (r'\[', Punctuation),
             include('main/basic'),
             (_name, Name.Variable, '#pop'),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
         'more/parameters': [
             (r'(:)(%s*(?=[?=,:)]))' % _ws,
@@ -5542,7 +5542,7 @@ class Tads3Lexer(RegexLexer):
         'multimethod?': [
             (r'multimethod\b', Keyword, '#pop'),
             include('whitespace'),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
 
         # Statements and expressions
@@ -5590,7 +5590,7 @@ class Tads3Lexer(RegexLexer):
              'main'),
             (r'->|%s|[()]' % _operator, Punctuation),
             (_name, Name.Constant),
-            (r'', Text, '#pop:2')
+            default('#pop:2')
         ],
         ':': [
             (r':', Punctuation, '#pop')
@@ -5610,7 +5610,7 @@ class Tads3Lexer(RegexLexer):
             (r'negate\b', Operator.Word, '#pop'),
             include('whitespace'),
             (_operator, Operator),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
         'propertyset': [
             (r'\(', Punctuation, ('more/parameters', 'main/parameters')),
@@ -5650,7 +5650,7 @@ class Tads3Lexer(RegexLexer):
         'label': [
             (_name, Name.Label, '#pop'),
             include('whitespace'),
-            (r'', Text, '#pop')
+            default('#pop')
         ],
         'variables': [
             (r',', Punctuation),
