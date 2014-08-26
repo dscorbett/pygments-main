@@ -5360,7 +5360,7 @@ class Tads3Lexer(RegexLexer):
             (r'(is|not)(%s+)(in\b)' % _ws,
              bygroups(Operator.Word, using(this, state='whitespace'),
                       Operator.Word)),
-            (r'[^\s!"%-_a-~]+', Error)  # Averts an infinite loop
+            (r'[^\s!"%-_a-z{-~]+', Error)  # Averts an infinite loop
         ],
         'more': [
             include('more/basic'),
