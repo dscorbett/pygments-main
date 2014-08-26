@@ -5174,7 +5174,7 @@ class Tads3Lexer(RegexLexer):
              (terminator, terminator, r'+|%s(?!%s{2})' %
               (terminator, terminator) if host_triple else r''),
              String.Interpol),
-            (r'([^\s"\'<>{}\\&]|<(?!<)|}(?!}))+', token),
+            (r'([^\s"\'<{}\\&]|<(?!<)|}(?!}))+', token),
             (r'[\s"\'\\{}&]', token)
         ]
 
