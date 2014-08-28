@@ -13,7 +13,9 @@ intrinsic 't3vm' { };
 #ifndef PropDefAny
 intrinsic class Object 'root-object/030004' { };
 #endif
-object template [lst];
+object /**//**/ // /* \\
+#define Room Unthing
+    template [lst];
 
 versionInfo: GameID
     IFID = '17d8efc3-07da-4dde-a837-ff7c4e386a77'
@@ -140,7 +142,7 @@ Token template inherited 'before_' 'after_' 'desc_';
 
 #define DefineToken(name, before, after) name##Token: Token before after #@name
 
-DefineToken(builtin, '<font color=green>', '</font>');
+DefineToken(builtin, '<font color=g&#x72;een>', '</font>');
 DefineToken(comment, '<i><font color=#408080>', '</font></i>');
 DefineToken(decorator, '<font color=#aa22ff>', '</font>');
 DefineToken(error, '<U><FONT COLOR=RED>', '</FONT></U>');
@@ -150,9 +152,9 @@ DefineToken(keyword, '<b><font face=TADS-Sans color=green>', '</font></b>');
 DefineToken(label, '<font color=#A0A000>', '</font>');
 DefineToken(long, '<i><font color=gray>', '</font></i>');
 DefineToken(name, '<u>', '</u>');
-DefineToken(operator, '<b><font color=\"#AA22FF\">', '</font></b>');
-DefineToken(string, '<font color=\'#BA2121\'>', '</font>');
-DefineToken(whitespace, '<font color="bgcolor" bgcolor=\'text\'>', '</font>');
+DefineToken(operator, '<b><font color=\"#AA22F&#x46;\">', '</font></b>');
+DefineToken(string, '<font color=\'#BA212&#49;\'>', '</font>');
+DefineToken(whitespace, '<font color="bgcolor"bgcolor=\'text\'>', '</font>');
 
 function highlightToken(tokenString)
 {
@@ -315,6 +317,7 @@ replace grammar predicate(ScrewWith): ' ': object;
     "This is a masterfully crafted pearl necklace. You hope the statue
     won&rsquo;t mind if you hold onto it for a while. "
     initDesc = "You gave the statue this pearl necklace yesterday. "
+    isPlural = true
 ;
 
 altarRoom: Room 'At the Altar'
@@ -330,7 +333,7 @@ altarRoom: Room 'At the Altar'
     "It&rsquo;s just a window above the altar. <<one of>>The space under the
     window is blank; as an interior <<highlight 'decorator'>>, you can&rsquo;t
     help but think the wall would benefit from a bas-relief, but &ndash;
-    <i>sigh</i> &ndash; you are too lovelorn to wield the chisel. <<||>>The
+    <i>sigh</i> &endash you are too lovelorn to wield the chisel. <<||>>The
     wall right below it is a boring <<highlight 'white space'>>. <<stopping>>"
 ;
 
@@ -487,7 +490,8 @@ export level 'sinkLevel';
     <bq>To control the auto-sink, use the calculator add-on to enter the
     desired volume of water. For example,\n
     \t\t<<aHref('calculate 69 * 105', 'CALCULATE 69 TIMES 105')>>\n
-    to fill the basin with <<% ,d 0x69 * 0105>> kochliaria.\b
+    to fill the basin with <<% ,d 0x69 * 0105>> kochliaria<!-- an ancient Greek
+    unit, < 5 ml >.\b
     Warning: Do not use big numbers or divide by zero!<\\bq>\b"
     dobjFor(Read) asDobjFor(Examine)
 ;
@@ -683,7 +687,7 @@ DefineLiteralAction(Calculate)
         case 'plus':
         case 'positive':
             opString = '+';
-            op = {x : x};
+            op = {self_ : self_};
             break;
         case '-':
         case 'minus':
@@ -734,7 +738,7 @@ DefineLiteralAction(Calculate)
         case 'shl':
         case 'ashl':
         case 'lshl':
-            opString = '&lt;&lt';
+            opString = '&lt;&lt;';
             op = {a, b, c? : a << b};
             break;
         case '&':
@@ -905,7 +909,9 @@ modify Thing
 modify grammar directionName(in): 'in' | 'inside':
    dir = inDirection
 ;
-modify grammar directionName(out): 'out' | 'outside':
+modify /**//**/ // /* \\
+#define Room Unthing
+    grammar directionName(out): 'out' | 'outside':
    dir = outDirection
 ;
 
@@ -1002,55 +1008,85 @@ DefineIAction(Xyzzy)
                 '<<one of>><<     half shuffled>>',
                 '<<one of>><<then      shuffled>>',
                 '<<one of>><<then half shuffled>>']);
-            '''<font x= color=red bgcolor='silver' face="TADS-Sans" size=\'+1\'
-            x=\"x\">{can't}</font>\'''' '''';
-            """<font x= color=red bgcolor='silver' face="TADS-Sans" size=\'+1\'
-            x=\"x\">{can't}</font>\"""" """";
+            '''''<font x= color=red bgcolor='silver' face="TADS-Sans"
+            size=\'+1\' x=\"x\">{can't}</font>\'''' '' '''';
+            """""<font x= color=red bgcolor='silver' face="TADS-Sans"
+            size=\'+1\' x=\"x\">{can't}</font>\"""" "" """";
             '<font x= color=red face="TADS-Sans" size=\'+1\'
             x=\"x\">{can\'t}</font>\'';
             "<font x= color=red bgcolor='silver' size=\'+1\'
             x=\"x\">{can\'t}</font>\"";
-            '''<font <<'color=red'>> bgcolor<<'='>>silver
-            face=<<'"TADS-Sans"'>>>{ca<<'n\''>>t}</font>\'''' '''';
-            """<font <<'color=red'>> bgcolor<<'='>>silver
-            face=<<'"TADS-Sans"'>>>{ca<<'n\''>>t}</font>\"""" """";
+            '''''<font <<'color=red'>> bgcolor<<'='>>silver
+            face=<<'"TADS-Sans"'>>>{ca<<'n\''>>t}</font>\'''' '' '''';
+            """""<font <<'color=red'>> bgcolor<<'='>>silver
+            face=<<'"TADS-Sans"'>>>{ca<<'n\''>>t}</font>\"""" "" """";
             '<font <<'color=red'>> bgcolor<<'='>>silver
             face=<<'"TADS-Sans"'>>>{ca<<'n\''>>t}</font>\'';
             "<font <<'color=red'>> bgcolor<<'='>>silver
             face=<<'"TADS-Sans"'>>>{ca<<'n\''>>t}</font>\"";
-            '''<s a1={is}a a2=a{is} a3=a{is}a b1='{is}b' b2='b{is}' b3='b{is}b'
-            c1="c{is}" c2="{is}c" c3="c{is}c" d1=\'d{is}\' d2=\'{is}d\'
-            d3=\'d{is}d\' e1=\"e{is}\" e2=\"{is}e\" e3=\"e{is}e\"></s>''';
-            """<s a1={is}a a2=a{is} a3=a{is}a b1='{is}b' b2='b{is}' b3='b{is}b'
-            c1="c{is}" c2="{is}c" c3="c{is}c" d1=\'d{is}\' d2=\'{is}d\'
-            d3=\'d{is}d\' e1=\"e{is}\" e2=\"{is}e\" e3=\"e{is}e\"></s>""";
-            '<s a1={is}a a2=a{is} a3=a{is}a c1="c{is}" c2="{is}c" c3="c{is}c"
-            d1=\'d{is}\' d2=\'{is}d\' d3=\'d{is}d\' e1=\"e{is}\" e2=\"{is}e\"
-            e3=\"e{is}e\"></s>';
-            "<s a1={is}a a2=a{is} a3=a{is}a b1='{is}b' b2='b{is}' b3='b{is}b'
-            d1=\'d{is}\' d2=\'{is}d\' d3=\'d{is}d\' e1=\"e{is}\" e2=\"{is}e\"
-            e3=\"e{is}e\"></s>";
+            '''<s a1={\.}a a2=a{\>} a3=a{\>}a b1='{\>}b' b2='b{\>}' b3='b{\>}b'
+            c1="c{\>}" c2="{\>}c" c3="c{\>}c" d1=\'d{\>}\' d2=\'{\>}d\'
+            d3=\'d{\>}d\' e1=\"e{\>}\" e2=\"{\>}e\" e3=\"e{\>}e\"></s>''';
+            """<s a1={\.}a a2=a{\>} a3=a{\>}a b1='{\>}b' b2='b{\>}' b3='b{\>}b'
+            c1="c{\>}" c2="{\>}c" c3="c{\>}c" d1=\'d{\>}\' d2=\'{\>}d\'
+            d3=\'d{\>}d\' e1=\"e{\>}\" e2=\"{\>}e\" e3=\"e{\>}e\"></s>""";
+            '<s a1={\.}a a2=a{\>} a3=a{\>}a c1="c{\>}" c2="{\>}c" c3="c{\>}c"
+            d1=\'d{\>}\' d2=\'{\>}d\' d3=\'d{\>}d\' e1=\"e{\>}\" e2=\"{\>}e\"
+            e3=\"e{\>}e\"></s>';
+            "<s a1={\.}a a2=a{\>} a3=a{\>}a b1='{\>}b' b2='b{\>}' b3='b{\>}b'
+            d1=\'d{\>}\' d2=\'{\>}d\' d3=\'d{\>}d\' e1=\"e{\>}\" e2=\"{\>}e\"
+            e3=\"e{\>}e\"></s>";
             '''{a<<1>>b}'''; """{a<<1>>b}"""; '{a<<1>>b}'; "{a<<1>>b}";
             '''<s a<<'='>>'1' b<<'='>>"2" c<<'='>>\'3\' d<<'='>>\"4\"
-            <<'e'>>=5>''';
-            """<s a<<'='>>'1' b<<'='>>"2" c<<'='>>\'3\' d<<'='>>\"4\">
-            <<'e'>>=5>""";
-            '<s b<<'='>>"2" c<<'='>>\'3\' d<<'='>>\"4\"> <<'e'>>=5>';
-            "<s a<<'='>>'1' c<<'='>>\'3\' d<<'='>>\"4\"> <<'e'>>=5>";
-            '''<font color='purple>igram</font>''';
-            '''<font color="purple>igram</font>''';
-            '''<font color=\'purple>igram</font>''';
+            <<'e'>>=5 f=6' g=7">''';
+            """<s a<<'='>>'1' b<<'='>>"2" c<<'='>>\'3\' d<<'='>>\"4\"
+            <<'e'>>=5 f=6' g=7">""";
+            '<s b<<'='>>"2" c<<'='>>\'3\' d<<'='>>\"4\" <<'e'>>=5 g=7">';
+            "<s a<<'='>>'1' c<<'='>>\'3\' d<<'='>>\"4\" <<'e'>>=5 f=6'>";
+            '''<s a=v\\ a=v\ v\><s a='{'}'\><s a="{"}"\>''';
+            """<s a=v\\ a=v\ v\><s a='{'}'\><s a="{"}"\>""";
+            '<s a=v\\ a=v\ v\><s a=\'{\'}\'\><s a="{"}"\>';
+            "<s a=v\\ a=v\ v\><s a='{'}'\><s a=\"{\"}\"\>";
+            '''<font color='purple>igram</font>'''; '''<t a={'''; '''}''';
+            '''<font color="purple>igram</font>'''; '''<t a='{'''; '''}''';
+            '''<font color=\'purple>igram</font>'''; '''<t a="{'''; '''}''';
             '''<font color=\"purple>igram</font>''';
-            """<font color='purple>igram</font>""";
-            """<font color="purple>igram</font>""";
-            """<font color=\'purple>igram</font>""";
+            """<font color='purple>igram</font>"""; """<t a={"""; """}""";
+            """<font color="purple>igram</font>"""; """<t a='{"""; """}""";
+            """<font color=\'purple>igram</font>"""; """<t a=\"{"""; """}""";
             """<font color=\"purple>igram</font>""";
-            '<font color="purple>igram</font>';
-            '<font color=\'purple>igram</font>';
-            '<font color=\"purple>igram</font>';
-            "<font color=\"purple>igram</font>";
-            "<font color='purple>igram</font>";
-            "<font color=\'purple>igram</font>";
+            '<font color="purple>igram</font>'; '<t a={'; '}';
+            '<font color=\'purple>igram</font>'; '<t a=\'{'; '}';
+            '<font color=\"purple>igram</font>'; '<t a="{'; '}';
+            "<font color=\"purple>igram</font>"; "<t a={"; "}";
+            "<font color='purple>igram</font>"; "<t a='{"; "}";
+            "<font color=\'purple>igram</font>"; "<t a=\"{"; "}\"";
+            '''<xmp a=v>&amp;\x26<b><\xmp></xmp a=v>''';
+            """<xmp a=v>&amp;\x26<b><\xmp></xmp a=v>""";
+            '<xmp a=v>&amp;\x26<b><\xmp></xmp a=v>';
+            "<xmp a=v>&amp;\x26<b><\xmp></xmp a=v>";
+            '''<xmp a=v>&amp;\x26<b><\xmp><\Xmp a=v>''';
+            """<xmp a=v>&amp;\x26<b><\xmp><\Xmp a=v>""";
+            '<xmp a=v>&amp;\x26<b><\xmp><\Xmp a=v>';
+            "<xmp a=v>&amp;\x26<b><\xmp><\Xmp a=v>";
+            '''<xmp a=v>&amp;\x26<b><\xmp><\\xmp a=v>''';
+            """<xmp a=v>&amp;\x26<b><\xmp><\\xmp a=v>""";
+            '<xmp a=v>&amp;\x26<b><\xmp><\\xmp a=v>';
+            "<xmp a=v>&amp;\x26<b><\xmp><\\xmp a=v>";
+            '''<xmp>'''; """<xmp>"""; '<xmp>'; "<xmp>";
+            '''<listing a=v>&amp;\x26<b><listing><xmp></listing a=v>''';
+            """<listing a=v>&amp;\x26<b><listing><xmp></listing a=v>""";
+            '<listing a=v>&amp;\x26<b><listing><xmp></listing a=v>';
+            "<listing a=v>&amp;\x26<b><listing><xmp></listing a=v>";
+            '''<listing a=v>&amp;\x26<b><listing><xmp><\listing a=v>''';
+            """<listing a=v>&amp;\x26<b><listing><xmp><\listing a=v>""";
+            '<listing a=v>&amp;\x26<b><listing><xmp><\listing a=v>';
+            "<listing a=v>&amp;\x26<b><listing><xmp><\listing a=v>";
+            '''<listing a=v>&amp;\x26<b><listing><xmp><\\listing a=v>''';
+            """<listing a=v>&amp;\x26<b><listing><xmp><\\listing a=v>""";
+            '<listing a=v>&amp;\x26<b><listing><xmp><\\listing a=v>';
+            "<listing a=v>&amp;\x26<b><listing><xmp><\\listing a=v>";
+            '''<listing>'''; """<listing>"""; '<listing>'; "<listing>";
         }
         finally
         {

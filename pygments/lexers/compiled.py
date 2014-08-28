@@ -5211,13 +5211,19 @@ class Tads3Lexer(RegexLexer):
     _name = r'(?:[_a-zA-Z]\w*)'
     _operator = (r'(?:&&|\|\||\+\+|--|\?\?|::|[.,@\[\]~]|'
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
-    _unquoted_string_terminator = r'(?=[\s"\'<>])'
+    _unquoted_string_terminator = r'(?=\s|\\?>)'
     _ws = r'(?:\\|\s|%s|%s)' % (_comment_single, _comment_multiline)
 
-    def _make_string_state(triple, double):
+    def _make_string_state(triple, double, verbatim=None, _escape=_escape):
+        if verbatim:
+            verbatim = ''.join(['(?:%s|%s)' % (re.escape(c.lower()),
+                                               re.escape(c.upper()))
+                                for c in verbatim])
         char = r'"' if double else r"'"
         token = String.Double if double else String.Single
         escaped_quotes = r'+|%s(?!%s{2})' % (char, char) if triple else r''
+        prefix = '%s%s' % ('t' if triple else '', 'd' if double else 's')
+        tag_state_name = '%sqt' % prefix
         state = []
         if triple:
             state += [
@@ -5228,56 +5234,82 @@ class Tads3Lexer(RegexLexer):
         else:
             state.append((char, token, '#pop'))
         state += [
-            include('s'),
-            (r'[^\\<&{}%s]+' % char, token),
-            (r'{([^}<%s]|<(?!<)|(?<=\\)<|((?<=\\)%s%s))*}' %
-             (char, char, escaped_quotes), String.Interpol),
-            (r'<(?:[^\s<>%s]|<(?!<)|((?<=\\)%s%s))*' %
-             (char, char, escaped_quotes), Name.Tag,
-             '%s%sqt' % ('t' if triple else '', 'd' if double else 's')),
-            (r'[\\&{}]', token)
+            include('s/verbatim'),
+            (r'[^\\<&{}%s]+' % char, token)
+        ]
+        if verbatim:
+            # This regex can't use `(?i)` because escape sequences are
+            # case-sensitive. `<\XMP>` works; `<\xmp>` doesn't.
+            state.append((r'\\?<(/|\\\\|(?!%s)\\)%s(?=[\s=>])' %
+                          (_escape, verbatim),
+                          Name.Tag, ('#pop', '%sqs' % prefix, tag_state_name)))
+        else:
+            state += [
+                (r'\\?<!([^><\\%s]|<(?!<)|\\%s%s|%s|\\.)*>?' %
+                 (char, char, escaped_quotes, _escape), Comment.Multiline),
+                (r'(?i)\\?<listing(?=[\s=>]|\\>)', Name.Tag,
+                 ('#pop', '%sqs/listing' % prefix, tag_state_name)),
+                (r'(?i)\\?<xmp(?=[\s=>]|\\>)', Name.Tag,
+                 ('#pop', '%sqs/xmp' % prefix, tag_state_name)),
+                (r'\\?<([^\s=><\\%s]|<(?!<)|\\%s%s|%s|\\.)*' %
+                 (char, char, escaped_quotes, _escape), Name.Tag,
+                 tag_state_name),
+                include('s/entity')
+            ]
+        state += [
+            include('s/escape'),
+            (r'{([^}<\\%s]|<(?!<)|\\%s%s|%s|\\.)*}' %
+             (char, char, escaped_quotes, _escape), String.Interpol),
+            (r'[\\&{}<]', token)
         ]
         return state
 
-    def _make_tag_state(triple, double):
+    def _make_tag_state(triple, double, _escape=_escape):
         char = r'"' if double else r"'"
         quantifier = r'{3,}' if triple else r''
         state_name = '%s%sqt' % ('t' if triple else '', 'd' if double else 's')
         token = String.Double if double else String.Single
+        escaped_quotes = r'+|%s(?!%s{2})' % (char, char) if triple else r''
         return [
             (r'%s%s' % (char, quantifier), token, '#pop:2'),
             (r'(\s|\\\n)+', Text),
-            (r'(=?)(\\?")', bygroups(Punctuation, String.Double),
+            (r'(=)(\\?")', bygroups(Punctuation, String.Double),
              'dqs/%s' % state_name),
-            (r"(=?)(\\?')", bygroups(Punctuation, String.Single),
+            (r"(=)(\\?')", bygroups(Punctuation, String.Single),
              'sqs/%s' % state_name),
             (r'=', Punctuation, 'uqs/%s' % state_name),
-            (r'(/|\\\\?)?(\s|\\\n)*>', Name.Tag, '#pop'),
-            (r'([^"\'=\s<>{}\\&]|<(?!<)|}(?!}))+', Name.Attribute),
-            include('s'),
-            (r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
-             (char, char, r'+|%s(?!%s{2})' % (char, char) if triple else r''),
-             String.Interpol),
+            (r'\\?>', Name.Tag, '#pop'),
+            (r'{([^}<\\%s]|<(?!<)|\\%s%s|%s|\\.)*}' %
+             (char, char, escaped_quotes, _escape), String.Interpol),
+            (r'([^\s=><\\%s]|<(?!<)|\\%s%s|%s|\\.)+' %
+             (char, char, escaped_quotes, _escape), Name.Attribute),
+            include('s/escape'),
+            include('s/verbatim'),
+            include('s/entity'),
             (r'[\\{}&]', Name.Attribute)
         ]
 
-    def _make_attribute_value_state(terminator, host_triple, host_double):
+    def _make_attribute_value_state(terminator, host_triple, host_double,
+                                    _escape=_escape):
         token = (String.Double if terminator == r'"' else
                  String.Single if terminator == r"'" else String.Other)
         host_char = r'"' if host_double else r"'"
         host_quantifier = r'{3,}' if host_triple else r''
         host_token = String.Double if host_double else String.Single
+        escaped_quotes = (r'+|%s(?!%s{2})' % (host_char, host_char)
+                          if host_triple else r'')
         return [
             (r'%s%s' % (host_char, host_quantifier), host_token, '#pop:3'),
-            (r'\\?%s' % terminator, token, '#pop'),
-            include('s'),
-            (r'{([^}<]|<(?!<)|(?<=\\)<)*}' if token is String.Other else
-             r'{([^}<%s]|<(?!<)|(?<=\\)(<|%s%s))*}' %
-             (terminator, terminator, r'+|%s(?!%s{2})' %
-              (terminator, terminator) if host_triple else r''),
-             String.Interpol),
-            (r'([^\s"\'<{}\\&]|<(?!<)|}(?!}))+', token),
-            (r'[\s"\'\\{}&]', token)
+            (r'%s%s' % (r'' if token is String.Other else r'\\?', terminator),
+             token, '#pop'),
+            include('s/verbatim'),
+            include('s/entity'),
+            (r'{([^}<\\%s]|<(?!<)|\\%s%s|%s|\\.)*}' %
+             (host_char, host_char, escaped_quotes, _escape), String.Interpol),
+            (r'([^\s"\'<%s{}\\&])+' % (r'>' if token is String.Other else r''),
+             token),
+            include('s/escape'),
+            (r'["\'\s&{<}\\]', token)
         ]
 
     tokens = {
@@ -5428,7 +5460,7 @@ class Tads3Lexer(RegexLexer):
             (r'operator\b', Keyword.Reserved, ('#pop', 'operator')),
             (r'propertyset\b', Keyword.Reserved,
              ('#pop', 'propertyset', 'main')),
-            (r'self', Name.Builtin.Pseudo, '#pop'),
+            (r'self\b', Name.Builtin.Pseudo, '#pop'),
             (r'template\b', Keyword.Reserved, ('#pop', 'template')),
 
             (r'delegated\b', Operator.Word),
@@ -5692,21 +5724,33 @@ class Tads3Lexer(RegexLexer):
             (r'"', String.Double, 'dqs'),
             (r"'", String.Single, 'sqs')
         ],
-        's': [
-            (r'{{|}}|%s' % _escape, String.Escape),
+        's/escape': [
+            (r'{{|}}|%s' % _escape, String.Escape)
+        ],
+        's/verbatim': [
             (r'<<\s*(as\s+decreasingly\s+likely\s+outcomes|cycling|else|end|'
              r'first\s+time|one\s+of|only|or|otherwise|'
              r'(sticky|(then\s+)?(purely\s+)?at)\s+random|stopping|'
              r'(then\s+)?(half\s+)?shuffled|\|\|)\s*>>', String.Interpol),
             (r'<<(%%(_(%s|\\?.)|[\-+ ,#]|\[\d*\]?)*\d*\.?\d*(%s|\\?.)|'
              r'\s*((else|otherwise)\s+)?(if|unless)\b)?' % (_escape, _escape),
-             String.Interpol, ('block/embed', 'more/embed', 'main')),
-            (r'(?i)&(#(x[\da-f]+|\d+)|[\da-z]+);?', Name.Entity)
+             String.Interpol, ('block/embed', 'more/embed', 'main'))
+        ],
+        's/entity': [
+            (r'(?i)&(#(x[\da-f]+|\d+)|[a-z][\da-z]*);?', Name.Entity)
         ],
         'tdqs': _make_string_state(True, True),
         'tsqs': _make_string_state(True, False),
         'dqs': _make_string_state(False, True),
         'sqs': _make_string_state(False, False),
+        'tdqs/listing': _make_string_state(True, True, 'listing'),
+        'tsqs/listing': _make_string_state(True, False, 'listing'),
+        'dqs/listing': _make_string_state(False, True, 'listing'),
+        'sqs/listing': _make_string_state(False, False, 'listing'),
+        'tdqs/xmp': _make_string_state(True, True, 'xmp'),
+        'tsqs/xmp': _make_string_state(True, False, 'xmp'),
+        'dqs/xmp': _make_string_state(False, True, 'xmp'),
+        'sqs/xmp': _make_string_state(False, False, 'xmp'),
 
         # Tags
         'tdqt': _make_tag_state(True, True),
