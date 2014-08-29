@@ -5317,12 +5317,17 @@ class Tads3Lexer(RegexLexer):
             (u'\ufeff', Text),
             (r'{', Punctuation, 'object-body'),
             (r';', Punctuation),
+            (r'(?=(argcount|break|case|catch|continue|default|definingobj|'
+             r'delegated|do|else|for|foreach|finally|goto|if|inherited|'
+             r'invokee|local|nil|new|operator|replaced|return|self|switch|'
+             r'targetobj|targetprop|throw|true|try|while)\b)', Text, 'block'),
             (r'(%s)(%s*)(\()' % (_name, _ws),
              bygroups(Name.Function, using(this, state='whitespace'),
                       Punctuation),
              ('block?/root', 'more/parameters', 'main/parameters')),
             include('whitespace'),
             (r'\++', Punctuation),
+            (r'[^\s!"%-(*->@-_a-z{-~]+', Error),  # Averts an infinite loop
             (r'(?!\Z)', Text, 'main/root')
         ],
         'main/root': [
@@ -5668,7 +5673,7 @@ class Tads3Lexer(RegexLexer):
             (r'transient\b', Keyword.Reserved),
             (_name, Name.Class, '#pop'),
             include('whitespace'),
-            (r'(?=>|;)', Text, '#pop')
+            default('#pop')
         ],
         'classes': [
             (r'[:,]', Punctuation, 'class'),

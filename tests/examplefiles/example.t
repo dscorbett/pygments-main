@@ -501,7 +501,15 @@ export level 'sinkLevel';
     has buttons for all the standard unary and binary operations.
     <<if(screen)>>The screen reads <<screen>>"
     screen = nil
+    literalMatch = ''
 ;
+
+method wrongContextMsg()
+{
+    return '<font face="TADS-Typewriter"><<highlight '<<'ERROR'>>'>> {{can\'t
+        use\ \"<<self.literalMatch>>\" in that context}}</font>. ';
+}
+
 
 portico: OutdoorRoom 'Portico'
     "Columns line the portico stretching east and west, and steps lead down to
@@ -799,9 +807,8 @@ DefineLiteralAction(Calculate)
         }
         catch (is in)
         {
-            calculator.setMethod(&screen, {: '<font face="TADS-Typewriter">
-                <<highlight '<<'ERROR'>>'>> {{can\'t\ use \"<<literalMatch>>\"
-                in that context}}</font>. ' });
+            calculator.literalMatch = literalMatch;
+            calculator.setMethod(&screen, &wrongContextMsg);
             "<<calculator.screen()>>";
         }
         catch (RuntimeError e)
