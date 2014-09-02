@@ -282,13 +282,13 @@ replace grammar predicate(ScrewWith): ' ': object;
     <<if labelToken.scoreCount>>is going to<<else>>will<<end>> be like as a
     woman.
     <<if decoratorToken.scoreCount>>Maybe she&rsquo;ll be a painter and expand
-    your business. <<end>>
+    your business.<<end>>
     <<if operatorToken.scoreCount>>Maybe she&rsquo;ll have a head for figures
     and will put the accounts in order.<<end>>
     <<if builtinToken.scoreCount>>She&rsquo;ll love you, obviously, but beyond
     that you don&rsquo;t know.<<end>><<end>>
     <<if commentToken.scoreCount>>If only Aphrodite would bring her to life
-    without this silly puzzle about tokens and mirrors!<<end>>\b"
+    without this silly puzzle about tokens and mirrors!<<end>> "
     material = 'ivory'
     propertyset 'is*'
     {
@@ -363,7 +363,7 @@ altarRoom: Room 'At the Altar'
                 "<<one of>><q>O Aphrodite,</q> you say, <q>comforter of
                 hopeless lovers, hear my prayer! May she to whom I have given
                 my heart be given body, soul, and life. And a colorful
-                personality. And&mdash;</q>\b
+                personality. And&mdash</q>\b
                 You are interrupted by a shimmering about the altar. As you
                 watch, it takes the form of a callipygian goddess.\b
                 <q>Mortal, I have heard your heart-felt and oft-repeated plea,
@@ -372,14 +372,14 @@ altarRoom: Room 'At the Altar'
                 <<highlight 'keyword'>> of life. Speak this word in the
                 presence of a mirror, and I will grant your request.</q>\b
                 She fades away, adding, <q>As for her colorful personality,
-                just look around you.</q><<or>><<stopping>>";
+                just look around you.</q> <<or>><<stopping>>";
             else if (key.location)
                 "<q>O Aphrodite,</q> you say, <q>what am I supposed to do
                 again?</q>\bThe goddess reappears and reminds you to speak the
                 keyword of life at a mirror. <<one of>><q>What&rsquo;s the
                 keyword, then?</q> <q>Gods help those who help themselves.
                 Figure it out yourself.</q><<or>><q>Why a mirror?</q> <q>I like
-                mirrors.</q><<purely at random>>";
+                mirrors.</q><<purely at random>> ";
             else if (offering == necklace)
             {
                 "Aphrodite reappears. <q>A necklace! Perfect!</q> The necklace
@@ -405,7 +405,8 @@ altarRoom: Room 'At the Altar'
 
 aphrodite: Unthing
     '(love) aphrodite/cytherea/god/goddess/venus love' 'Aphrodite'
-    'You need an altar to interact with a god. '
+    '<<if gActor.canSee(altar)>>You can only pray to a god.
+    <<else>>You need an altar to interact with a god. '
     location = (gPlayerChar)
     isProperName = true
     isHer = true
@@ -480,7 +481,7 @@ export level 'sinkLevel';
     }
 ;
 
-+ table: Fixture, Surface 'small end table' 'table'
++ table: Fixture, Surface 'small end bracket/table' 'table'
     "<<first time>>Upon closer inspection, you see that \v<<only>>The table is
     bracketed to the wall. "
 ;
@@ -510,27 +511,24 @@ method wrongContextMsg()
         use\ \"<<self.literalMatch>>\" in that context}}</font>. ';
 }
 
-
 portico: OutdoorRoom 'Portico'
     "Columns line the portico stretching east and west, and steps lead down to
     the south. The door leads back in, and beside the door is a basin. A
     <<highlight 'label'>> is affixed to the doorpost. "
-    north = door2
+    north = (__objref(error, error))
     in asExit(north)
     south: FakeConnector
     {
         "You begin moving away from the door, but then you remember the statue.
         The gods won&rsquo;t bring her to life if you give up this easily!
-        <<apparent = nil>>"
-        apparent = true;
-        isConnectorApparent(origin, actor) { return apparent; }
+        <<setMethod(&isConnectorApparent, {origin, actor: nil})>>"
     }
     east asExit(south)
     west asExit(south)
     down asExit(south)
 ;
 
-door2: LockableWithKey, Door ->door 'door' 'door' @portico "<<door.desc>>"
+error: LockableWithKey, Door ->door 'door' 'door' @portico "<<door.desc>>"
     keyList = (otherSide.keyList)
 ;
 
@@ -612,7 +610,7 @@ door2: LockableWithKey, Door ->door 'door' 'door' @portico "<<door.desc>>"
 
 trickling(water) multimethod
 {
-    if (__objref(sink, error).overflowing)
+    if (sink.overflowing)
     {
     dirs: for (local dir in Direction.allDirections)
         {
@@ -627,7 +625,7 @@ trickling(water) multimethod
     return 'a stagnant puddle';
 }
 
-class Water: PresentLater,Fixture'(floor) (ground) water puddle water''water'
+class Water:PresentLater,Fixture'(floor) (ground) water puddle water''water'
     "The water on the floor is <<trickling(self)>>. "
     disambigName = 'water on the floor'
     specialDesc = "The floor is covered with water. "
@@ -667,7 +665,7 @@ trickling(porticoWater w)
 
 /* Calculating */
 
-;;;class is: Exception { finalize { } };;; // MisusedOperatorError
+;;;class is: Exception { finalize { } };;; // InvalidSpecificationError
 
 DefineLiteralAction(Calculate)
     checkAction()
@@ -874,7 +872,9 @@ VerbRule(Calculate)
 /* Cleaning */
 
 modify VerbRule(Clean)
-    [badness 500] ('clean' | 'wash') dobjList:
+    [ /**//**/ // /* \\
+#define Room Unthing
+    badness 500] ('clean' | 'wash') dobjList:
 ;
 
 grammar predicate(CleanIn):
@@ -986,9 +986,8 @@ VerbRule(SayTo)
     verbPhrase = 'say/saying (what) (to what)'
 ;
 
-#if   0   /* Revere the basileus.
-*/ // Expel the barbarian.
-	dictionary barbarianDict;
+/**/ #if /* Revere the basileus. */ 0   \
+         // Expel the barbarian.
  #ifndef __DEBUG
   #define __DEBUG
 # else
@@ -996,8 +995,35 @@ VerbRule(SayTo)
   #define DEBUG__
 #endif
  #endif
+/*
+#endif
+?*/
+//\\
+#endif
+'''
+#endif
+'\''''
+#endif
+\\'''
+"""
+#endif
+"\""""
+#endif
+\\"""
+'
+#endif
+\'
+#endif
+\\'
+"
+#endif
+\"
+#endif
+\\"
+'<<
 	#	endif
-
+;
+dictionary barbarianDict;
 transient xyzzy: object;
 DefineIAction(Xyzzy)
     execAction
@@ -1102,6 +1128,10 @@ DefineIAction(Xyzzy)
     }
 ;
 
+#if 0
+>>' //'
+#endif
+
 VerbRule(Xyzzy)
     "xyzzy" | "plugh" *
     : XyzzyAction
@@ -1119,7 +1149,7 @@ randomGreekWord()
     local retries = 0;
     for (local r in 0 .. -1 step -1)
     {
-        for (local i = 0, local j = 2; i < j; ++i, --j)
+        for ((r), local i = 0, local j = 2; i < j; ++i, --j)
         {
             for (local s = 0, local n in [90, 30, 10]; ; --s)
                 retries -= s * n;

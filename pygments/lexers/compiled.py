@@ -5213,6 +5213,7 @@ class Tads3Lexer(RegexLexer):
                  r'(?:[=+\-*/%!&|^]|<<?|>>?>?)=?)')
     _unquoted_string_terminator = r'(?=\s|\\?>)'
     _ws = r'(?:\\|\s|%s|%s)' % (_comment_single, _comment_multiline)
+    _ws_pp = r'(?:\\\n|[^\S\n]|%s|%s)' % (_comment_single, _comment_multiline)
 
     def _make_string_state(triple, double, verbatim=None, _escape=_escape):
         if verbatim:
@@ -5316,7 +5317,7 @@ class Tads3Lexer(RegexLexer):
         'root': [
             (u'\ufeff', Text),
             (r'{', Punctuation, 'object-body'),
-            (r';', Punctuation),
+            (r';+', Punctuation),
             (r'(?=(argcount|break|case|catch|continue|default|definingobj|'
              r'delegated|do|else|for|foreach|finally|goto|if|inherited|'
              r'invokee|local|nil|new|operator|replaced|return|self|switch|'
@@ -5380,7 +5381,7 @@ class Tads3Lexer(RegexLexer):
             default('#pop')
         ],
         'block/basic': [
-            (r'[;:]', Punctuation),
+            (r'[;:]+', Punctuation),
             (r'{', Punctuation, '#push'),
             (r'}', Punctuation, '#pop'),
             (r'default\b', Keyword.Reserved),
@@ -5404,7 +5405,7 @@ class Tads3Lexer(RegexLexer):
 
             (r'\(', Punctuation, ('#pop', 'more', 'main')),
             (r'\[', Punctuation, ('#pop', 'more/list', 'main')),
-            (r'{', Punctuation, ('#pop', 'more/lambda', 'main/lambda',
+            (r'{', Punctuation, ('#pop', 'more/inner', 'main/inner',
                                  'more/parameters', 'main/parameters')),
             (r'\*|\.{3}', Punctuation, '#pop'),
             (r'(?i)0x[\da-f]+', Number.Hex, '#pop'),
@@ -5449,7 +5450,7 @@ class Tads3Lexer(RegexLexer):
             (r'enum\b', Keyword.Reserved, ('#pop', 'enum')),
             (r'export\b', Keyword.Reserved, ('#pop', 'main')),
             (r'(for|foreach)\b', Keyword.Reserved,
-             ('#pop', 'more/for', 'main/for')),
+             ('#pop', 'more/inner', 'main/inner')),
             (r'(function|method)\b', Keyword.Reserved,
              ('#pop', 'block?', 'function-name')),
             (r'grammar\b', Keyword.Reserved,
@@ -5493,8 +5494,8 @@ class Tads3Lexer(RegexLexer):
         'more/basic': [
             (r'\(', Punctuation, ('more/list', 'main')),
             (r'\[', Punctuation, ('more', 'main')),
-            (r'->', Punctuation, 'main'),
             (r'\.{3}', Punctuation),
+            (r'->|\.\.', Punctuation, 'main'),
             (r'(?=;)|[:)\]]', Punctuation, '#pop'),
             include('whitespace'),
             (_operator, Operator, 'main'),
@@ -5518,26 +5519,16 @@ class Tads3Lexer(RegexLexer):
             (r'>>', String.Interpol, '#pop:2'),
             include('more')
         ],
-        # For or foreach loop
-        'main/for': [
-            (r'\(', Punctuation),
+        # For/foreach loop initializer or short-form anonymous function
+        'main/inner': [
+            (r'\(', Punctuation, ('#pop', 'more/inner', 'main/inner')),
             (r'local\b', Keyword.Reserved, ('#pop', 'main/local')),
             include('main')
         ],
-        'more/for': [
-            (r',', Punctuation, 'main/for'),
-            (r'\.\.', Punctuation, 'main/for'),
-            (r'(in|step)\b', Keyword, 'main/for'),
-            include('more')
-        ],
-        # Short-form anonymous function
-        'main/lambda': [
-            (r'local\b', Keyword.Reserved, ('#pop', 'main/local')),
-            include('main')
-        ],
-        'more/lambda': [
+        'more/inner': [
             (r'}', Punctuation, '#pop'),
-            (r',', Punctuation, 'main/lambda'),
+            (r',', Punctuation, 'main/inner'),
+            (r'(in|step)\b', Keyword, 'main/inner'),
             include('more')
         ],
         # Local
@@ -5561,7 +5552,7 @@ class Tads3Lexer(RegexLexer):
             (r'(%s)(%s+)(%s)' % (_name, _ws, _name),
              bygroups(Name.Class, using(this, state='whitespace'),
                       Name.Variable), '#pop'),
-            (r'\[', Punctuation),
+            (r'\[+', Punctuation),
             include('main/basic'),
             (_name, Name.Variable, '#pop'),
             default('#pop')
@@ -5569,7 +5560,7 @@ class Tads3Lexer(RegexLexer):
         'more/parameters': [
             (r'(:)(%s*(?=[?=,:)]))' % _ws,
              bygroups(Punctuation, using(this, state='whitespace'))),
-            (r'[?\]]', Punctuation),
+            (r'[?\]]+', Punctuation),
             (r'[:)]', Punctuation, ('#pop', 'multimethod?')),
             (r',', Punctuation, 'main/parameters'),
             (r'=', Punctuation, ('more/parameter', 'main')),
@@ -5596,7 +5587,7 @@ class Tads3Lexer(RegexLexer):
             include('whitespace')
         ],
         'catch': [
-            (r'\(', Punctuation),
+            (r'\(+', Punctuation),
             (_name, Name.Exception, ('#pop', 'variables')),
             include('whitespace')
         ],
@@ -5605,7 +5596,7 @@ class Tads3Lexer(RegexLexer):
             (r'(token\b)?', Keyword, ('#pop', 'constants'))
         ],
         'grammar': [
-            (r'\)', Punctuation),
+            (r'\)+', Punctuation),
             (r'\(', Punctuation, 'grammar-tag'),
             (r':', Punctuation, 'grammar-rules'),
             (_name, Name.Class),
@@ -5619,8 +5610,7 @@ class Tads3Lexer(RegexLexer):
              r"R'''([^\\']|''?(?!')|\\'+|\\.)+'{3,}|"
              r'"([^\\"<]|\\.|<(?!<))+("|<<)|R"([^\\"]|\\.)+"|'
              r"'([^\\'<]|\\.|<(?!<))+('|<<)|R'([^\\']|\\.)+'|"
-             r"([^)\s\\/]|/(?![/*]))+|\)",
-             String.Other, '#pop')
+             r"([^)\s\\/]|/(?![/*]))+|\)", String.Other, '#pop')
         ],
         'grammar-rules': [
             include('string'),
@@ -5636,7 +5626,7 @@ class Tads3Lexer(RegexLexer):
             (r':', Punctuation, '#pop')
         ],
         'function-name': [
-            (r'<<([^>]|>>>|>(?!>))*>>', String.Other),
+            (r'(<<([^>]|>>>|>(?!>))*>>)+', String.Interpol),
             (r'(?=%s?%s*[({])' % (_name, _ws), Text, '#pop'),
             (_name, Name.Function, '#pop'),
             include('whitespace')
@@ -5681,7 +5671,7 @@ class Tads3Lexer(RegexLexer):
             (r'>?', Punctuation, '#pop')
         ],
         'constants': [
-            (r',', Punctuation),
+            (r',+', Punctuation),
             (r';', Punctuation, '#pop'),
             (r'property\b', Keyword.Reserved),
             (_name, Name.Constant),
@@ -5693,7 +5683,7 @@ class Tads3Lexer(RegexLexer):
             default('#pop')
         ],
         'variables': [
-            (r',', Punctuation),
+            (r',+', Punctuation),
             (r'\)', Punctuation, '#pop'),
             include('whitespace'),
             (_name, Name.Variable)
@@ -5701,25 +5691,29 @@ class Tads3Lexer(RegexLexer):
 
         # Whitespace and comments
         'whitespace': [
+            (r'^%s*#%s*if%s+(0|nil)%s*$\n?' % (_ws_pp, _ws_pp, _ws_pp, _ws_pp),
+             Comment.Preproc, 'if0'),
+            (r'^%s*#(%s|[^\n]|(?<=\\)\n)*' % (_ws_pp, _comment_multiline),
+             Comment.Preproc),
             (_comment_single, Comment.Single),
             (_comment_multiline, Comment.Multiline),
-            (r'^\s*#([^\S\n]|\\\n)*if([^\S\n]|\\\n)+(0|nil)'
-             r'(\\\n|[^\S\n]|%s|%s)*\n' %
-             (_comment_single, _comment_multiline), Comment.Preproc, 'if0'),
-            (r'^\s*#(%s|[^\n]|(?<=\\)\n)*' % _comment_multiline,
-             Comment.Preproc),
             (r'([^\S\n]|\\)+|\n+', Text)
         ],
         'if0': [
-            (r'^\s*#\s*if.*?(?<!\\)\n', Comment.Preproc, 'if0/inner'),
-            (r'^\s*#\s*el(se|if).*?\n', Comment.Preproc, '#pop'),
-            (r'^\s*#\s*endif.*?(?<!\\)\n', Comment.Preproc, '#pop'),
-            (r'\n+|.+?$', Comment)
+            (r'^%s*#%s*el(se|if).*?(?<!\\)$\n?' % (_ws_pp, _ws_pp),
+             Comment.Preproc, '#pop'),
+            include('if0/inner')
         ],
         'if0/inner': [
-            (r'^\s*#\s*if.*?(?<!\\)\n?', Comment.Preproc, '#push'),
-            (r'^\s*#\s*endif.*?(?<!\\)\n?', Comment.Preproc, '#pop'),
-            (r'\n+|.+?$', Comment)
+            (r'^%s*#%s*if.*?(?<!\\)$\n?' % (_ws_pp, _ws_pp), Comment.Preproc,
+             'if0/inner'),
+            (r'^%s*#%s*endif.*?(?<!\\)$\n?' % (_ws_pp, _ws_pp),
+             Comment.Preproc, '#pop'),
+            (r'"""([^\\"<]|""?(?!")|\\"+|\\.|<(?!<))*("{3,}|<<)|'
+             r"'''([^\\'<]|''?(?!')|\\'+|\\.|<(?!<))*('{3,}|<<)|"
+             r'"([^\\"<]|\\.|<(?!<))*("|<<)|\'([^\\\'<]|\\.|<(?!<))*(\'|<<)|'
+             r'[^/\n"\']+|%s|%s|/|\n+' % (_comment_single, _comment_multiline),
+             Comment)
         ],
 
         # Strings
