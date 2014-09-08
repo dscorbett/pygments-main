@@ -17,6 +17,12 @@ object /**//**/ // /* \\
 #define Room Unthing
     template [lst];
 
+/*
+ *   Quotations from "Le Roman de la Rose" are transcribed from MS. Douce 195,
+ *   owned by Bodleian Library, University of Oxford
+ *   (http://image.ox.ac.uk/show?collection=bodleian&manuscript=msdouce195).
+ */
+
 versionInfo: GameID
     IFID = '17d8efc3-07da-4dde-a837-ff7c4e386a77'
     name = 'Pygmentalion'
@@ -30,20 +36,21 @@ versionInfo: GameID
 ;
 
 /*
-     Pymalion fu ẽtailleꝛꝛes
-     Poᷣtrayãs en fus ⁊ en peꝛꝛeˢ
-     En metaulx en os ⁊ en cyꝛes
-     Et en touteˢ aultres matires
-     Quon peult a tel oeuure trouuer
-     Poᷣ ſon gꝛant engin eſpꝛouuer
-     Car maiſtre en fu bien dire loz
-     Ainſi com poᷣ acquerre loz
-     Se voult a poᷣtraire deduyꝛe
-     Si fiſt vng ymage diuuyꝛe
-     Et miſt au faire tel entente
-     Quel fu ſi plaiſãt et ſi gente
-     Quel ſembloit eſtre auſſi viue
-     Com la plus belle riens q̇ viue
+ *   Pymalion fu ẽtailleꝛꝛes.
+ *   Poᷣtrayãs en fus ⁊ en peꝛꝛeˢ
+ *   En metaulx en os ⁊ en cyꝛes
+ *   Et en touteˢ aultres matires.
+ *   Quon peult a tel oeuure trouuer.
+ *   Poᷣ ſon grant engin eſpꝛouuer.
+ *   Car maiſtre en fu bien dire loz.
+ *   Ainſi com poᷣ acquerre loz
+ *   Se voult a poᷣtraire deduyꝛe
+ *   Si fiſt vng ymage diuuyꝛe
+ *   Et miſt au faire tel entente
+ *   Quel fu ſi plaiſãt et ſi gente
+ *   Quel ſembloit eſtre auſſi viue.
+ *   Com la plus belle riens q̇ viue
+ *      (MS. Douce 195, fol. 149r)
  */
 
 modify _init()
@@ -112,22 +119,23 @@ modify cmdTokenizer
 /* Tokens */
 
 /*
-     Puiˢ li reueſt en maĩteˢ guiſes
-     Robeˢ faicteˢ ꝑ grãˢ maiſtriſes
-     De biaulx dꝛaps de ſoye ⁊ de laĩe
-     Deſcarlate de tiretaine
-     De vert de pers ⁊ de bꝛunecte
-     De couleᷣ freſche fine ⁊ necte
-     Ou moult a riches paneˢ miſes
-     Herminees vaires et griſes
-     Puis les li roſte puis reſſaye
-     Cõmant li ſiet robbe de ſaye
-     Sendaulx meloguins galebꝛunˢ
-     Indes vermeilz iaunes ⁊ bꝛunˢ
-     [...]
-     Aultre foiz luy repꝛẽd courage
-     De tout oſter ⁊ mectre guindeˢ
-     Iaunes vermeilles vers ⁊ indeˢ
+ *   Puiˢ li reueſt en maĩteˢ guiſes.
+ *   Robeˢ faicteˢ ꝑ grãˢ maiſtriſeˢ.
+ *   De biaulx dꝛaps de ſoye ⁊ de laĩe.
+ *   Deſcarlate de tiretaine
+ *   De vert de pers ⁊ de bꝛunecte
+ *   De couleᷣ freſche fine ⁊ necte
+ *   Ou moult a riches paneˢ miſes.
+ *   Herminees vaires et griſes
+ *   Puis les li roſte puis reſſaye.
+ *   Cõmant li ſiet robbe de ſaye
+ *   Sendaulx meloguins galebꝛunˢ.
+ *   Indes vermeilz iaunes ⁊ bꝛunˢ.
+ *   [...]
+ *   Aultre foiz luy repꝛẽd courage.
+ *   De tout oſter ⁊ mectre guindeˢ.
+ *   Iaunes vermeilles vers ⁊ indeˢ.
+ *      (MS. Douce 195, fol. 150r)
  */
 
 class Token: Achievement
@@ -349,13 +357,14 @@ altarRoom: Room 'At the Altar'
         action()
         {
             /*
-                 Biaulx dieux diſt il tout ce poez
-                 Sil voꝰ plaiſt ma requeſte oez
-                 [...]
-                 Et la belle q̇ mon cueᷣ emble
-                 Qui ſi bien yuoyꝛe reſſemble
-                 Deuiengne ma loyal amye
-                 De fẽme ait coꝛps ame et vie
+             *   Biaulx dieux diſt il tout ce poez.
+             *   Sil voꝰ plaiſt ma requeſte oez
+             *   [...]
+             *   Et la belle q̇ mon cueᷣ emble
+             *   Qui ſi bien yuoyꝛe reſſemble.
+             *   Deuiengne ma loyal amye
+             *   De fẽme ait coꝛps ame et vie
+             *      (MS. Douce 195, fol. 151r)
              */
             local offering;
             foreach (offering in contents);
@@ -943,17 +952,18 @@ DefineLiteralAction(Say)
                 else
                 {
                     /*
-                         Venus q̇ la pꝛiere ouyt
-                         [...]
-                         A lymage ẽvoya loꝛs lame
-                         Si deuĩt ſi treſbelle dame
-                         Quoncq̄s en toute la contree
-                         Not len ſi belle encontree
-                         [...]
-                         Doulx amys aĩs ſuy vꝛ̄e amye
-                         Pꝛeſte de voſtre compaignye
-                         Receuoir ⁊ mamoᷣ voꝰ offre
-                         Sil voꝰ plaiſt receuoir tel offre
+                     *   Venus q̇ la pꝛiere ouyt
+                     *   [...]
+                     *   A lymage ẽuoya loꝛs lame.
+                     *   Si deuĩt ſi treſbelle dame.
+                     *   Quoncq̄s en toute la contree.
+                     *   Not len ſi belle encontree.
+                     *   [...]
+                     *   Doulx amys aĩs ſuy vꝛ̄e amye.
+                     *   Pꝛeſte de voſtre compaignye.
+                     *   Receuoir ⁊ mamoᷣ voꝰ offre.
+                     *   Sil voꝰ plaiſt receuoir tel offre.
+                     *      (MS. Douce 195, fol. 151v)
                      */
                     "The air above the basin shimmers for a moment. You hear
                     the door opening behind you. Turning around, you see a
