@@ -219,7 +219,61 @@ class BatchLexer(RegexLexer):
 
     flags = re.MULTILINE | re.IGNORECASE
 
+    _punctuation = r'&|<>'
+    _token_delimiter = r'\r \t,;=\xff'
+    _token_end = r'"()%s%s\n' % (_token_delimiter, _punctuation)
+    _token_end_lookahead = r'(?=[%s])' % _token_end
+    _token = r'(?:[^%s]+)' % _token_end
+
     tokens = {
+        'basic': [
+            (r'@+', Punctuation)
+            (r'"', String.Double, ('args', 'string')),
+            (r'^[\w\W]', String.Escape, 'args'),
+            (r'[%s]+' % _punctuation, Punctuation),
+            (r'[%s]+' % _token_delimiter, Text),
+            (r'\(', Punctuation, 'compound'),
+            (r'\).*', Text),
+            (r'%%?((~[$:\w])?\d|[^%:\n]+(:?%|:(~\d?,?\d?|'
+             r'\*?([^^]|^[\w\W])+=([^^]|^[\w\W])*)?%))', Name.Variable, 'args'),
+            (r'![\w\W]*!', Name.Variable, 'args'),
+            (r':%s' % _token, Name.Label)
+            (r'(assoc|cd|cls|color|copy|date|del|dir|dpath|echo|endlocal|'
+             r'erase|exit|ftype|md|mklink|move|path|pause|popd|prompt|pushd|'
+             r'ren|rename|rd|rmdir|setlocal|shift|time|title|type|ver|verify|'
+             r'vol)\b', Keyword, 'args'),
+            (r'call\b'),
+            (r'for\b'),
+            (r'goto\b', Keyword, 'label'),
+            (r'(if)([%s]+)(?:(?:(not)([%s]+))?)(exist)([%s]+)(%s)' %
+             (_token_delimiter, _token_delimiter, _token_delimiter, _token),
+             bygroups(Keyword, Text, Keyword, Text, Keyword, Text,
+                      using(this)),
+             'if'),
+            (r'rem\b.*', Comment.Single), # TODO: consume two tokens
+            (r'set\b'),
+            (r'start\b'),
+            (r'\n+', Text, '#pop'),
+        ],
+        'root': [
+            include('basic'),
+            (r'.', Text, 'args')
+        ],
+        'args': [
+            (r'[()]', Text),
+            include('basic'),
+            (r'.', Text)
+        ],
+        'compound': [
+            (r'\(', Punctuation, '#push'),
+            (r'\)', Punctuation, '#pop'),
+            include('root')
+        ],
+        'string': [
+            (r'[^"^]+', String.Double),
+            (r'^[\w\W]', String.Escape),
+            (r'"', String.Double, '#pop')
+        ],
         'root': [
             # Lines can start with @ to prevent echo
             (r'^\s*@', Punctuation),
