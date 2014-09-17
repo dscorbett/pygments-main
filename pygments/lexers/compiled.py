@@ -5843,25 +5843,24 @@ class Tads3Lexer(RegexLexer):
         ]
     }
 
-    def get_tokens_unprocessed(self, text, _ws_pp=_ws_pp, **kwargs):
+    def get_tokens_unprocessed(self, text, **kwargs):
+        pp = r'^%s*#%s*' % (self._ws_pp, self._ws_pp)
         if_false_level = 0
         for index, token, value in (
             RegexLexer.get_tokens_unprocessed(self, text, **kwargs)):
             if if_false_level == 0:  # Not in a false #if
                 if (token is Comment.Preproc and
-                    re.match(r'^%s*#%s*if%s+(0|nil)%s*$\n?' %
-                             (_ws_pp, _ws_pp, _ws_pp, _ws_pp), value)):
+                    re.match(r'%sif%s+(0|nil)%s*$\n?' %
+                             (pp, self._ws_pp, self._ws_pp), value)):
                     if_false_level = 1
             else:  # In a false #if
                 if token is Comment.Preproc:
                     if (if_false_level == 1 and
-                          re.match(r'^%s*#%s*(elif|else)\b' % (_ws_pp, _ws_pp),
-                                   value)):
+                          re.match(r'%sel(if|se)\b' % pp, value)):
                         if_false_level = 0
-                    elif re.match(r'^%s*#%s*if' % (_ws_pp, _ws_pp), value):
+                    elif re.match(r'%sif' % pp, value):
                         if_false_level += 1
-                    elif re.match(r'^%s*#%s*endif\b' % (_ws_pp, _ws_pp),
-                                  value):
+                    elif re.match(r'%sendif\b' % pp, value):
                         if_false_level -= 1
                 else:
                     token = Comment
