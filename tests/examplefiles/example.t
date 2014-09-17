@@ -441,7 +441,7 @@ sinkRoom: Room 'Washroom'
 
 property level, overflowing;
 export overflowing;
-export level 'sinkLevel';
+export level 'waterLevel';
 + sink: Fixture '(auto) (mop) auto-sink/autosink/bowl/drain/faucet/sink' 'sink'
     "This is a state-of-the-art mop sink with anti-miasmic coating and bronze
     backsplash. It is so modern, there are no handles or other obvious ways to
@@ -998,13 +998,22 @@ VerbRule(SayTo)
 
 /**/ #if /* Revere the basileus. */ 0   \
          // Expel the barbarian.
+;
  #ifndef __DEBUG
+;
   #define __DEBUG
+;
 # else
+;
 #if 1
+;
   #define DEBUG__
+;
 #endif
+;
  #endif
+;\\
+#endif
 /*
 #endif
 ?*/
@@ -1030,7 +1039,27 @@ VerbRule(SayTo)
 \"
 #endif
 \\"
-'<<
+'''<<'<<'
+#endif
+'>>'>>
+#endif
+'''
+"""<<'<<'
+#endif
+'>>'>>
+#endif
+"""
+'<<'<<'
+#endif
+'>>'>>
+#endif
+'
+"<<'<<'
+#endif
+'>>'>>
+#endif
+"//"
+\
 	#	endif
 ;
 dictionary barbarianDict;
@@ -1137,10 +1166,6 @@ DefineIAction(Xyzzy)
         }
     }
 ;
-
-#if 0
->>' //'
-#endif
 
 VerbRule(Xyzzy)
     "xyzzy" | "plugh" *

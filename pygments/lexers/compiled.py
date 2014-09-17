@@ -5274,7 +5274,7 @@ class Tads3Lexer(RegexLexer):
 
     _comment_single = r'(?://(?:[^\\\n]|\\+[\w\W])*$)'
     _comment_multiline = r'(?:/\*(?:[^*]|\*(?!/))*\*/)'
-    _escape = (r'(?:\\(?:[\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
+    _escape = (r'(?:\\(?:[\n\\<>"\'^v bnrt]|u[\da-fA-F]{,4}|x[\da-fA-F]{,2}|'
                r'[0-3]?[0-7]{1,2}))')
     _name = r'(?:[_a-zA-Z]\w*)'
     _no_quote = r'(?=\s|\\?>)'
@@ -5758,29 +5758,11 @@ class Tads3Lexer(RegexLexer):
 
         # Whitespace and comments
         'whitespace': [
-            (r'^%s*#%s*if%s+(0|nil)%s*$\n?' % (_ws_pp, _ws_pp, _ws_pp, _ws_pp),
-             Comment.Preproc, 'if0'),
-            (r'^%s*#(%s|[^\n]|(?<=\\)\n)*' % (_ws_pp, _comment_multiline),
+            (r'^%s*#(%s|[^\n]|(?<=\\)\n)*\n?' % (_ws_pp, _comment_multiline),
              Comment.Preproc),
             (_comment_single, Comment.Single),
             (_comment_multiline, Comment.Multiline),
-            (r'([^\S\n]|\\)+|\n+', Text)
-        ],
-        'if0': [
-            (r'^%s*#%s*el(se|if).*?(?<!\\)$\n?' % (_ws_pp, _ws_pp),
-             Comment.Preproc, '#pop'),
-            include('if0/inner')
-        ],
-        'if0/inner': [
-            (r'^%s*#%s*if.*?(?<!\\)$\n?' % (_ws_pp, _ws_pp), Comment.Preproc,
-             'if0/inner'),
-            (r'^%s*#%s*endif.*?(?<!\\)$\n?' % (_ws_pp, _ws_pp),
-             Comment.Preproc, '#pop'),
-            (r'"""([^\\"<]|""?(?!")|\\"+|\\.|<(?!<))*("{3,}|<<)|'
-             r"'''([^\\'<]|''?(?!')|\\'+|\\.|<(?!<))*('{3,}|<<)|"
-             r'"([^\\"<]|\\.|<(?!<))*("|<<)|\'([^\\\'<]|\\.|<(?!<))*(\'|<<)|'
-             r'[^/\n"\']+|%s|%s|/|\n+' % (_comment_single, _comment_multiline),
-             Comment)
+            (r'\\+\n+%s*#?|\n+|([^\S\n]|\\)+' % _ws_pp, Text)
         ],
 
         # Strings
@@ -5860,3 +5842,27 @@ class Tads3Lexer(RegexLexer):
             (r"'", String.Regex, '#pop')
         ]
     }
+
+    def get_tokens_unprocessed(self, text, _ws_pp=_ws_pp, **kwargs):
+        if_false_level = 0
+        for index, token, value in (
+            RegexLexer.get_tokens_unprocessed(self, text, **kwargs)):
+            if if_false_level == 0:  # Not in a false #if
+                if (token is Comment.Preproc and
+                    re.match(r'^%s*#%s*if%s+(0|nil)%s*$\n?' %
+                             (_ws_pp, _ws_pp, _ws_pp, _ws_pp), value)):
+                    if_false_level = 1
+            else:  # In a false #if
+                if token is Comment.Preproc:
+                    if (if_false_level == 1 and
+                          re.match(r'^%s*#%s*(elif|else)\b' % (_ws_pp, _ws_pp),
+                                   value)):
+                        if_false_level = 0
+                    elif re.match(r'^%s*#%s*if' % (_ws_pp, _ws_pp), value):
+                        if_false_level += 1
+                    elif re.match(r'^%s*#%s*endif\b' % (_ws_pp, _ws_pp),
+                                  value):
+                        if_false_level -= 1
+                else:
+                    token = Comment
+            yield index, token, value
