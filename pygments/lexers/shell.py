@@ -12,7 +12,7 @@
 import re
 
 from pygments.lexer import Lexer, RegexLexer, do_insertions, bygroups, \
-     include, default
+     include, default, this, using
 from pygments.token import Punctuation, \
      Text, Comment, Operator, Keyword, Name, String, Number, Generic
 from pygments.util import shebang_matches
@@ -24,7 +24,7 @@ __all__ = ['BashLexer', 'BashSessionLexer', 'TcshLexer', 'BatchLexer',
 line_re  = re.compile('.*?\n')
 
 
-class BashLexer(RegexLexer):
+tclass BashLexer(RegexLexer):
     """
     Lexer for (ba|k|)sh shell scripts.
 
@@ -229,25 +229,25 @@ class BatchLexer(RegexLexer):
     _keyword_terminator = (r'(?=(?:(?:\^[%s])*)(?:[%s]|\^?[%s%s(+./:[\\\]]))' %
                            (_nl, _nl, _punct, _ws))
     _token_terminator = r'(?=\^?[%s]|[%s%s])' % (_ws, _punct, _nl)
-    _token = r'(?:[%s]+|(?:\^?[^%s%s%s^]|^[%s])*)' % (_punct, _nl, _punct, _ws,
-                                                      _nl)
-    _label = r'(?:(?:\^?[^%s+:^])*)' % _ws
-    
+    _token = r'(?:[%s]+|(?:\^?[^%s%s%s^]|\^[%s%s])+)' % (_punct, _nl, _punct,
+                                                        _ws, _nl, _ws)
+    _label = r'(?:(?:\^?[^%s%s+:^])*)' % (_nl, _ws)
+
     # TODO:
     # KanjiScan
-    # ; is not a delimiter with PROMPT (see PGETARG) (is that important?)
     # `echo foo)` vs `(echo foo)`
-    # re.DOTALL?
     # `^^!`
     # `^\n` between chars and escaped chars in keywords
     # ^H deletes previous character
-    # test newline-terminated string
+    # newline-terminated string
     # rem and goto and : (others?) only parse one arg (relevant for ^<LF>)
-    # ... but only if the first token is `rem` etc. i.e. `rem.x x x x x^` cont^
-    # inues onto the next line properly
+    # ... but only if the first token is `rem` i.e. `rem.x x x x x^` continues
+    # onto the next line properly. `goto` parses all. `:` parses 1 or 0.
     # `rem x^ x`: `x^ x` is one token, at least for my purposes
     # `rem /? x^`
-    # Use _nl instead of \n (except after ^@).
+    # `rem >^`
+    # re.DOTALL?
+    # Use _nl instead of \n (except after ^@). Use [^_nl] instead of ..
     # BOM? Unicode?
     # labels: http://www.dostips.com/forum/viewtopic.php?f=3&t=3803
     # `>nul rem a b^`
@@ -260,144 +260,166 @@ class BatchLexer(RegexLexer):
     # Number in `if 1 gtr 1` and Name.Variable in `if [%x%]==[]`
     tokens = {
         'root': [
-            # L = at the start of a logical line
-            # S = at the start of a statement
-            # C = in a compound statement
-            # E = where `else` would be a keyword
-            # 
-            # .... 
-            # ...E X sE
-            # ..C. 
-            # ..CE X sE
-            # .S.. 
-            # .S.E 
-            # .SC. 
-            # .SCE 
-            # L... X Ls
-            # L..E X Ls,LE,sE
-            # L.C. X Ls,LC
-            # L.CE X Ls,LC,LE,sE
-            # LS.. 
-            # LS.E X LE
-            # LSC. X LC
-            # LSCE X LC,LE
-            include('LS..')
-        ],
-        '....': [
-            # middle of simple statement
-            # \n -> #pop
-            # & -> .S..
-        ],
-        '..C.': [
-            # middle of compound statement
-            # ?=) -> #pop
-            # \n -> #pop
-            # & -> #pop
-        ],
-        '.S..': [
-            # start of simple statement in pipeline
-            # rem -> #pop, LS..
-            # ( -> .SC.
-            # if?=( -> .S.E
-            # if -> ----
-            #  -> ....
-        ],
-        '.S.E': [
-            # start of simple statement after `if`
-        ],
-        '.SC.': [
-            # start of compound statement in pipeline
-            # ( -> .SC.
-            # ) -> #pop
-            # rem -> ----
-        ],
-        '.SCE': [
-            # start of compound statement after `if`
-        ],
-        'LS..': [
-            # start of line
-            # ( -> LSC.
-            # rem -> ----
-            # if -> ????
-            #  -> ....
-        ],
-        
-        'command': [
-            (r'@+', Punctuation),
-            (r'\(', Punctuation, 'compound'),
+            include('*'),
             (r'\)%s%s' % (_token_terminator, _rest_of_line), Comment.Single),
-            (r'\|\|?|&&?', Punctuation),
+            default('pump-statement')
+        ],
+        'begin-statement': [
+            include('*'),
+            (r'(?=[%s])' % _nl, Text, '#pop:2'),
+            (r'\(', Punctuation, 'pump-statement/compound'),
+            (r'@+', Punctuation),
+            (r'((?:for|if|rem)(?:%s(?=%s%s?\^?/\^?\?)|(?=\^?/\^?\?)))' %
+             (_token_terminator, _space, _token), Keyword, '#pop:2'),
             (r'(assoc|break|cd|chdir|cls|color|copy|del|dir|date|echo|'
              r'endlocal|erase|exit|ftype|md|mkdir|move|path|pause|popd|prompt|'
              r'pushd|rd|ren|rename|rmdir|setlocal|shift|start|time|title|type|'
-             r'ver|verify|vol)%s' % _keyword_terminator, Keyword, 'args'),
-#            (r'call%s' % _keyword_terminator),
-#            (r'for%s' % _keyword_terminator),
+             r'ver|verify|vol)%s' % _keyword_terminator, Keyword, '#pop:2'),
+            (r'call%s' % _keyword_terminator, Keyword, 'call'),
+            (r'(for%s)(%s?)(/f%s)' %
+             (_token_terminator, _space, _token_terminator),
+             bygroups(Keyword, Text, Keyword), ('for/f', 'for')),
+            (r'(for%s)(%s?)(/l%s)' %
+             (_token_terminator, _space, _token_terminator),
+             bygroups(Keyword, Text, Keyword), ('for/l', 'for')),
+            (r'for%s' % _token_terminator, Keyword, ('for2', 'for')),
             (r'(goto%s)(%s?)(:?)(%s?)(%s)' %
              (_keyword_terminator, _space, _label, _rest_of_line),
-             bygroups(Keyword, Text, Punctuation, Name.Label, Comment.Single)),
-            (r'((?:if|rem)(?:%s(?=%s%s?\^?/\^?\?)|(?=\^?/\^?\?)))' %
-             (_token_terminator, _space, _token), Keyword, 'args'),
+             bygroups(Keyword, Text, Punctuation, Name.Label, Comment.Single),
+             '#pop:2'),
             (r'(if%s)(%s?)((?:/i%s)?)(%s?)((?:not%s)?)(%s?)' %
              (_token_terminator, _space, _token_terminator, _space,
               _token_terminator, _space),
              bygroups(Keyword, Text, Keyword, Text, Keyword, Text),
-             ('(', 'if')),
+             ('(?', 'if')),
             (r'rem(%s%s%s.*|%s%s)' % (_token_terminator, _space, _token,
                                       _keyword_terminator, _rest_of_line),
-             Comment.Single),
-#            (r'set%s' % _keyword_terminator),
-            default('args')
+             Comment.Single, '#pop:2'),
+            (r'(set%s)(%s?)(/a)' % (_keyword_terminator, _space),
+             bygroups(Keyword, Text, Keyword), '#pop'),
+            (r'(set%s)(%s?)((?:/p)?)(%s?)((?:(?!\^?[%s]?["%s])'
+             r'(?:\^?[^%s%s^=]|\^[%s]?[\w\W])+)?)(=?)' %
+             (_keyword_terminator, _space, _space, _nl, _ws, _nl, _punct, _nl),
+             bygroups(Keyword, Text, Keyword, Text, Name.Variable,
+                      Punctuation), '#pop:2'),
+            default('#pop:2')
         ],
-        'args': [
-            (r'[(%s]+' % _nl, Text, '#pop'),
-            (r'\)', Text),
-            (r'\x00.*\n?', Comment.Single),
-            (r'".*?["%s]' % _nl, String.Double),
-            (r'\^[%s]?[\w\W]' % _nl, String.Escape),
-            (r'[%s]+' % _ws, Text),
-            (r'%%?((~[$:\w])?\d|[^%:\n]+(:?%|:(~\d?,?\d?|\*?([^^]|^[\w\W])+='
-             r'([^^]|^[\w\W])*)?%))|!+[^!%s]+!', Name.Variable, 'args'),
-            (r'[%s]+' % _nl, Text),
-            (r'(^[^:]?[%s]*)(:)([%s]*)(%s)(%s)' %
-             (_ws, _ws, _label, _rest_of_line),
-             bygroups(Text, Punctuation, Text, Name.Label, Comment.Single)),
-            (r'(>>?&|<&)([%s%s]*)(\d)' % (_ws, _nl),
-             bygroups(Punctuation, Text, Number)),
-            (r'(>>?|<)((?:%s)*%s)' % (_space, _token),
-             bygroups(Punctuation, Text)),
-            (r'[<>]', Text.Todo) # TODO: Error
-            (r'(?=[|&])', Text, '#pop'),
+        'arithmetic': [
+            (r'0[0-7]+', Number.Octal),
+            (r'0x[0-9a-f]+', Number.Hex),
+            (r'\d+', Number.Integer),
+            (r'[(),]+', Punctuation),
+            (r'([=+\-*/!~]|%%|\^\^)+', Operator),
+            (r'(?![%s"^%%])%s' % (_punct, _token), Name.Variable),
+            # TODO: `set/a >o.txt x=4`
+            (r'(?=[\x00|&])', Text, '#pop'),
+            include('follow-statement')
+        ],
+        'follow-statement': [
+            include('*'),
+            (r'(?=[%s])' % _nl, Text, '#pop'),
+            (r'\x00.*\n?', Comment.Single, '#pop'),
+            (r'"[^%s"]*"?' % _nl, String.Double),
+            (r'%%%%|\^[%s]?[\w\W]' % _nl, String.Escape),
+            # TODO: variables in FOR
+            # TODO: %x~1,-1%
+            # TODO: variables inside strings
+            # TODO: test variable %foo:~-,% (which is legal)
+            (r'%%(\*|(~[a-z]*($[^:]+:)?)?\d|[^%%:%s]+(:(~(-?\d+)?(,-?\d+)?|'
+             r'\*?([^^]|\^[^%%])+=([^^]|\^[^%%])*))?%%)' % _nl, Name.Variable),
+            (r'\|\|?|&&?', Punctuation, '#pop'),
             (r'.', Text) # TODO: more characters at a time
         ],
-        'compound': [
-            (r'\(', Punctuation, '#push'),
+        'pump-statement': [
+            (r'[%s]+' % _nl, Text, '#pop'),
+            default(('follow-statement', 'arithmetic', 'begin-statement'))
+        ],
+        'begin-statement/compound': [
+            include('*'),
+            (r'(?=\))', Text, '#pop:2'), # TODO: pop directly to the pump
+            include('begin-statement')
+        ],
+        'arithmetic/compound': [
+            (r'(?=\))', Text, '#pop'),
+            include('arithmetic')
+        ],
+        'follow-statement/compound': [
+            include('*'),
+            (r'(?=\))', Text, '#pop'),
+            include('follow-statement')
+        ],
+        'pump-statement/compound': [
+            (r'[%s]+' % _nl, Text, '#pop'),
             (r'\)', Punctuation, '#pop'),
-            include('root')
+            default(('follow-statement/compound', 'arithmetic/compound',
+                     'begin-statement/compound'))
+        ],
+        '*': [
+            (r'(^[^:]?[%s]*)(:)([%s]*)(%s)(.*)' % (_ws, _ws, _label),
+             bygroups(Text, Punctuation, Text, Name.Label, Comment.Single)),
+            (_space, Text),
+            (r'(>>?&|<&)([%s%s]*)(\d)' % (_ws, _nl),
+             bygroups(Punctuation, Text, Number.Integer)),
+            (r'(>>?|<)((?:%s)?%s)' % (_space, _token),
+             bygroups(Punctuation, Text))
+        ],
+        'call': [
+            (_space, Text),
+            (r'(::?)(%s)' % _label, bygroups(Punctuation, Name.Label),
+             '#pop:2'),
+            default('#pop')
+        ],
+        'for': [
+            (r'(%s)(in)(%s)(\()' % (_space, _space),
+             bygroups(Text, Keyword, Text, Punctuation), '#pop'),
+            include('follow-statement')
+        ],
+        'for2': [
+            (r'\)', Punctuation),
+            (r'(%s)(do%s)' % (_space, _token_terminator),
+             bygroups(Text, Keyword), '#pop'),
+            include('follow-statement')
+        ],
+        'for/f': [
+            (r'"[^"]*"', String.Double),
+            (r'`[^`]*`', String.Backtick),
+            include('for2')
+        ],
+        'for/l': [
+            (r'-?\d+', Number.Integer),
+            (r',', Punctuation),
+            include('for2')
         ],
         'if': [
             (r'((?:cmdextversion|errorlevel)%s)(%s)(\d+)' %
              (_token_terminator, _space),
-             bygroups(Keyword, Text, Number), '#pop'),
+             bygroups(Keyword, Text, Number.Integer), '#pop'),
             (r'(defined%s)(%s)(%s)' % (_token_terminator, _space, _token),
              bygroups(Keyword, Text, Name.Variable), '#pop'),
             (r'(exist%s)(%s%s)' % (_token_terminator, _space, _token),
-             bygroups(Keyword, Text)),
+             bygroups(Keyword, Text), '#pop'),
             (r'(%s%s?)(==)(%s?%s)' % (_token, _space, _space, _token),
-             bygroups(Text, Operator, Text)),
-            (r'(%s%s)(equ|geq|gtr|leq|lss|neq)(%s%s)' %
+             bygroups(Text, Operator, Text), '#pop'),
+            (r'(%s)(%s)(equ|geq|gtr|leq|lss|neq)(%s)(%s)' %
              (_token, _space, _space, _token),
-             bygroups(Text, Operator.Word, Text), '#pop')
+             bygroups(using(this, state='arithmetic/if'), Text, Operator.Word,
+                      Text, using(this, state='arithmetic/if')), '#pop')
         ],
-        '(': [
+        'arithmetic/if': [
+            (r'(?![%s"^%%\d(),=+\-*/!~])%s' % (_punct, _token), Text),
+            include('arithmetic')
+        ],
+        '(?': [
             (_space, Text),
-            (r'\(', Punctuation, ('#pop', 'else', 'compound')),
+            (r'\(', Punctuation, ('#pop', 'else?', 'pump-statement/compound')),
             default('#pop')
         ],
-        'else': [
+        'else?': [
             (_space, Text),
-            (r'(else%s)?' % _token_terminator, Keyword, '#pop')
+            (r'else%s' % _token_terminator, Keyword, '#pop'),
+            default('#pop')
         ],
+
         '_root': [
             # Lines can start with @ to prevent echo
             (r'^\s*@', Punctuation),
@@ -415,14 +437,14 @@ class BatchLexer(RegexLexer):
              r'setlocal|shift|errorlevel|exist|defined|cmdextversion|'
              r'errorlevel|else|cd|md|del|deltree|cls|choice)\b', Keyword),
             (r'\b(equ|neq|lss|leq|gtr|geq)\b', Operator),
-            include('basic'),
+            include('_basic'),
             (r'.', Text),
         ],
         '_echo': [
             # Escapes only valid within echo args?
             (r'\^\^|\^<|\^>|\^\|', String.Escape),
             (r'\n', Text, '#pop'),
-            include('basic'),
+            include('_basic'),
             (r'[^\'"^]+', Text),
         ],
         '_basic': [
