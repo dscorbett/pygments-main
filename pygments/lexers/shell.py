@@ -24,7 +24,7 @@ __all__ = ['BashLexer', 'BashSessionLexer', 'TcshLexer', 'BatchLexer',
 line_re  = re.compile('.*?\n')
 
 
-tclass BashLexer(RegexLexer):
+class BashLexer(RegexLexer):
     """
     Lexer for (ba|k|)sh shell scripts.
 
@@ -234,11 +234,15 @@ class BatchLexer(RegexLexer):
     _label = r'(?:(?:\^?[^%s%s+:^])*)' % (_nl, _ws)
 
     # TODO:
+    # goto and set in compounds
+    # if %var%
+    # if not "%cd:0,3%"
+    # set /a iterations+=(%%M%%M^)
+
+    # TODO:
     # KanjiScan
     # `echo foo)` vs `(echo foo)`
     # `^^!`
-    # `^\n` between chars and escaped chars in keywords
-    # ^H deletes previous character
     # newline-terminated string
     # rem and goto and : (others?) only parse one arg (relevant for ^<LF>)
     # ... but only if the first token is `rem` i.e. `rem.x x x x x^` continues
@@ -254,10 +258,11 @@ class BatchLexer(RegexLexer):
     # check ^ before everything everywhere
     # `%%`
     # account for \x00 when detecting next token
-    # `if/?`
-    # lex escaped _space as String.Escape not Token
+    # lex escaped _space as String.Escape not Text
     # allow variables (which can include ws) in _token
     # Number in `if 1 gtr 1` and Name.Variable in `if [%x%]==[]`
+    # `^\n` between chars and escaped chars in keywords
+    # ^H deletes previous character
     tokens = {
         'root': [
             include('*'),
@@ -305,7 +310,7 @@ class BatchLexer(RegexLexer):
             default('#pop:2')
         ],
         'arithmetic': [
-            (r'0[0-7]+', Number.Octal),
+            (r'0[0-7]+', Number.Oct),
             (r'0x[0-9a-f]+', Number.Hex),
             (r'\d+', Number.Integer),
             (r'[(),]+', Punctuation),
@@ -349,7 +354,7 @@ class BatchLexer(RegexLexer):
             include('follow-statement')
         ],
         'pump-statement/compound': [
-            (r'[%s]+' % _nl, Text, '#pop'),
+            (r'[%s]+' % _nl, Text),
             (r'\)', Punctuation, '#pop'),
             default(('follow-statement/compound', 'arithmetic/compound',
                      'begin-statement/compound'))
@@ -358,10 +363,12 @@ class BatchLexer(RegexLexer):
             (r'(^[^:]?[%s]*)(:)([%s]*)(%s)(.*)' % (_ws, _ws, _label),
              bygroups(Text, Punctuation, Text, Name.Label, Comment.Single)),
             (_space, Text),
-            (r'(>>?&|<&)([%s%s]*)(\d)' % (_ws, _nl),
-             bygroups(Punctuation, Text, Number.Integer)),
-            (r'(>>?|<)((?:%s)?%s)' % (_space, _token),
-             bygroups(Punctuation, Text))
+            (r'((?:%s.\d)?)(>>?&|<&)([%s%s]*)(\d)' %
+             (_token_terminator, _ws, _nl),
+             bygroups(Number.Integer, Punctuation, Text, Number.Integer)),
+            (r'((?:%s.\d)?)(>>?|<)(%s?%s)' %
+             (_token_terminator, _space, _token),
+             bygroups(Number.Integer, Punctuation, Text))
         ],
         'call': [
             (_space, Text),
