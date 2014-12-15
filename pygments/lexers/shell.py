@@ -232,7 +232,8 @@ class BatchLexer(RegexLexer):
     _token_terminator = r'(?=\^?[%s]|[%s%s])' % (_ws, _punct, _nl)
     _label = r'(?:(?:\^?[^%s%s+:^])*)' % (_nl, _ws)
     _number = r'(?:-?(?:0[0-7]+|0x[\da-f]+|\d+)%s)' % _token_terminator
-    _op = r'(?:equ|geq|gtr|leq|lss|neq)'
+    _op = r'=+\-*/!~'
+    _opword = r'(?:equ|geq|gtr|leq|lss|neq)'
     _token = r'(?:[%s]+|(?:\^?[^%s%s%s^]|\^[%s%s])+)' % (_punct, _nl, _punct,
                                                         _ws, _nl, _ws)
     _variable = (r'(?:%%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|'
@@ -242,8 +243,6 @@ class BatchLexer(RegexLexer):
 
     # TODO:
     # goto and set in compounds
-    # set /a iterations+=(%%M%%M^)
-    # set /a _percentage=100*_passed/_tests
     # KanjiScan
     # `echo foo)` vs `(echo foo)`
     # `^^!`
@@ -318,9 +317,9 @@ class BatchLexer(RegexLexer):
             (r'0x[\da-f]+', Number.Hex),
             (r'\d+', Number.Integer),
             (r'[(),]+', Punctuation),
-            (r'([=+\-*/!~]|%%|\^\^)+', Operator),
-            (r'(?![%s"^%%])%s' % (_punct, _token), Name.Variable),
-            # TODO: `set/a >o.txt x=4`
+            (r'([%s]|%%|\^\^)+' % _op, Operator),
+            (r'(\^?([^"^%%%s%s%s%s()]|%%(?!%%)))+' % (_nl, _punct, _ws, _op),
+             using(this, state='string-or-variable')),
             (r'(?=[\x00|&])', Text, '#pop'),
             include('follow-statement')
         ],
@@ -431,10 +430,10 @@ class BatchLexer(RegexLexer):
                       Operator,
                       using(this, state='string-or-variable-or-text')),
              '#pop'),
-            (r'(%s%s)(%s)(%s%s)' % (_number, _space, _op, _space, _number),
+            (r'(%s%s)(%s)(%s%s)' % (_number, _space, _opword, _space, _number),
              bygroups(using(this, state='arithmetic/if'), Operator.Word,
                       using(this, state='arithmetic/if')), '#pop'),
-            (r'(%s%s)(%s)(%s%s)' % (_stoken, _space, _op, _space, _stoken),
+            (r'(%s%s)(%s)(%s%s)' % (_stoken, _space, _opword, _space, _stoken),
              bygroups(using(this, state='string-or-variable-or-text'),
                       Operator.Word,
                       using(this, state='string-or-variable-or-text')), '#pop')
