@@ -225,21 +225,25 @@ class BatchLexer(RegexLexer):
     _ws = r'\t\v\f\r ,;=\xa0'
     _space = r'(?:(?:\^[%s])*(?:\^?[%s])+(?:\^?[%s]|\^[%s])*)' % (_nl, _ws,
                                                                   _ws, _nl)
+    _escape = r'(?:%%%%|\^[%s]?[\w\W])' % _nl
     _rest_of_line = r'(?:(?:[^%s^]|\^[\w\W])*)' % _nl
     _keyword_terminator = (r'(?=(?:(?:\^[%s])*)(?:[%s]|\^?[%s%s(+./:[\\\]]))' %
                            (_nl, _nl, _punct, _ws))
     _token_terminator = r'(?=\^?[%s]|[%s%s])' % (_ws, _punct, _nl)
+    _label = r'(?:(?:\^?[^%s%s+:^])*)' % (_nl, _ws)
+    _number = r'(?:-?(?:0[0-7]+|0x[\da-f]+|\d+)%s)' % _token_terminator
+    _op = r'(?:equ|geq|gtr|leq|lss|neq)'
     _token = r'(?:[%s]+|(?:\^?[^%s%s%s^]|\^[%s%s])+)' % (_punct, _nl, _punct,
                                                         _ws, _nl, _ws)
-    _label = r'(?:(?:\^?[^%s%s+:^])*)' % (_nl, _ws)
+    _variable = (r'(?:%%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|'
+                 r'[^%%:%s]+(?::(?:~(?:-?\d+)?(?:,-?\d+)?|'
+                 r'\*?(?:[^^]|\^[^%%])+=(?:[^^]|\^[^%%])*))?%%))' % _nl)
+    _stoken = r'(?:(?:"[^%s"]*"?|%s|%s)+)' % (_nl, _variable, _token)
 
     # TODO:
     # goto and set in compounds
-    # if %var%
-    # if not "%cd:0,3%"
     # set /a iterations+=(%%M%%M^)
-
-    # TODO:
+    # set /a _percentage=100*_passed/_tests
     # KanjiScan
     # `echo foo)` vs `(echo foo)`
     # `^^!`
@@ -297,7 +301,7 @@ class BatchLexer(RegexLexer):
               _token_terminator, _space),
              bygroups(Keyword, Text, Keyword, Text, Keyword, Text),
              ('(?', 'if')),
-            (r'rem(%s%s%s.*|%s%s)' % (_token_terminator, _space, _token,
+            (r'rem(%s%s%s.*|%s%s)' % (_token_terminator, _space, _stoken,
                                       _keyword_terminator, _rest_of_line),
              Comment.Single, '#pop:2'),
             (r'(set%s)(%s?)(/a)' % (_keyword_terminator, _space),
@@ -311,7 +315,7 @@ class BatchLexer(RegexLexer):
         ],
         'arithmetic': [
             (r'0[0-7]+', Number.Oct),
-            (r'0x[0-9a-f]+', Number.Hex),
+            (r'0x[\da-f]+', Number.Hex),
             (r'\d+', Number.Integer),
             (r'[(),]+', Punctuation),
             (r'([=+\-*/!~]|%%|\^\^)+', Operator),
@@ -324,16 +328,13 @@ class BatchLexer(RegexLexer):
             include('*'),
             (r'(?=[%s])' % _nl, Text, '#pop'),
             (r'\x00.*\n?', Comment.Single, '#pop'),
-            (r'"[^%s"]*"?' % _nl, String.Double),
-            (r'%%%%|\^[%s]?[\w\W]' % _nl, String.Escape),
+            (_escape, String.Escape),
             # TODO: variables in FOR
             # TODO: %x~1,-1%
             # TODO: variables inside strings
             # TODO: test variable %foo:~-,% (which is legal)
-            (r'%%(\*|(~[a-z]*($[^:]+:)?)?\d|[^%%:%s]+(:(~(-?\d+)?(,-?\d+)?|'
-             r'\*?([^^]|\^[^%%])+=([^^]|\^[^%%])*))?%%)' % _nl, Name.Variable),
             (r'\|\|?|&&?', Punctuation, '#pop'),
-            (r'.', Text) # TODO: more characters at a time
+            include('string-or-variable-or-text')
         ],
         'pump-statement': [
             (r'[%s]+' % _nl, Text, '#pop'),
@@ -367,8 +368,25 @@ class BatchLexer(RegexLexer):
              (_token_terminator, _ws, _nl),
              bygroups(Number.Integer, Punctuation, Text, Number.Integer)),
             (r'((?:%s.\d)?)(>>?|<)(%s?%s)' %
-             (_token_terminator, _space, _token),
-             bygroups(Number.Integer, Punctuation, Text))
+             (_token_terminator, _space, _stoken),
+             bygroups(Number.Integer, Punctuation,
+                      using(this, state='string-or-variable-or-text')))
+        ],
+        'string': [
+            (r'"', String.Double, '#pop'),
+            (_variable, Name.Variable),
+            (_escape, String.Escape),
+            (r'[^%s"%%^]+' % _nl, String.Double),
+            default('#pop')
+        ],
+        'string-or-variable-or-text': [
+            (r'"', String.Double, 'string'),
+            (_variable, Name.Variable),
+            (r'.', Text) # TODO: more characters at a time
+        ],
+        'string-or-variable': [
+            (r'"', String.Double, 'string'),
+            (r'%s|.' % _variable, Name.Variable)
         ],
         'call': [
             (_space, Text),
@@ -401,16 +419,25 @@ class BatchLexer(RegexLexer):
             (r'((?:cmdextversion|errorlevel)%s)(%s)(\d+)' %
              (_token_terminator, _space),
              bygroups(Keyword, Text, Number.Integer), '#pop'),
-            (r'(defined%s)(%s)(%s)' % (_token_terminator, _space, _token),
-             bygroups(Keyword, Text, Name.Variable), '#pop'),
-            (r'(exist%s)(%s%s)' % (_token_terminator, _space, _token),
-             bygroups(Keyword, Text), '#pop'),
-            (r'(%s%s?)(==)(%s?%s)' % (_token, _space, _space, _token),
-             bygroups(Text, Operator, Text), '#pop'),
-            (r'(%s)(%s)(equ|geq|gtr|leq|lss|neq)(%s)(%s)' %
-             (_token, _space, _space, _token),
-             bygroups(using(this, state='arithmetic/if'), Text, Operator.Word,
-                      Text, using(this, state='arithmetic/if')), '#pop')
+            (r'(defined%s)(%s)(%s)' % (_token_terminator, _space, _stoken),
+             bygroups(Keyword, Text, using(this, state='string-or-variable')),
+             '#pop'),
+            (r'(exist%s)(%s)(%s)' % (_token_terminator, _space, _stoken),
+             bygroups(Keyword, Text,
+                      using(this, state='string-or-variable-or-text')),
+             '#pop'),
+            (r'(%s%s?)(==)(%s?%s)' % (_stoken, _space, _space, _stoken),
+             bygroups(using(this, state='string-or-variable-or-text'),
+                      Operator,
+                      using(this, state='string-or-variable-or-text')),
+             '#pop'),
+            (r'(%s%s)(%s)(%s%s)' % (_number, _space, _op, _space, _number),
+             bygroups(using(this, state='arithmetic/if'), Operator.Word,
+                      using(this, state='arithmetic/if')), '#pop'),
+            (r'(%s%s)(%s)(%s%s)' % (_stoken, _space, _op, _space, _stoken),
+             bygroups(using(this, state='string-or-variable-or-text'),
+                      Operator.Word,
+                      using(this, state='string-or-variable-or-text')), '#pop')
         ],
         'arithmetic/if': [
             (r'(?![%s"^%%\d(),=+\-*/!~])%s' % (_punct, _token), Text),
