@@ -225,12 +225,14 @@ class BatchLexer(RegexLexer):
     _ws = r'\t\v\f\r ,;=\xa0'
     _space = r'(?:(?:\^[%s])*(?:\^?[%s])+(?:\^?[%s]|\^[%s])*)' % (_nl, _ws,
                                                                   _ws, _nl)
-    _escape = r'(?:%%%%|\^[%s]?[\w\W])' % _nl
-    _rest_of_line = r'(?:(?:[^%s^]|\^[\w\W])*)' % _nl
+    _rest_of_line = r'(?:(?:[^%s^]|\^[%s]?[\w\W])*)' % (_nl, _nl)
+    _rest_of_line_compound = r'(?:(?:[^%s^)]|\^[%s]?[^)])*)' % (_nl, _nl)
     _keyword_terminator = (r'(?=(?:(?:\^[%s])*)(?:[%s]|\^?[%s%s(+./:[\\\]]))' %
                            (_nl, _nl, _punct, _ws))
     _token_terminator = r'(?=\^?[%s]|[%s%s])' % (_ws, _punct, _nl)
+    _start_label = r'(^[^:]?[%s]*)(:)' % _ws
     _label = r'(?:(?:\^?[^%s%s+:^])*)' % (_nl, _ws)
+    _label_compound = r'(?:(?:\^?[^%s%s+:^)])*)' % (_nl, _ws)
     _number = r'(?:-?(?:0[0-7]+|0x[\da-f]+|\d+)%s)' % _token_terminator
     _op = r'=+\-*/!~'
     _opword = r'(?:equ|geq|gtr|leq|lss|neq)'
@@ -242,15 +244,11 @@ class BatchLexer(RegexLexer):
     _stoken = r'(?:(?:"[^%s"]*"?|%s|%s)+)' % (_nl, _variable, _token)
 
     # TODO:
-    # goto and set in compounds
     # KanjiScan
-    # `echo foo)` vs `(echo foo)`
     # `^^!`
-    # newline-terminated string
     # rem and goto and : (others?) only parse one arg (relevant for ^<LF>)
     # ... but only if the first token is `rem` i.e. `rem.x x x x x^` continues
     # onto the next line properly. `goto` parses all. `:` parses 1 or 0.
-    # `rem x^ x`: `x^ x` is one token, at least for my purposes
     # `rem /? x^`
     # `rem >^`
     # re.DOTALL?
@@ -259,11 +257,8 @@ class BatchLexer(RegexLexer):
     # labels: http://www.dostips.com/forum/viewtopic.php?f=3&t=3803
     # `>nul rem a b^`
     # check ^ before everything everywhere
-    # `%%`
     # account for \x00 when detecting next token
     # lex escaped _space as String.Escape not Text
-    # allow variables (which can include ws) in _token
-    # Number in `if 1 gtr 1` and Name.Variable in `if [%x%]==[]`
     # `^\n` between chars and escaped chars in keywords
     # ^H deletes previous character
     tokens = {
@@ -273,17 +268,21 @@ class BatchLexer(RegexLexer):
             default('pump-statement')
         ],
         'begin-statement': [
+            (r'(?=%s)' % _start_label, Text, '#pop:4'),
+            (_space, Text),
             include('*'),
-            (r'(?=[%s])' % _nl, Text, '#pop:2'),
+            (r'(?=[%s])' % _nl, Text, '#pop:4'),
             (r'\(', Punctuation, 'pump-statement/compound'),
             (r'@+', Punctuation),
             (r'((?:for|if|rem)(?:%s(?=%s%s?\^?/\^?\?)|(?=\^?/\^?\?)))' %
-             (_token_terminator, _space, _token), Keyword, '#pop:2'),
+             (_token_terminator, _space, _token), Keyword, '#pop:4'),
             (r'(assoc|break|cd|chdir|cls|color|copy|del|dir|date|echo|'
              r'endlocal|erase|exit|ftype|md|mkdir|move|path|pause|popd|prompt|'
              r'pushd|rd|ren|rename|rmdir|setlocal|shift|start|time|title|type|'
-             r'ver|verify|vol)%s' % _keyword_terminator, Keyword, '#pop:2'),
-            (r'call%s' % _keyword_terminator, Keyword, 'call'),
+             r'ver|verify|vol)%s' % _keyword_terminator, Keyword, '#pop:4'),
+            (r'(call)(%s?)(:)' % _space, bygroups(Keyword, Text, Punctuation),
+             '#pop:2'),
+            (r'call%s' % _keyword_terminator, Keyword),
             (r'(for%s)(%s?)(/f%s)' %
              (_token_terminator, _space, _token_terminator),
              bygroups(Keyword, Text, Keyword), ('for/f', 'for')),
@@ -291,10 +290,8 @@ class BatchLexer(RegexLexer):
              (_token_terminator, _space, _token_terminator),
              bygroups(Keyword, Text, Keyword), ('for/l', 'for')),
             (r'for%s' % _token_terminator, Keyword, ('for2', 'for')),
-            (r'(goto%s)(%s?)(:?)(%s?)(%s)' %
-             (_keyword_terminator, _space, _label, _rest_of_line),
-             bygroups(Keyword, Text, Punctuation, Name.Label, Comment.Single),
-             '#pop:2'),
+            (r'(goto%s)(%s?)(:?)' % (_keyword_terminator, _space),
+             bygroups(Keyword, Text, Punctuation), '#pop'),
             (r'(if%s)(%s?)((?:/i%s)?)(%s?)((?:not%s)?)(%s?)' %
              (_token_terminator, _space, _token_terminator, _space,
               _token_terminator, _space),
@@ -302,15 +299,22 @@ class BatchLexer(RegexLexer):
              ('(?', 'if')),
             (r'rem(%s%s%s.*|%s%s)' % (_token_terminator, _space, _stoken,
                                       _keyword_terminator, _rest_of_line),
-             Comment.Single, '#pop:2'),
+             Comment.Single, '#pop:4'),
             (r'(set%s)(%s?)(/a)' % (_keyword_terminator, _space),
-             bygroups(Keyword, Text, Keyword), '#pop'),
+             bygroups(Keyword, Text, Keyword), '#pop:3'),
             (r'(set%s)(%s?)((?:/p)?)(%s?)((?:(?!\^?[%s]?["%s])'
              r'(?:\^?[^%s%s^=]|\^[%s]?[\w\W])+)?)(=?)' %
              (_keyword_terminator, _space, _space, _nl, _ws, _nl, _punct, _nl),
              bygroups(Keyword, Text, Keyword, Text, Name.Variable,
-                      Punctuation), '#pop:2'),
-            default('#pop:2')
+                      Punctuation), '#pop:4'),
+            default('#pop:4')
+        ],
+        'label': [
+            (r'(%s?)(%s)' % (_label, _rest_of_line),
+             bygroups(Name.Label, Comment.Single), '#pop:3')
+        ],
+        'call': [
+            (r'(:?)(%s)' % _label, bygroups(Punctuation, Name.Label), '#pop:2')
         ],
         'arithmetic': [
             (r'0[0-7]+', Number.Oct),
@@ -318,37 +322,53 @@ class BatchLexer(RegexLexer):
             (r'\d+', Number.Integer),
             (r'[(),]+', Punctuation),
             (r'([%s]|%%|\^\^)+' % _op, Operator),
-            (r'(\^?([^"^%%%s%s%s%s()]|%%(?!%%)))+' % (_nl, _punct, _ws, _op),
+            (r'(\^?([^"%%()^%s%s%s%s]|%%(?!%%)))+' % (_nl, _punct, _ws, _op),
              using(this, state='string-or-variable')),
             (r'(?=[\x00|&])', Text, '#pop'),
             include('follow-statement')
         ],
         'follow-statement': [
+            (r'%s([%s]*)(%s)(.*)' % (_start_label, _ws, _label),
+             bygroups(Text, Punctuation, Text, Name.Label, Comment.Single)),
+            (_space, Text),
             include('*'),
             (r'(?=[%s])' % _nl, Text, '#pop'),
             (r'\x00.*\n?', Comment.Single, '#pop'),
-            (_escape, String.Escape),
+            (r'(?:%%%%|\^[%s]?[\w\W])' % _nl, String.Escape),
             # TODO: variables in FOR
             # TODO: %x~1,-1%
-            # TODO: variables inside strings
             # TODO: test variable %foo:~-,% (which is legal)
             (r'\|\|?|&&?', Punctuation, '#pop'),
             include('string-or-variable-or-text')
         ],
         'pump-statement': [
             (r'[%s]+' % _nl, Text, '#pop'),
-            default(('follow-statement', 'arithmetic', 'begin-statement'))
+            default(('follow-statement', 'arithmetic', 'call', 'label',
+                     'begin-statement'))
         ],
         'begin-statement/compound': [
+            (r'(?=%s)' % _start_label, Text, '#pop:4'),
+            (_space, Text),
             include('*'),
-            (r'(?=\))', Text, '#pop:2'), # TODO: pop directly to the pump
+            (r'(?=\))', Text, '#pop:4'), # TODO: pop directly to the pump
             include('begin-statement')
+        ],
+        'label/compound': [
+            (r'(%s?)(%s)' % (_label_compound, _rest_of_line_compound),
+             bygroups(Name.Label, Comment.Single), '#pop:3')
+        ],
+        'call/compound': [
+            (r'(:?)(%s)' % _label_compound, bygroups(Punctuation, Name.Label),
+             '#pop:2')
         ],
         'arithmetic/compound': [
             (r'(?=\))', Text, '#pop'),
             include('arithmetic')
         ],
         'follow-statement/compound': [
+            (r'%s([%s]*)(%s)(.*)' % (_start_label, _ws, _label_compound),
+             bygroups(Text, Punctuation, Text, Name.Label, Comment.Single)),
+            (_space, Text),
             include('*'),
             (r'(?=\))', Text, '#pop'),
             include('follow-statement')
@@ -357,12 +377,10 @@ class BatchLexer(RegexLexer):
             (r'[%s]+' % _nl, Text),
             (r'\)', Punctuation, '#pop'),
             default(('follow-statement/compound', 'arithmetic/compound',
+                     'call/compound', 'label/compound',
                      'begin-statement/compound'))
         ],
         '*': [
-            (r'(^[^:]?[%s]*)(:)([%s]*)(%s)(.*)' % (_ws, _ws, _label),
-             bygroups(Text, Punctuation, Text, Name.Label, Comment.Single)),
-            (_space, Text),
             (r'((?:%s.\d)?)(>>?&|<&)([%s%s]*)(\d)' %
              (_token_terminator, _ws, _nl),
              bygroups(Number.Integer, Punctuation, Text, Number.Integer)),
@@ -374,8 +392,7 @@ class BatchLexer(RegexLexer):
         'string': [
             (r'"', String.Double, '#pop'),
             (_variable, Name.Variable),
-            (_escape, String.Escape),
-            (r'[^%s"%%^]+' % _nl, String.Double),
+            (r'[^%s"%%]+' % _nl, String.Double),
             default('#pop')
         ],
         'string-or-variable-or-text': [
@@ -386,12 +403,6 @@ class BatchLexer(RegexLexer):
         'string-or-variable': [
             (r'"', String.Double, 'string'),
             (r'%s|.' % _variable, Name.Variable)
-        ],
-        'call': [
-            (_space, Text),
-            (r'(::?)(%s)' % _label, bygroups(Punctuation, Name.Label),
-             '#pop:2'),
-            default('#pop')
         ],
         'for': [
             (r'(%s)(in)(%s)(\()' % (_space, _space),
@@ -451,47 +462,7 @@ class BatchLexer(RegexLexer):
             (_space, Text),
             (r'else%s' % _token_terminator, Keyword, '#pop'),
             default('#pop')
-        ],
-
-        '_root': [
-            # Lines can start with @ to prevent echo
-            (r'^\s*@', Punctuation),
-            (r'^(\s*)(rem\s.*)$', bygroups(Text, Comment)),
-            (r'".*?"', String.Double),
-            (r"'.*?'", String.Single),
-            # If made more specific, make sure you still allow expansions
-            # like %~$VAR:zlt
-            (r'%%?[~$:\w]+%?', Name.Variable),
-            (r'::.*', Comment), # Technically :: only works at BOL
-            (r'\b(set)(\s+)(\w+)', bygroups(Keyword, Text, Name.Variable)),
-            (r'\b(call)(\s+)(:\w+)', bygroups(Keyword, Text, Name.Label)),
-            (r'\b(goto)(\s+)(\w+)', bygroups(Keyword, Text, Name.Label)),
-            (r'\b(set|call|echo|on|off|endlocal|for|do|goto|if|pause|'
-             r'setlocal|shift|errorlevel|exist|defined|cmdextversion|'
-             r'errorlevel|else|cd|md|del|deltree|cls|choice)\b', Keyword),
-            (r'\b(equ|neq|lss|leq|gtr|geq)\b', Operator),
-            include('_basic'),
-            (r'.', Text),
-        ],
-        '_echo': [
-            # Escapes only valid within echo args?
-            (r'\^\^|\^<|\^>|\^\|', String.Escape),
-            (r'\n', Text, '#pop'),
-            include('_basic'),
-            (r'[^\'"^]+', Text),
-        ],
-        '_basic': [
-            (r'".*?"', String.Double),
-            (r"'.*?'", String.Single),
-            (r'`.*?`', String.Backtick),
-            (r'-?\d+', Number),
-            (r',', Punctuation),
-            (r'=', Operator),
-            (r'/\S+', Name),
-            (r':\w+', Name.Label),
-            (r'\w:\w+', Text),
-            (r'([<>|])(\s*)(\w+)', bygroups(Punctuation, Text, Name)),
-        ],
+        ]
     }
 
 

@@ -17,7 +17,7 @@ echo(
 if cmdextversion 2 goto =)
 goto :fail
 
-:)
+     :)
 echo Starting tests at:
 date/t & time/t
 echo(
@@ -58,12 +58,22 @@ break
 goto :exit
 
 :comments
+rem "comment^
 set /a _tests+=1
 echo Test %_tests%: Comments
 ) comment
 :: comment
 goto :comments1 comment
 :comments1 comment
+if 1==2 goto :comments1^
+^
+goto :comments2
+goto :fail
+:comments2
+if 1==1 (goto :comments3)
+:comments3)
+goto :fail
+:comments3
 rem comment^
 goto:fail
 rem.comment comment^
@@ -90,7 +100,7 @@ if not "%cd:~0,3%"=="C:\" (
   call call echo  Wrong drive (should be C^):
   vol
   goto :test)
-echo >test0.bat rem Machine-generated; do no edit
+>test0.bat echo rem Machine-generated; do not edit
 call echo set /a _passed+=1 >>test0.bat
 type test0.bat >"test 1.bat"
 ren "test 1.bat" test2.bat
