@@ -7,7 +7,7 @@ rem capitalize some things
 rem for /f usebackq %%G in ('a b c')
 
 setlocal EnableDelayedExpansion
-cls
+(cls)
 set/a_tests=0,_passed=0
 title=Batch test
 echo %~nx0, the>,con comprehensive testing suite
@@ -59,9 +59,12 @@ goto :exit
 
 :comments
 rem "comment^
+(rem)
 set /a _tests+=1
 echo Test %_tests%: Comments
+)
 ) comment
+)
 :: comment
 goto :comments1 comment
 :comments1 comment
@@ -102,7 +105,7 @@ if not "%cd:~0,3%"=="C:\" (
   goto :test)
 >test0.bat echo rem Machine-generated; do not edit
 call echo set /a _passed+=1 >>test0.bat
-type test0.bat >"test 1.bat"
+type test0.bat >"test 1.bat
 ren "test 1.bat" test2.bat
 rename test2.bat test.bat
 call ^
@@ -158,9 +161,9 @@ echo on
 rem/?
 @echo off
 rem /?>nul
-if/?>nul || if /?>nul
-for/?>nul && for /?>nul
-goto/?>nul && goto /?>nul && goto:/? >nul
+if/?>nul || if /?>nul || if x/? >nul
+for/?>nul && for /?>nul && for x/? >nul && for /?x >nul
+goto/?>nul && goto /?>nul && goto:/? >nul && goto ) /? ) >nul && (goto /? )>nul
 for /f "tokens=2 delims==" %%G in ('assoc .bat') do (
   set _batfile=%%G
 )
