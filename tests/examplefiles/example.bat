@@ -8,9 +8,15 @@ rem for /f usebackq %%G in ('a b c')
 
 setlocal EnableDelayedExpansion
 (cls)
-set/a_tests=0,_passed=0
+set/a^
+_te^
+sts^
+=0,^
+_"pa"^
+ssed=0^
+0
 title=Batch test
-echo %~nx0, the>,con comprehensive testing suite
+echo^ %~nx0,^ the>,con comprehensive testing suite
 ver
 echo(
 
@@ -29,25 +35,28 @@ if [%*]==[--help] (
   goto :exit comment) else rem
 
 (call :comments)
-call ::io
-call:control
-call::internal
+call ::io+x
+call:control:x
+call::internal x
 
 :exit
 if /i %_tests%==%_passed% (
   color 02
 ) else (
   color c
-  if not defined _exitCode set _exitCode=1
+  if not defined _exit^
+Code set _exit^
+Code=1
 )
 set _percentage=NaN
 if defined _tests (
-  if %_tests% neq 0 (set /a _percentage=100*_passed/_tests)
+  if %_tests% neq 0 (set/a_percentage=100*_passed/_tests)
 )
 echo(
 echo Tests passed: %_passed%/%_tests% (%_percentage%%%)
 pause
 color
+title
 exit /b %_exitCode%
 
 :fail
@@ -57,7 +66,8 @@ set /a _exitCode=0x69+(0105*1000)
 break
 goto :exit
 
-:comments
+:com^
+ments
 rem "comment^
 (rem.) & set /a _tests+=1
 (rem)
@@ -67,11 +77,12 @@ rem )
 ) comment
 )
 :: comment
-goto :comments1 comment
+goto :comments1:comment
 :comments1 comment
 if 1==2 goto :comments1^
 ^
-goto :comments2
+goto :comments^
+2+comment
 goto :fail
 :comments2
 if 1==1 (goto :comments3)
@@ -104,7 +115,8 @@ if not "%cd:~0,3%"=="C:\" (
   call call echo  Wrong drive (should be C^):
   vol
   goto :test)
->test0.bat echo rem Machine-generated; do not edit
+>test0^
+.bat echo rem Machine-generated; do not edit
 call echo set /a _passed+=1 >>test0.bat
 type test0.bat >"test 1.bat
 ren "test 1.bat" test2.bat
@@ -128,7 +140,7 @@ for %%G in (,+,,-,) do @(
     for /f tokens^=1-2^,5 %%I in ("2 %%H _ _ 10") do (
       for /f "tokens=* usebackq" %%L in (`echo %%G%%J`) do (
         for /f "tokens=*" %%M in ('echo %%L') do (
-          set /a iterations+=(%%M%%M^)
+          set /a _iterations+=(%%M%%M^)
         )
       )
     )
@@ -162,9 +174,12 @@ echo on
 rem/?
 @echo off
 rem /?>nul
-if/?>nul || if /?>nul || if x/? >nul
-for/?>nul && for /?>nul && for x/? >nul && for /?x >nul
-goto/?>nul && goto /?>nul && goto:/? >nul && goto ) /? ) >nul && (goto /? )>nul
+rem^/?>nul
+rem^ /?>nul
+if/?>nul || if^/^?>nul || if /?>nul || if x/? >nul
+for/?>nul && for^/^?>nul && for /?>nul && for x/? >nul && for /?x >nul
+goto/?>nul && goto^/? && goto^ /? && goto /^
+? && goto /?>nul && goto:/? >nul && goto ) /? ) >nul && (goto /? )>nul
 for /f "tokens=2 delims==" %%G in ('assoc .bat') do (
   set _batfile=%%G
 )
