@@ -4,7 +4,6 @@
 rem TODOs:
 rem %...% in all its glory
 rem capitalize some things
-rem for /f usebackq %%G in ('a b c')
 
 setlocal EnableDelayedExpansion
 (cls)
@@ -28,7 +27,7 @@ echo Starting tests at:
 date/t & time/t
 echo(
 
-if [%*]==[--help] (
+if '%*'=='--help' (
   echo Usage: %~nx0 [--help]
   echo   --help: Display this help message and quit.
   shift
@@ -66,8 +65,7 @@ set /a _exitCode=0x69+(0105*1000)
 break
 goto :exit
 
-:com^
-ments
+:comments
 rem "comment^
 (rem.) & set /a _tests+=1
 (rem)
@@ -110,7 +108,11 @@ md temp
 cd temp
 mkdir 2>nul temp
 chdir temp
-if 1==1 echo  Checking drive... must be C or else this won't work
+>cd  echo Checking drive...
+>>cd echo must be C or else this won't work
+for /f "tokens=* usebackq" %%G in ("cd
+) do (echo  %%G)
+del cd
 if not "%cd:~0,3%"=="C:\" (
   call call echo  Wrong drive (should be C^):
   vol
@@ -135,12 +137,13 @@ goto:eof
 set /a _tests+=1
 echo Test %_tests%: Control statements
 set _iterations=00>nul
-for %%G in (,+,,-,) do @(
+for %%G in (,+,,-,
+) do @(
   for /l %%H in (,-1,,-1,,-3,) do (
     for /f tokens^=1-2^,5 %%I in ("2 %%H _ _ 10") do (
-      for /f "tokens=* usebackq" %%L in (`echo %%G%%J`) do (
-        for /f "tokens=*" %%M in ('echo %%L') do (
-          set /a _iterations+=(%%M%%M^)
+      for /f "tokens=1 usebackq" %%L in ( `echo %%G%%J ``` `
+`  `    ) do ( for /f "tokens=2" %%M in ('echo ' %%L0 '
+'  '      ) do ( set /a _iterations+=(%%M%%M^)
         )
       )
     )
@@ -180,10 +183,12 @@ if/?>nul || if^/^?>nul || if /?>nul || if x/? >nul
 for/?>nul && for^/^?>nul && for /?>nul && for x/? >nul && for /?x >nul
 goto/?>nul && goto^/? && goto^ /? && goto /^
 ? && goto /?>nul && goto:/? >nul && goto ) /? ) >nul && (goto /? )>nul
-for /f "tokens=2 delims==" %%G in ('assoc .bat') do (
-  set _batfile=%%G
-)
-ftype 1>nul %_batfile%
+set "_extension')=.bat"
+for /f "tokens=2 delims==" %%G in ( 'assoc %_extension')%'
+ ) do (
+  assoc 2>nul %_extension'):*.=.%=%%G
+  ftype 1>nul %%G
+) &>nul ver
 if errorlevel 0 if not errorlevel 1 set /a _passed+=1
 goto :eof
 :/?

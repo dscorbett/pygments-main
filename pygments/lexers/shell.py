@@ -243,12 +243,11 @@ class BatchLexer(RegexLexer):
     _string = r'(?:"[^%s"]*"?)' % _nl
     _variable = (r'(?:%%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|'
                  r'[^%%:%s]+(?::(?:~(?:-?\d+)?(?:,-?\d+)?|'
-                 r'\*?(?:[^^]|\^[^%%])+=(?:[^^]|\^[^%%])*))?%%))' % _nl)
+                 r'\*?(?:[^%%^]|\^[^%%])+=(?:[^%%^]|\^[^%%])*))?%%))' % _nl)
     _stoken = r'(?:(?:%s|%s|%s)+)' % (_string, _variable, _token)
 
     # TODO:
     # _token in compound statements
-    # single quotes in for
     # KanjiScan
     # `^^!`
     # rem and goto and : (others?) only parse one arg (relevant for ^<LF>)
@@ -434,22 +433,32 @@ class BatchLexer(RegexLexer):
              bygroups(Number.Integer, Punctuation,
                       using(this, state='string-or-variable-or-text')))
         ],
+        'variable-or-escape': [
+            (_variable, Name.Variable),
+            (r'(?:%%%%|\^[%s]?[\w\W])' % _nl, String.Escape)
+        ],
         'string': [
             (r'"', String.Double, '#pop'),
-            (_variable, Name.Variable),
+            include('variable-or-escape'),
             (r'[^"%%%s]+' % _nl, String.Double),
             default('#pop')
         ],
+        'sqstring': [
+            include('variable-or-escape'),
+            (r'[^%]+|%', String.Single)
+        ],
+        'bqstring': [
+            include('variable-or-escape'),
+            (r'[^%]+|%', String.Backtick)
+        ],
         'string-or-variable-or-text': [
             (r'"', String.Double, 'string'),
-            (_variable, Name.Variable),
-            (r'(?:%%%%|\^[%s]?[\w\W])' % _nl, String.Escape),
+            include('variable-or-escape'),
             (r'.', Text) # TODO: more characters at a time
         ],
         'string-or-variable': [
             (r'"', String.Double, 'string'),
-            (_variable, Name.Variable),
-            (r'(?:%%%%|\^[%s]?[\w\W])' % _nl, String.Escape),
+            include('variable-or-escape'),
             (r'[^"%%^%s]+|.' % _nl, Name.Variable) # TODO: test single `%`
         ],
         'for': [
@@ -464,11 +473,18 @@ class BatchLexer(RegexLexer):
             (r'(%s)(do%s)' % (_space, _token_terminator), #ok: ) is illegal
              bygroups(using(this, state='string-or-variable-or-text'),
                       Keyword), '#pop'),
+            (r'[%s]+' % _nl, Text),
             include('follow')
         ],
         'for/f': [
-            (r'"[^"]*"', String.Double),
-            (r'`[^`]*`', String.Backtick),
+            (r'(")((?:%s|[^"])*?")([%s%s]*)(\))' % (_variable, _nl, _ws),
+             bygroups(String.Double, using(this, state='string'), Text,
+                      Punctuation)),
+            (r'"', String.Double, ('#pop', 'for2', 'string')),
+            (r"('(?:%s|[\w\W])*?')([%s%s]*)(\))" % (_variable, _nl, _ws),
+             bygroups(using(this, state='sqstring'), Text, Punctuation)),
+            (r'(`(?:%s|[\w\W])*?`)([%s%s]*)(\))' % (_variable, _nl, _ws),
+             bygroups(using(this, state='bqstring'), Text, Punctuation)),
             include('for2')
         ],
         'for/l': [
