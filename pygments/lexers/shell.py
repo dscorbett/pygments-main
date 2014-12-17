@@ -324,9 +324,10 @@ class BatchLexer(RegexLexer):
               _token_terminator, _space),
              bygroups(Keyword, Text, Keyword, Text, Keyword, Text),
              ('(?', 'if')),
-            (r'rem(%s%s%s.*|%s%s)' %
+            (r'rem(%s(%s%s)?.*|%s%s)' %
              (_token_terminator, _space, _stoken, _keyword_terminator,
-              _rest_of_line), Comment.Single, 'follow%s' % suffix),
+              _rest_of_line_compound if compound else _rest_of_line),
+             Comment.Single, 'follow%s' % suffix),
             (r'(set%s)(%s?)(/a)' % (_keyword_terminator, _space),
              bygroups(Keyword, Text, Keyword), 'arithmetic%s' % suffix),
             (r'(set%s)(%s?)((?:/p)?)(%s?)((?:(?!\^?[%s]?["%s])'

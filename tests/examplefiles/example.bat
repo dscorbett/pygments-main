@@ -59,9 +59,10 @@ goto :exit
 
 :comments
 rem "comment^
+(rem.) & set /a _tests+=1
 (rem)
-set /a _tests+=1
-echo Test %_tests%: Comments
+(rem. ) & (rem. comment ) & echo Test %_tests%: Comments
+rem )
 )
 ) comment
 )
