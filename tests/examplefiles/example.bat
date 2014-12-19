@@ -67,9 +67,9 @@ break
 goto :exit
 
 :comments
-rem "comment^
 (rem )/?
 )
+rem "comment^
 (rem.) & set /a _tests+=1
 (rem) & goto :fail
 (rem. ) & (rem. comment ) & echo Test %_tests%: Comments
@@ -82,10 +82,14 @@ goto :comments1:comment
 :comments1 comment
 if 1==2 goto :comments1^
 ^
+rem^ /?
+rem ^
+^
 goto :comments^
 2+comment
 goto :fail
 :comments2
+rem >^
 if 1==1 (goto :comments3)
 :comments3)
 goto :fail
@@ -184,7 +188,6 @@ rem )/? >nul
 (rem (/?) >nul
 rem /?>nul
 rem^/?>nul
-rem^ /?>nul
 if/?>nul || if^/^?>nul || if /?>nul || if x/? >nul
 for/?>nul && for^/^?>nul && for /?>nul && for x/? >nul && for /?x >nul
 goto/?>nul && goto^/? && goto^ /? && goto /^

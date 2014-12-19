@@ -237,17 +237,19 @@ class BatchLexer(RegexLexer):
     _number = r'(?:-?(?:0[0-7]+|0x[\da-f]+|\d+)%s)' % _token_terminator
     _op = r'=+\-*/!~'
     _opword = r'(?:equ|geq|gtr|leq|lss|neq)'
-    _token = r'(?:[%s]+|(?:\^?[^%s%s%s^]|\^[%s%s])+)' % (_punct, _nl, _punct,
-                                                        _ws, _nl, _ws)
-    _token_compound = (r'(?:[%s]+|(?:\^?[^%s%s%s^)]|\^[%s%s])+)' %
-                       (_punct, _nl, _punct, _ws, _nl, _ws))
     _string = r'(?:"[^%s"]*"?)' % _nl
     _variable = (r'(?:%%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|'
                  r'[^%%:%s]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|'
                  r'\*?(?:[^%%^]|\^[^%%])+=(?:[^%%^]|\^[^%%])*))?%%))' % _nl)
-    _stoken = r'(?:(?:%s|%s|%s)+)' % (_string, _variable, _token)
-    _stoken_compound = r'(?:(?:%s|%s|%s)+)' % (_string, _variable,
-                                               _token_compound)
+    _core_token = r'(?:(?:(?:\^[%s]?)?[^%s%s%s])+)' % (_nl, _nl, _punct, _ws)
+    _core_token_compound = r'(?:(?:(?:\^[%s]?)?[^%s%s%s)])+)' % (_nl, _nl,
+                                                                 _punct, _ws)
+    _token = r'(?:[%s]+|%s)' % (_punct, _core_token)
+    _token_compound = r'(?:[%s]+|%s)' % (_punct, _core_token_compound)
+    _stoken = (r'(?:[%s]+|(?:%s|%s|%s)+)' %
+               (_punct, _string, _variable, _core_token))
+    _stoken_compound = (r'(?:[%s]+|(?:%s|%s|%s)+)' %
+                        (_punct, _string, _variable, _core_token_compound))
 
     # TODO:
     # variables in FOR
@@ -256,7 +258,6 @@ class BatchLexer(RegexLexer):
     # rem and goto and : (others?) only parse one arg (relevant for ^<LF>)
     # ... but only if the first token is `rem` i.e. `rem.x x x x x^` continues
     # onto the next line properly. `goto` parses all. `:` parses 1 or 0.
-    # `rem >^`
     # re.DOTALL?
     # Use _nl instead of \n (except after ^@). Use [^_nl] instead of ..
     # BOM? Unicode?
