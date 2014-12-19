@@ -56,19 +56,22 @@ echo Tests passed: %_passed%/%_tests% (%_percentage%%%)
 pause
 color
 title
+endlocal
 exit /b %_exitCode%
 
 :fail
 rem This should never happen.
-echo Internal error 1>& 269105
+echo Internal error 1>& 269105>>&2
 set /a _exitCode=0x69+(0105*1000)
 break
 goto :exit
 
 :comments
 rem "comment^
+(rem )/?
+)
 (rem.) & set /a _tests+=1
-(rem)
+(rem) & goto :fail
 (rem. ) & (rem. comment ) & echo Test %_tests%: Comments
 rem )
 )
@@ -111,7 +114,8 @@ chdir temp
 >cd  echo Checking drive...
 >>cd echo must be C or else this won't work
 for /f "tokens=* usebackq" %%G in ("cd
-) do (echo  %%G)
+) do (<nul set /p_x="%%G ")
+echo(
 del cd
 if not "%cd:~0,3%"=="C:\" (
   call call echo  Wrong drive (should be C^):
@@ -156,7 +160,7 @@ if exist %~nx0 (
   if exist %~nx0 goto :fail
 )
 if /i %_iterations% gtr -2 (
-  if /i %iterations% geq -1 (
+  if /i %_iterations% geq -1 (
     if /i %_iterations% lss 1 (
       if /i %_iterations% leq 0 (
         if /i %_iterations% equ 0 (
@@ -176,6 +180,8 @@ prompt !prompt!rem/ $H?
 echo on
 rem/?
 @echo off
+rem )/? >nul
+(rem (/?) >nul
 rem /?>nul
 rem^/?>nul
 rem^ /?>nul
