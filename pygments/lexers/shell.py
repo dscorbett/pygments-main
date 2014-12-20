@@ -238,9 +238,12 @@ class BatchLexer(RegexLexer):
     _op = r'=+\-*/!~'
     _opword = r'(?:equ|geq|gtr|leq|lss|neq)'
     _string = r'(?:"[^%s"]*"?)' % _nl
-    _variable = (r'(?:%%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|'
-                 r'[^%%:%s]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|'
-                 r'\*?(?:[^%%^]|\^[^%%])+=(?:[^%%^]|\^[^%%])*))?%%))' % _nl)
+    _variable = (r'(?:(?:%%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|'
+                 r'[^%%:%s]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%%%s^]|'
+                 r'\^[^%%%s])[^=%s]*=(?:[^%%%s^]|\^[^%%%s])*)?)?%%))|'
+                 r'(?:\^?![^!:%s]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:'
+                 r'[^!%s^]|\^[^!%s])[^=%s]*=(?:[^!%s^]|\^[^!%s])*)?)?\^?!))' %
+                 (_nl, _nl, _nl, _nl, _nl, _nl, _nl, _nl, _nl, _nl, _nl, _nl))
     _core_token = r'(?:(?:(?:\^[%s]?)?[^%s%s%s])+)' % (_nl, _nl, _punct, _ws)
     _core_token_compound = r'(?:(?:(?:\^[%s]?)?[^%s%s%s)])+)' % (_nl, _nl,
                                                                  _punct, _ws)
@@ -254,7 +257,6 @@ class BatchLexer(RegexLexer):
     # TODO:
     # variables in FOR
     # KanjiScan
-    # `^^!`
     # rem and goto and : (others?) only parse one arg (relevant for ^<LF>)
     # ... but only if the first token is `rem` i.e. `rem.x x x x x^` continues
     # onto the next line properly. `goto` parses all. `:` parses 1 or 0.
@@ -440,12 +442,13 @@ class BatchLexer(RegexLexer):
         'redirect/compound': _make_redirect_state(True),
         'variable-or-escape': [
             (_variable, Name.Variable),
-            (r'(?:%%%%|\^[%s]?[\w\W])' % _nl, String.Escape)
+            (r'%%%%|\^[%s]?(\^!|[\w\W])' % _nl, String.Escape)
         ],
         'string': [
             (r'"', String.Double, '#pop'),
-            include('variable-or-escape'),
-            (r'[^"%%%s]+' % _nl, String.Double),
+            (_variable, Name.Variable),
+            (r'\^!|%%', String.Escape),
+            (r'[^"%%^%s]+|[%%^]' % _nl, String.Double),
             default('#pop')
         ],
         'sqstring': [

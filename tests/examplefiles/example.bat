@@ -1,10 +1,6 @@
 @ @@ echo off
 ::This is an example of the Windows batch language.
 
-rem TODOs:
-rem %...% in all its glory
-rem capitalize some things
-
 setlocal EnableDelayedExpansion
 (cls)
 set/a^
@@ -39,9 +35,9 @@ call:control:x
 call::internal x
 
 :exit
-if /i %_tests%==%_passed% (
+if /i !_tests!==!_passed! (
   color 02
-) else (
+) else if !*==* (
   color c
   if not defined _exit^
 Code set _exit^
@@ -49,10 +45,11 @@ Code=1
 )
 set _percentage=NaN
 if defined _tests (
-  if %_tests% neq 0 (set/a_percentage=100*_passed/_tests)
+  if !_tests! neq 0 (set/a_percentage=100*_passed/_tests)
 )
 echo(
-echo Tests passed: %_passed%/%_tests% (%_percentage%%%)
+if !_percentage!==NaN ( echo There were no tests^^! & color e
+) else ( echo Tests passed: %_passed%/%_tests% (%_percentage%%%^) )
 pause
 color
 title
@@ -102,12 +99,11 @@ rem "comment comment"^
 goto fail
 rem comment comment^
 set /a _passed+=1
-goto :eof
+GOTO :EOF
 goto :fail
 
-:io
-set /a _tests+=1
-echo Test %_tests%: I/O
+:IO
+SET /A _tests+=1 & Echo Test !_tests:*!==^!: I/O
 verify on
 pushd .
 if exist temp echo  temp already exists. & goto :eof
@@ -120,7 +116,7 @@ chdir temp
 for /f "tokens=* usebackq" %%G in ("cd
 ) do (<nul set /p_x="%%G ")
 echo(
-del cd
+DEL cd
 if not "%cd:~0,3%"=="C:\" (
   call call echo  Wrong drive (should be C^):
   vol
@@ -131,14 +127,14 @@ call echo set /a _passed+=1 >>test0.bat
 type test0.bat >"test 1.bat
 ren "test 1.bat" test2.bat
 rename test2.bat test.bat
-call ^
+caLL ^
 C:test
 del test.bat 2>nul
-2>nul erase test0.bat
+2>NUL erase test0.bat
 popd
 rd temp\temp
 rmdir temp
-verify off
+VERIFY OFF
 goto:eof
 
 :control
@@ -180,7 +176,7 @@ set /a _tests+=1
 echo Test %_tests%: Internal commands
 path %path%
 if not defined prompt prompt $P$G
-prompt !prompt!rem/ $H?
+prompt !prompt:~!rem/ $H?
 echo on
 rem/?
 @echo off
