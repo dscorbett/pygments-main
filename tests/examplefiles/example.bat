@@ -10,7 +10,8 @@ sts^
 _"pa"^
 ssed=0^
 0
-title=Batch test
+set,/a title= Batch test
+title=%,/a title%
 echo^ %~nx0,^ the>,con comprehensive testing suite
 ver
 echo(
@@ -114,7 +115,7 @@ chdir temp
 >cd  echo Checking drive...
 >>cd echo must be C or else this won't work
 for /f "tokens=* usebackq" %%G in ("cd
-) do (<nul set /p_x="%%G ")
+) do (<nul set /p="%%G ")
 echo(
 DEL cd
 if not "%cd:~0,3%"=="C:\" (
@@ -140,10 +141,10 @@ goto:eof
 :control
 set /a _tests+=1
 echo Test %_tests%: Control statements
-set _iterations=00>nul
+set "_iterations=0">nul
 for %%G in (,+,,-,
 ) do @(
-  for /l %%H in (,-1,,-1,,-3,) do (
+  for /l %%H in (,-1;;-1	-3,) do (
     for /f tokens^=1-2^,5 %%I in ("2 %%H _ _ 10") do (
       for /f "tokens=1 usebackq" %%L in ( `echo %%G%%J ``` `
 `  `    ) do ( for /f "tokens=2" %%M in ('echo ' %%L0 '
@@ -188,10 +189,10 @@ if/?>nul || if^/^?>nul || if /?>nul || if x/? >nul
 for/?>nul && for^/^?>nul && for /?>nul && for x/? >nul && for /?x >nul
 goto/?>nul && goto^/? && goto^ /? && goto /^
 ? && goto /?>nul && goto:/? >nul && goto ) /? ) >nul && (goto /? )>nul
-set "_extension')=.bat"
-for /f "tokens=2 delims==" %%G in ( 'assoc %_extension')%'
+=set+;/p extension'),=.bat
+for /f "tokens=2 delims==" %%G in ( 'assoc %+;/p extension'),%'
  ) do (
-  assoc 2>nul %_extension'):*.=.%=%%G
+  assoc 2>nul %+;/p extension'),:*.=.%=%%G
   ftype 1>nul %%G
 ) &>nul ver
 if errorlevel 0 if not errorlevel 1 set /a _passed+=1
