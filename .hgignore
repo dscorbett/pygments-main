@@ -9,3 +9,6 @@ Pygments.egg-info/*
 .ropeproject
 tests/examplefiles/output
 .idea/
+.tags
+tests/.coverage
+tests/cover

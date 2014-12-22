@@ -36,20 +36,10 @@ _escape_html_table = {
     ord("'"): u'&#39;',
 }
 
+
 def escape_html(text, table=_escape_html_table):
     """Escape &, <, > as well as single and double quotes for HTML."""
     return text.translate(table)
-
-def get_random_id():
-    """Return a random id for javascript fields."""
-    from random import random
-    from time import time
-    try:
-        from hashlib import sha1 as sha
-    except ImportError:
-        import sha
-        sha = sha.new
-    return sha('%s|%s' % (random(), time())).hexdigest()
 
 
 def _get_ttype_class(ttype):
@@ -628,24 +618,24 @@ class HtmlFormatter(Formatter):
                         style = 'background-color: #ffffc0; padding: 0 5px 0 5px'
                     else:
                         style = 'background-color: #f0f0f0; padding: 0 5px 0 5px'
-                    yield 1, '<span style="%s">%*s</span> ' % (
+                    yield 1, '<span style="%s">%*s </span>' % (
                         style, mw, (num%st and ' ' or num)) + line
                     num += 1
             else:
                 for t, line in lines:
                     yield 1, ('<span style="background-color: #f0f0f0; '
-                              'padding: 0 5px 0 5px">%*s</span> ' % (
+                              'padding: 0 5px 0 5px">%*s </span>' % (
                               mw, (num%st and ' ' or num)) + line)
                     num += 1
         elif sp:
             for t, line in lines:
-                yield 1, '<span class="lineno%s">%*s</span> ' % (
+                yield 1, '<span class="lineno%s">%*s </span>' % (
                     num%sp == 0 and ' special' or '', mw,
                     (num%st and ' ' or num)) + line
                 num += 1
         else:
             for t, line in lines:
-                yield 1, '<span class="lineno">%*s</span> ' % (
+                yield 1, '<span class="lineno">%*s </span>' % (
                     mw, (num%st and ' ' or num)) + line
                 num += 1
 
