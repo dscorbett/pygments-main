@@ -49,7 +49,7 @@ if defined _tests (
   if !_tests! neq 0 (set/a_percentage=100*_passed/_tests)
 )
 echo(
-if !_percentage!==NaN ( echo There were no tests^^! & color e
+if !_percentage!==NaN ( echo(There were no tests^^! & color e
 ) else ( echo Tests passed: %_passed%/%_tests% (%_percentage%%%^) )
 pause
 color
@@ -57,7 +57,7 @@ title
 endlocal
 exit /b %_exitCode%
 
-:fail
+x:fail
 rem This should never happen.
 echo Internal error 1>& 269105>>&2
 set /a _exitCode=0x69+(0105*1000)
@@ -73,12 +73,12 @@ rem "comment^
 (rem. ) & (rem. comment ) & echo Test %_tests%: Comments
 rem )
 )
-) comment
-)
+)|comment
+)(
 :: comment
 goto :comments1:comment
 :comments1 comment
-if 1==2 goto :comments1^
+if(1==1) goto :comments1^
 ^
 rem^ /?
 rem ^
@@ -175,12 +175,15 @@ goto :eof
 :internal
 set /a _tests+=1
 echo Test %_tests%: Internal commands
-path %path%
+keys on
+>nul path %path%
+>nul dpath %dpath%
 if not defined prompt prompt $P$G
 prompt !prompt:~!rem/ $H?
 echo on
 rem/?
 @echo off
+rem(/?>nul
 rem )/? >nul
 (rem (/?) >nul
 rem /?>nul
