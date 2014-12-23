@@ -12,7 +12,7 @@
 import re
 
 from pygments.lexer import Lexer, RegexLexer, do_insertions, bygroups, \
-     include, default, this, using
+     include, default, this, using, words
 from pygments.token import Punctuation, \
      Text, Comment, Operator, Keyword, Name, String, Number, Generic
 from pygments.util import shebang_matches
@@ -295,11 +295,13 @@ class BatchLexer(RegexLexer):
              (_keyword_terminator, rest, _nl, _nl, rest),
              bygroups(Keyword, using(this, state='text')),
              'follow%s' % suffix),
-            (r'(assoc|break|cd|chdir|cls|color|copy|date|del|dir|dpath|echo|'
-             r'endlocal|erase|exit|ftype|keys|md|mkdir|mklink|move|path|pause|'
-             r'popd|prompt|pushd|rd|ren|rename|rmdir|setlocal|shift|start|'
-             r'time|title|type|ver|verify|vol)%s' % _keyword_terminator,
-             Keyword, 'follow%s' % suffix),
+            (words(('assoc', 'break', 'cd', 'chdir', 'cls', 'color', 'copy',
+                    'date', 'del', 'dir', 'dpath', 'echo', 'endlocal', 'erase',
+                    'exit', 'ftype', 'keys', 'md', 'mkdir', 'mklink', 'move',
+                    'path', 'pause', 'popd', 'prompt', 'pushd', 'rd', 'ren',
+                    'rename', 'rmdir', 'setlocal', 'shift', 'start', 'time',
+                    'title', 'type', 'ver', 'verify', 'vol'),
+                   suffix=_keyword_terminator), Keyword, 'follow%s' % suffix),
             (r'(call)(%s?)(:)' % _space,
              bygroups(Keyword, using(this, state='text'), Punctuation),
              'call%s' % suffix),

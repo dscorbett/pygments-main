@@ -76,10 +76,10 @@ rem )
 )|comment
 )(
 :: comment
-goto :comments1:comment
-:comments1 comment
-if(1==1) goto :comments1^
-^
+goto :comments^^1:comment
+:comments^^1 comment
+if(1==1) goto :comments^
+^1
 rem^ /?
 rem ^
 ^
