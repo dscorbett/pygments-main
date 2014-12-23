@@ -176,6 +176,7 @@ goto :eof
 set /a _tests+=1
 echo Test %_tests%: Internal commands
 keys on
+mklink 2>nul
 >nul path %path%
 >nul dpath %dpath%
 if not defined prompt prompt $P$G

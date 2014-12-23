@@ -296,10 +296,10 @@ class BatchLexer(RegexLexer):
              bygroups(Keyword, using(this, state='text')),
              'follow%s' % suffix),
             (r'(assoc|break|cd|chdir|cls|color|copy|date|del|dir|dpath|echo|'
-             r'endlocal|erase|exit|ftype|keys|md|mkdir|move|path|pause|popd|'
-             r'prompt|pushd|rd|ren|rename|rmdir|setlocal|shift|start|time|'
-             r'title|type|ver|verify|vol)%s' % _keyword_terminator, Keyword,
-             'follow%s' % suffix),
+             r'endlocal|erase|exit|ftype|keys|md|mkdir|mklink|move|path|pause|'
+             r'popd|prompt|pushd|rd|ren|rename|rmdir|setlocal|shift|start|'
+             r'time|title|type|ver|verify|vol)%s' % _keyword_terminator,
+             Keyword, 'follow%s' % suffix),
             (r'(call)(%s?)(:)' % _space,
              bygroups(Keyword, using(this, state='text'), Punctuation),
              'call%s' % suffix),
