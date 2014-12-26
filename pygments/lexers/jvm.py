@@ -36,6 +36,9 @@ class JavaLexer(RegexLexer):
 
     flags = re.MULTILINE | re.DOTALL | re.UNICODE
 
+    _digits = r'(?:\d[\d_]*)'
+    _signed = r'(?:[+-]?%s)' % _digits
+
     tokens = {
         'root': [
             (r'[^\S\n]+', Text),
@@ -66,10 +69,15 @@ class JavaLexer(RegexLexer):
             (r'(\.)((?:[^\W\d]|\$)[\w$]*)', bygroups(Operator, Name.Attribute)),
             (r'^\s*([^\W\d]|\$)[\w$]*:', Name.Label),
             (r'([^\W\d]|\$)[\w$]*', Name),
+            (r'(?i)0x[\da-f_.]*(l|p%s[fd]?)?' % _signed, Number.Hex),
+            (r'0[0-7_]+[lL]?', Number.Oct),
+            (r'(?i)0b[01_]+l?', Number.Bin),
+            (r'\d[\d_]*[lL]', Number.Integer.Long),
+            (r'(?i)%s((\.%s?(e%s)?|e%s)[fd]?|f|d)|\.%s(e%s)?[fd]?' %
+             (_digits, _digits, _signed, _signed, _digits, _signed),
+             Number.Float),
+            (r'\d[\d_]*', Number.Integer),
             (r'[~^*!%&\[\](){}<>|+=:;,./?-]', Operator),
-            (r'[0-9][0-9]*\.[0-9]+([eE][0-9]+)?[fd]?', Number.Float),
-            (r'0x[0-9a-fA-F]+', Number.Hex),
-            (r'[0-9]+(_+[0-9]+)*L?', Number.Integer),
             (r'\n', Text)
         ],
         'class': [
