@@ -64,8 +64,10 @@ class JavaLexer(RegexLexer):
             (r'(true|false|null)\b', Keyword.Constant),
             (r'(class|interface)(\s+)', bygroups(Keyword.Declaration, Text), 'class'),
             (r'(import)(\s+)', bygroups(Keyword.Namespace, Text), 'import'),
-            (r'"(\\\\|\\"|[^"])*"', String),
-            (r"'\\.'|'[^\\]'|'\\u[0-9a-fA-F]{4}'", String.Char),
+            (r'"', String.Double, 'string'),
+            (r"(')(\\.*?)(')",
+             bygroups(String.Char, String.Escape, String.Char)),
+            (r"'.'", String.Char),
             (r'(\.)((?:[^\W\d]|\$)[\w$]*)', bygroups(Operator, Name.Attribute)),
             (r'^\s*([^\W\d]|\$)[\w$]*:', Name.Label),
             (r'([^\W\d]|\$)[\w$]*', Name),
@@ -82,6 +84,11 @@ class JavaLexer(RegexLexer):
         ],
         'class': [
             (r'([^\W\d]|\$)[\w$]*', Name.Class, '#pop')
+        ],
+        'string': [
+            (r'"', String.Double, '#pop'),
+            (r'\\u+[\da-fA-F]{4}|\\[0-3]?[0-7]{1,2}|\\.', String.Escape),
+            (r'[^"\\]+', String.Double),
         ],
         'import': [
             (r'[\w.]+\*?', Name.Namespace, '#pop')
