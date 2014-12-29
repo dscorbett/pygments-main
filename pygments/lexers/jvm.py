@@ -68,9 +68,9 @@ class JavaLexer(RegexLexer):
             (r'instanceof%s' % _b, Operator.Word),
             # keywords: go before method names to avoid lexing "throw new XYZ"
             # as a method signature
-            (words(('assert', 'case', 'default', 'do', 'else', 'finally',
-                    'for', 'if', 'return', 'switch', 'this', 'throw',
-                    'try', 'while'), suffix=_b), Keyword.Reserved),
+            (words(('default', 'do', 'else', 'finally', 'for', 'if', 'return',
+                    'switch', 'this', 'throw', 'try', 'while'), suffix=_b),
+             Keyword.Reserved),
             # method names
             (r'((?:%s%s*\.%s*)*(?!new%s)%s%s+)((?!(?:super|this)%s)%s)(%s*)'
              r'(\()' % (_id, _ws, _ws, _b, _id, _ws, _b, _id, _ws),
@@ -80,6 +80,7 @@ class JavaLexer(RegexLexer):
                     'native', 'private', 'protected', 'public', 'static',
                     'strictfp', 'super', 'synchronized', 'transient',
                     'volatile'), suffix=_b), Keyword.Reserved),
+            (words(('assert', 'case'), suffix=_b), Keyword.Reserved, 'assert'),
             (r'((?:break|continue)%s)(%s*)(%s?)' % (_b, _ws, _id),
              bygroups(Keyword.Reserved, using(this), Name.Label)),
             (words(('boolean', 'byte', 'char', 'double', 'float', 'int',
@@ -97,6 +98,8 @@ class JavaLexer(RegexLexer):
              r'((?!instanceof%s)%s%s)' %
              (_id, _ws, _id, _ws, _ws, _id, _ws, _ws, _b, _id, _b),
              bygroups(using(this, state='type'), Name)),
+            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
+             bygroups(Name.Label, using(this), Punctuation)),
             (_id, Name)
         ],
         'args': [
@@ -106,12 +109,20 @@ class JavaLexer(RegexLexer):
             (r'\}', Punctuation, '#pop'),
             include('root')
         ],
+        'assert': [
+            (r':|;', Punctuation, '#pop'),
+            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
+             bygroups(Name, using(this), Punctuation), '#pop'),
+            include('root')
+        ],
         'nested': [
             (r'\(', Punctuation, '#push'),
             (r'\)', Punctuation, '#pop'),
             (r':', Operator, '#pop'),
             (r'\{', Punctuation, 'args'),
             (r'=(?!=)', Punctuation),
+            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
+             bygroups(Name, using(this), Punctuation), '#pop'),
             include('root')
         ],
         'annotation': [
