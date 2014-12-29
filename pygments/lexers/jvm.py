@@ -36,41 +36,26 @@ class JavaLexer(RegexLexer):
 
     flags = re.MULTILINE | re.DOTALL | re.UNICODE
 
+    _comment_single = r'(?://[^\n]*$)'
+    _comment_multiline = r'(?:/\*(?:[^*]|\*(?!/))*\*/)'
+    _ws = r'(?:\s|%s|%s)' % (_comment_single, _comment_multiline)
     _digits = r'(?:\d[\d_]*)'
     _signed = r'(?:[+-]?%s)' % _digits
+    _id_part = r'[^\s!"%-/:-?[\]^{|}~]'
+    _id = r'(?:[^\s!"%%-/\d:-?[\]^{|}~]%s*)' % _id_part
+    _b = r'(?!%s)' % _id_part
 
     tokens = {
         'root': [
-            (r'[^\S\n]+', Text),
-            (r'//.*?\n', Comment.Single),
-            (r'/\*.*?\*/', Comment.Multiline),
-            # keywords: go before method names to avoid lexing "throw new XYZ"
-            # as a method signature
-            (r'(assert|break|case|catch|continue|default|do|else|finally|for|'
-             r'if|goto|instanceof|new|return|switch|this|throw|try|while)\b',
-             Keyword),
-            # method names
-            (r'((?:(?:[^\W\d]|\$)[\w.\[\]$<>]*\s+)+?)'  # return arguments
-             r'((?:[^\W\d]|\$)[\w$]*)'                  # method name
-             r'(\s*)(\()',                              # signature start
-             bygroups(using(this), Name.Function, Text, Operator)),
-            (r'@[^\W\d][\w.]*', Name.Decorator),
-            (r'(abstract|const|enum|extends|final|implements|native|private|'
-             r'protected|public|static|strictfp|super|synchronized|throws|'
-             r'transient|volatile)\b', Keyword.Declaration),
-            (r'(boolean|byte|char|double|float|int|long|short|void)\b',
-             Keyword.Type),
-            (r'(package)(\s+)', bygroups(Keyword.Namespace, Text), 'import'),
-            (r'(true|false|null)\b', Keyword.Constant),
-            (r'(class|interface)(\s+)', bygroups(Keyword.Declaration, Text), 'class'),
-            (r'(import)(\s+)', bygroups(Keyword.Namespace, Text), 'import'),
+            include('whitespace'),
+            (r'::', Punctuation, 'method-reference'),
+            (r'[(),:;[\]{}]', Punctuation),
+            (r'@', Punctuation, 'annotation'),
+            (r'\?', Punctuation, 'nested'),
             (r'"', String.Double, 'string'),
             (r"(')(\\.*?)(')",
              bygroups(String.Char, String.Escape, String.Char)),
             (r"'.'", String.Char),
-            (r'(\.)((?:[^\W\d]|\$)[\w$]*)', bygroups(Operator, Name.Attribute)),
-            (r'^\s*([^\W\d]|\$)[\w$]*:', Name.Label),
-            (r'([^\W\d]|\$)[\w$]*', Name),
             (r'(?i)0x[\da-f_.]*(l|p%s[fd]?)?' % _signed, Number.Hex),
             (r'0[0-7_]+[lL]?', Number.Oct),
             (r'(?i)0b[01_]+l?', Number.Bin),
@@ -79,20 +64,144 @@ class JavaLexer(RegexLexer):
              (_digits, _digits, _signed, _signed, _digits, _signed),
              Number.Float),
             (r'\d[\d_]*', Number.Integer),
-            (r'[~^*!%&\[\](){}<>|+=:;,./?-]', Operator),
-            (r'\n', Text)
+            (r'[~^*!%&<>|+=./-]', Operator),
+            (r'instanceof%s' % _b, Operator.Word),
+            # keywords: go before method names to avoid lexing "throw new XYZ"
+            # as a method signature
+            (words(('assert', 'case', 'default', 'do', 'else', 'finally',
+                    'for', 'if', 'return', 'switch', 'this', 'throw',
+                    'try', 'while'), suffix=_b), Keyword.Reserved),
+            # method names
+            (r'((?:%s%s*\.%s*)*(?!new%s)%s%s+)((?!(?:super|this)%s)%s)(%s*)'
+             r'(\()' % (_id, _ws, _ws, _b, _id, _ws, _b, _id, _ws),
+             bygroups(using(this, state='type'), Name.Function, using(this),
+                      Punctuation), 'nested'),
+            (words(('abstract', 'enum', 'extends', 'final', 'implements',
+                    'native', 'private', 'protected', 'public', 'static',
+                    'strictfp', 'super', 'synchronized', 'transient',
+                    'volatile'), suffix=_b), Keyword.Reserved),
+            (r'((?:break|continue)%s)(%s*)(%s?)' % (_b, _ws, _id),
+             bygroups(Keyword.Reserved, using(this), Name.Label)),
+            (words(('boolean', 'byte', 'char', 'double', 'float', 'int',
+                    'long', 'short', 'void'), suffix=_b), Keyword.Type),
+            (r'catch%s' % _b, Keyword.Reserved, 'throwables'),
+            (words(('class', 'interface', 'new'), suffix=_b), Keyword.Reserved,
+             'classes'),
+            (words(('false', 'null', 'true'), suffix=_b), Keyword.Constant),
+            (r'import%s' % _b, Keyword.Reserved, 'import'),
+            (r'package%s' % _b, Keyword.Namespace, 'package'),
+            (r'throws%s' % _b, Keyword.Reserved, 'throwables'),
+            (r'(%s)(%s*)(\()' % (_id, _ws),
+             bygroups(Name.Function, using(this), Operator), 'args'),
+            (r'((?:%s)(?:@%s*(?:%s%s*\.%s*)*%s|[[\]]|%s)*(?:%s+))'
+             r'((?!instanceof%s)%s%s)' %
+             (_id, _ws, _id, _ws, _ws, _id, _ws, _ws, _b, _id, _b),
+             bygroups(using(this, state='type'), Name)),
+            (_id, Name)
         ],
-        'class': [
-            (r'([^\W\d]|\$)[\w$]*', Name.Class, '#pop')
+        'args': [
+            (r'\(', Punctuation, 'nested'),
+            (r'\)', Operator, '#pop'),
+            (r'\{', Punctuation, '#push'),
+            (r'\}', Punctuation, '#pop'),
+            include('root')
+        ],
+        'nested': [
+            (r'\(', Punctuation, '#push'),
+            (r'\)', Punctuation, '#pop'),
+            (r':', Operator, '#pop'),
+            (r'\{', Punctuation, 'args'),
+            (r'=(?!=)', Punctuation),
+            include('root')
+        ],
+        'annotation': [
+            include('whitespace'),
+            (r'interface%s' % _b, Keyword.Reserved, ('#pop', 'classes')),
+            (r'(%s)(%s*)(\.)' % (_id, _ws),
+             bygroups(Name.Decorator, using(this), Punctuation)),
+            (r'(%s)(%s*)(\()' % (_id, _ws),
+             bygroups(Name.Decorator, using(this), Punctuation),
+             ('#pop', 'nested')),
+            (_id, Name.Decorator, '#pop')
+        ],
+        'classes': [
+            (r'[?,]+', Punctuation),
+            (r'\(', Operator, ('#pop', 'args')),
+            (r'<', Punctuation, '#push'),
+            (r'@', Punctuation, 'annotation'),
+            (r'\[', Punctuation, '#pop'),
+            include('whitespace'),
+            (words(('extends', 'super'), suffix=_b), Keyword.Reserved),
+            (r'(%s)(%s*)(\.)' % (_id, _ws),
+             bygroups(Name, using(this), Punctuation)),
+            (r'instanceof%s' % _b, Operator.Word, '#pop'),
+            (_id, Name.Class),
+            default('#pop')
+        ],
+        'import': [
+            (r'[*;]', Punctuation, '#pop'),
+            include('whitespace'),
+            (r'static%s' % _b, Keyword.Reserved, ('#pop', 'import-static')),
+            (r'(%s)(%s*)(\.)' % (_id, _ws),
+             bygroups(Name.Namespace, using(this), Punctuation)),
+            (_id, Name.Class)
+        ],
+        'import-static': [
+            (r';', Punctuation, '#pop'),
+            include('whitespace'),
+            (r'(%s)(%s*)(\.)(%s*)(\*)' % (_id, _ws, _ws),
+             bygroups(Name.Class, using(this), Punctuation, using(this),
+                      Punctuation), '#pop'),
+            (r'(%s)(%s*)(\.)(%s*)(%s%s(?!%s*\.))' %
+             (_id, _ws, _ws, _id, _b, _ws),
+             bygroups(Name.Class, using(this), Punctuation, using(this), Name),
+             '#pop'),
+            (r'(%s)(%s*)(\.)' % (_id, _ws),
+             bygroups(Name.Namespace, using(this), Punctuation)),
+            (_id, Name.Class)
+        ],
+        'method-reference': [
+            (r'<', Punctuation, 'classes'),
+            include('whitespace'),
+            (r'new%s' % _b, Keyword.Reserved, '#pop'),
+            (_id, Name.Function, '#pop')
+        ],
+        'package': [
+            (r';', Punctuation, '#pop'),
+            (r'\.', Punctuation),
+            include('whitespace'),
+            (_id, Name.Namespace)
         ],
         'string': [
             (r'"', String.Double, '#pop'),
             (r'\\u+[\da-fA-F]{4}|\\[0-3]?[0-7]{1,2}|\\.', String.Escape),
             (r'[^"\\]+', String.Double),
         ],
-        'import': [
-            (r'[\w.]+\*?', Name.Namespace, '#pop')
+        'throwables': [
+            (r'\(', Punctuation),
+            (r'@', Punctuation, 'annotation'),
+            (r'<', Punctuation, 'classes'),
+            include('whitespace'),
+            (r'(%s)(%s*)([,.|])' % (_id, _ws),
+             bygroups(Name.Exception, using(this), Punctuation)),
+            (_id, Name.Exception, '#pop')
         ],
+        'type': [
+            (r'<', Punctuation, 'classes'),
+            (r'@', Punctuation, 'annotation'),
+            (r'[[\]]+', Punctuation),
+            include('whitespace'),
+            (words(('boolean', 'byte', 'char', 'double', 'float', 'int',
+                    'long', 'short', 'void'), suffix=_b), Keyword.Type),
+            (r'(%s)(%s*)(\.)' % (_id, _ws),
+             bygroups(Name, using(this), Punctuation)),
+            (_id, Name.Class)
+        ],
+        'whitespace': [
+            (r'\s+', Text),
+            (_comment_single, Comment.Single),
+            (_comment_multiline, Comment.Multiline)
+        ]
     }
 
 
