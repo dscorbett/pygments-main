@@ -44,15 +44,22 @@ class JavaLexer(RegexLexer):
     _id_part = r'[^\s!"%-/:-@[\]^{|}~]'
     _id = r'(?:[^\s!"%%-/\d:-@[\]^{|}~]%s*)' % _id_part
     _b = r'(?!%s)' % _id_part
+    _primitive_type = words(('boolean', 'byte', 'char', 'double', 'float',
+                             'int', 'long', 'short', 'void'), suffix=_b).get()
 
     tokens = {
         'root': [
             include('whitespace'),
             (r'::', Operator, 'method-reference'),
             (r'->', Punctuation),
-            (r'[(),:;{}]', Punctuation),
+            (r'(\()(%s*)%s(%s*)(\))' % (_ws, _primitive_type, _ws),
+             bygroups(Operator, using(this), Keyword.Type, using(this),
+                      Operator)),
+            (r'\((?=(%s|%s|[.@<?,>[\]&])+\)%s*(?!instanceof%s)(%s|[!(~]))' %
+             (_ws, _id, _ws, _b, _id_part), Operator, 'classes'),
+            (r'\(', Punctuation, 'nested'),
+            (r'[),:;{}]', Punctuation),
             (r'@', Punctuation, 'annotation'),
-            (r'\?', Punctuation, 'nested'),
             (r'"', String.Double, 'string'),
             (r"(')(\\.*?)(')",
              bygroups(String.Char, String.Escape, String.Char)),
@@ -66,23 +73,26 @@ class JavaLexer(RegexLexer):
              Number.Float),
             (r'\d[\d_]*', Number.Integer),
             (r'[!%&*+\-./<=>[\]^|~]', Operator),
+            (r'\?', Operator, 'nested'),
             (r'instanceof%s' % _b, Operator.Word, ('<?', 'type')),
-            (words(('abstract', 'enum', 'extends', 'final', 'implements',
-                    'native', 'private', 'protected', 'public', 'static',
-                    'strictfp', 'super', 'synchronized', 'transient',
-                    'volatile'), suffix=_b), Keyword.Reserved),
+            (words(('if', 'switch', 'synchronized', 'while'),
+                   suffix=r'(%s*)(\()' % _ws),
+             bygroups(Keyword.Reserved, using(this), Punctuation), 'nested'),
+            (words(('super', 'this'), suffix=r'(%s*)(\()' % _ws),
+             bygroups(Keyword.Reserved, using(this), Operator), 'args'),
+            (words(('abstract', 'default', 'do', 'else', 'enum', 'extends',
+                    'final', 'finally', 'implements', 'native', 'private',
+                    'protected', 'public', 'return', 'static', 'strictfp',
+                    'super', 'synchronized', 'this', 'throw', 'transient',
+                    'try', 'volatile'), suffix=_b), Keyword.Reserved),
             (words(('assert', 'case', 'for'), suffix=_b), Keyword.Reserved,
              'no-labels'),
             (r'((?:break|continue)%s)(%s*)(%s?)' % (_b, _ws, _id),
              bygroups(Keyword.Reserved, using(this), Name.Label)),
-            (words(('boolean', 'byte', 'char', 'double', 'float', 'int',
-                    'long', 'short', 'void'), suffix=_b), Keyword.Type),
+            (_primitive_type, Keyword.Type),
             (r'catch%s' % _b, Keyword.Reserved, 'throwables'),
             (words(('class', 'interface', 'new'), suffix=_b), Keyword.Reserved,
              'classes'),
-            (words(('default', 'do', 'else', 'finally', 'if', 'return',
-                    'switch', 'this', 'throw', 'try', 'while'), suffix=_b),
-             Keyword.Reserved),
             (words(('false', 'null', 'true'), suffix=_b), Keyword.Constant),
             (r'import%s' % _b, Keyword.Reserved, 'import'),
             (r'package%s' % _b, Keyword.Namespace, 'package'),
@@ -111,14 +121,12 @@ class JavaLexer(RegexLexer):
             (r':', Operator, '#pop'),
             (r'\{', Punctuation, 'args'),
             (r'=(?!=)', Punctuation),
-            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
-             bygroups(Name, using(this), Punctuation), '#pop'),
+            (r'%s(?=%s*:(?!:))' % (_id, _ws), Name, '#pop'),
             include('root')
         ],
         'no-labels': [
             (r':|;', Punctuation, '#pop'),
-            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
-             bygroups(Name, using(this), Punctuation), '#pop'),
+            (r'%s(?=%s*:(?!:))' % (_id, _ws), Name, '#pop'),
             include('root')
         ],
         'annotation': [
@@ -138,9 +146,10 @@ class JavaLexer(RegexLexer):
         ],
         'classes': [
             (r'\(', Operator, ('#pop', 'args')),
+            (r'\)', Operator, '#pop'),
             (r'<', Punctuation, '#push'),
             (r'>', Punctuation, '#pop'),
-            (r'[,?]+', Punctuation),
+            (r'[?,&]+', Punctuation),
             (r'@', Punctuation, 'annotation'),
             include('whitespace'),
             (words(('extends', 'implements', 'super'), suffix=_b),
@@ -201,8 +210,7 @@ class JavaLexer(RegexLexer):
         'type': [
             (r'@', Punctuation, 'annotation'),
             include('whitespace'),
-            (words(('boolean', 'byte', 'char', 'double', 'float', 'int',
-                    'long', 'short', 'void'), suffix=_b), Keyword.Type),
+            (_primitive_type, Keyword.Type),
             (r'(%s)(%s*)(\.)' % (_id, _ws),
              bygroups(Name, using(this), Punctuation)),
             (_id, Name.Class, '#pop')
