@@ -82,6 +82,9 @@ class JavaLexer(RegexLexer):
             (r'[!%&*+\-./<=>[\]^|~]', Operator),
             (r'\?', Operator, 'nested'),
             (r'instanceof%s' % _b, Operator.Word, ('<?', 'type')),
+            (r'(for%s)(%s*)(\()' % (_b, _ws),
+             bygroups(Keyword.Reserved, using(this), Punctuation),
+             ('nested', 'no-labels')),
             (words(('if', 'switch', 'synchronized', 'while'),
                    suffix=r'(%s*)(\()' % _ws),
              bygroups(Keyword.Reserved, using(this), Punctuation), 'nested'),
@@ -92,7 +95,7 @@ class JavaLexer(RegexLexer):
                     'return', 'static', 'strictfp', 'super', 'synchronized',
                     'this', 'throw', 'transient', 'try', 'volatile'),
                    suffix=_b), Keyword.Reserved),
-            (words(('assert', 'case', 'for'), suffix=_b), Keyword.Reserved,
+            (words(('assert', 'case'), suffix=_b), Keyword.Reserved,
              'no-labels'),
             (r'((?:break|continue)%s)(%s*)(%s?)' % (_b, _ws, _id),
              bygroups(Keyword.Reserved, using(this), Name.Label)),
@@ -129,7 +132,7 @@ class JavaLexer(RegexLexer):
             (_id, Name)
         ],
         'no-labels': [
-            (r':|;', Punctuation, '#pop'),
+            (r',|:(?!:)|;', Punctuation, '#pop'),
             include('base'),
             (_id, Name)
         ],
@@ -164,10 +167,11 @@ class JavaLexer(RegexLexer):
             default('#pop')
         ],
         'final': [
+            (r'=', Operator, 'no-labels'),
             (words(('class', 'enum', 'interface'), prefix=r'(?=',
-                   suffix=r'%s)|(?<=\))' % _b), Text, '#pop'),
+                   suffix=r'%s)|(?<=[);])' % _b), Text, '#pop'),
             include('base'),
-            (_id, Name.Constant, '#pop')
+            (_id, Name.Constant)
         ],
         'import': [
             (r'[*;]', Punctuation, '#pop'),
