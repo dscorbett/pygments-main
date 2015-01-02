@@ -26,7 +26,7 @@ __all__ = ['JavaLexer', 'ScalaLexer', 'GosuLexer', 'GosuTemplateLexer',
 
 class JavaLexer(RegexLexer):
     """
-    For `Java <http://www.sun.com/java/>`_ source code.
+    For `Java <https://www.oracle.com/java/index.html>`_ source code.
     """
 
     name = 'Java'
