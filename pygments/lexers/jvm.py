@@ -50,6 +50,12 @@ class JavaLexer(RegexLexer):
     tokens = {
         'root': [
             (u'\u001a\\Z', Text),
+            include('base'),
+            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
+             bygroups(Name.Label, using(this), Punctuation)),
+            (_id, Name)
+        ],
+        'base': [
             include('whitespace'),
             (r'::', Operator, 'method-reference'),
             (r'->', Punctuation),
@@ -81,11 +87,11 @@ class JavaLexer(RegexLexer):
              bygroups(Keyword.Reserved, using(this), Punctuation), 'nested'),
             (words(('super', 'this'), suffix=r'(%s*)(\()' % _ws),
              bygroups(Keyword.Reserved, using(this), Operator), 'args'),
-            (words(('abstract', 'default', 'do', 'else', 'extends', 'final',
-                    'finally', 'implements', 'native', 'private', 'protected',
-                    'public', 'return', 'static', 'strictfp', 'super',
-                    'synchronized', 'this', 'throw', 'transient', 'try',
-                    'volatile'), suffix=_b), Keyword.Reserved),
+            (words(('abstract', 'default', 'do', 'else', 'extends', 'finally',
+                    'implements', 'native', 'private', 'protected', 'public',
+                    'return', 'static', 'strictfp', 'super', 'synchronized',
+                    'this', 'throw', 'transient', 'try', 'volatile'),
+                   suffix=_b), Keyword.Reserved),
             (words(('assert', 'case', 'for'), suffix=_b), Keyword.Reserved,
              'no-labels'),
             (r'((?:break|continue)%s)(%s*)(%s?)' % (_b, _ws, _id),
@@ -95,6 +101,7 @@ class JavaLexer(RegexLexer):
             (words(('class', 'enum', 'interface', 'new'), suffix=_b),
              Keyword.Reserved, 'classes'),
             (words(('false', 'null', 'true'), suffix=_b), Keyword.Constant),
+            (r'final%s' % _b, Keyword.Reserved, 'final'),
             (r'import%s' % _b, Keyword.Reserved, 'import'),
             (r'package%s' % _b, Keyword.Namespace, 'package'),
             (r'throws%s' % _b, Keyword.Reserved, 'throwables'),
@@ -104,10 +111,7 @@ class JavaLexer(RegexLexer):
              r'(@%s*(%s%s*\.%s*)*%s|[[\]]|%s)*%s+(?!instanceof%s)(?=%s%s)' %
              (_id, _ws, _id, _ws, _ws, _id, _ws, _ws, _ws, _id, _ws, _ws, _id,
               _ws, _ws, _b, _id, _b),
-             using(this, state=('root', '<?', 'type'))),
-            (r'(%s)(%s*)(:(?!:))' % (_id, _ws),
-             bygroups(Name.Label, using(this), Punctuation)),
-            (_id, Name)
+             using(this, state=('root', '<?', 'type')))
         ],
         'args': [
             (r'\(', Punctuation, 'nested'),
@@ -121,14 +125,13 @@ class JavaLexer(RegexLexer):
             (r'\)', Punctuation, '#pop'),
             (r':', Operator, '#pop'),
             (r'\{', Punctuation, 'args'),
-            (r'=(?!=)', Punctuation),
-            (r'%s(?=%s*:(?!:))' % (_id, _ws), Name, '#pop'),
-            include('root')
+            include('base'),
+            (_id, Name)
         ],
         'no-labels': [
             (r':|;', Punctuation, '#pop'),
-            (r'%s(?=%s*:(?!:))' % (_id, _ws), Name, '#pop'),
-            include('root')
+            include('base'),
+            (_id, Name)
         ],
         'annotation': [
             include('whitespace'),
@@ -159,6 +162,12 @@ class JavaLexer(RegexLexer):
              bygroups(Name, using(this), Punctuation)),
             (r'(?!instanceof%s)%s' % (_b, _id), Name.Class),
             default('#pop')
+        ],
+        'final': [
+            (words(('class', 'enum', 'interface'), prefix=r'(?=',
+                   suffix=r'%s)|(?<=\))' % _b), Text, '#pop'),
+            include('base'),
+            (_id, Name.Constant, '#pop')
         ],
         'import': [
             (r'[*;]', Punctuation, '#pop'),
