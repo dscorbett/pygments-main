@@ -219,6 +219,7 @@ class JavaLexer(RegexLexer):
         'whitespace': [
             (r'\s+', Text),
             (_comment_single, Comment.Single),
+            (r'/\*\*.*?\*/', Comment.Special),
             (_comment_multiline, Comment.Multiline)
         ]
     }
