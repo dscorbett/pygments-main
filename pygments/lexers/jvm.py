@@ -41,14 +41,15 @@ class JavaLexer(RegexLexer):
     _ws = r'(?:\s|%s|%s)' % (_comment_single, _comment_multiline)
     _digits = r'(?:\d[\d_]*)'
     _signed = r'(?:[+-]?%s)' % _digits
-    _id_part = r'[^\s!"%-/:-@[\]^{|}~]'
-    _id = r'(?:[^\s!"%%-/\d:-@[\]^{|}~]%s*)' % _id_part
+    _id_part = u'[^\u001a\\s!"%-/:-@[\\]^{|}~]'
+    _id = u'(?:[^\u001a\\s!"%%-/\\d:-@[\\]^{|}~]%s*)' % _id_part
     _b = r'(?!%s)' % _id_part
     _primitive_type = words(('boolean', 'byte', 'char', 'double', 'float',
                              'int', 'long', 'short', 'void'), suffix=_b).get()
 
     tokens = {
         'root': [
+            (u'\u001a\\Z', Text),
             include('whitespace'),
             (r'::', Operator, 'method-reference'),
             (r'->', Punctuation),
