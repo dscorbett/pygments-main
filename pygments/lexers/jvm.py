@@ -62,8 +62,8 @@ class JavaLexer(RegexLexer):
             (r'(\()(%s*)%s(%s*)(\))' % (_ws, _primitive_type, _ws),
              bygroups(Operator, using(this), Keyword.Type, using(this),
                       Operator)),
-            (r'\((?=(%s|%s|[.@<?,>[\]&])+\)%s*(?!instanceof%s)(%s|[!(~]))' %
-             (_ws, _id, _ws, _b, _id_part), Operator, 'types'),
+            (r'\((?=(%s|%s|[.@<?,>[\]&])+\)%s*(?!instanceof%s)(%s|!(?!=)|'
+             r'[(~]))' % (_ws, _id, _ws, _b, _id_part), Operator, 'types'),
             (r'\(', Punctuation, 'nested'),
             (r'[),:]', Punctuation),
             (r'[;}]', Punctuation, '<?'),
