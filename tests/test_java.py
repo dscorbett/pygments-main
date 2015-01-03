@@ -9,7 +9,7 @@
 
 import unittest
 
-from pygments.token import Text, Name, Operator, Keyword
+from pygments.token import Text, Name, Punctuation, Keyword
 from pygments.lexers import JavaLexer
 
 
@@ -22,20 +22,21 @@ class JavaTest(unittest.TestCase):
     def testEnhancedFor(self):
         fragment = u'label:\nfor(String var2: var1) {}\n'
         tokens = [
-            (Name.Label, u'label:'),
+            (Name.Label, u'label'),
+            (Punctuation, u':'),
             (Text, u'\n'),
-            (Keyword, u'for'),
-            (Operator, u'('),
-            (Name, u'String'),
+            (Keyword.Reserved, u'for'),
+            (Punctuation, u'('),
+            (Name.Class, u'String'),
             (Text, u' '),
             (Name, u'var2'),
-            (Operator, u':'),
+            (Punctuation, u':'),
             (Text, u' '),
             (Name, u'var1'),
-            (Operator, u')'),
+            (Punctuation, u')'),
             (Text, u' '),
-            (Operator, u'{'),
-            (Operator, u'}'),
+            (Punctuation, u'{'),
+            (Punctuation, u'}'),
             (Text, u'\n'),
         ]
         self.assertEqual(tokens, list(self.lexer.get_tokens(fragment)))
