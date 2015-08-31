@@ -25,6 +25,7 @@ __all__ = ['JavaLexer', 'ScalaLexer', 'GosuLexer', 'GosuTemplateLexer',
 
 
 class JavaLexer(RegexLexer):
+    # TODO: Why did I delete AspectJLexer.aj_inter_type?
     """
     For `Java <https://www.oracle.com/java/index.html>`_ source code.
     """
